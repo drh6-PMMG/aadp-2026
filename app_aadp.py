@@ -163,13 +163,22 @@ def rpm_sort_key(name):
     return (1, 0, str(name))
 
 def _baixar_drive(file_id: str, destino: str):
-    """Baixa um arquivo do Google Drive para destino local."""
+    """Baixa um arquivo do Google Drive para destino local.
+    Compatível com todas as versões do gdown (com e sem parâmetro fuzzy).
+    """
     if not GDOWN_OK:
         raise ImportError("Biblioteca 'gdown' não instalada. Execute: pip install gdown")
+    import inspect
     url = f"https://drive.google.com/uc?id={file_id}&export=download"
-    gdown.download(url, destino, quiet=True, fuzzy=True)
+    # gdown >= 4.6 suporta fuzzy; versões mais antigas não suportam
+    sig = inspect.signature(gdown.download)
+    if "fuzzy" in sig.parameters:
+        gdown.download(url, destino, quiet=True, fuzzy=True)
+    else:
+        gdown.download(url, destino, quiet=True)
     if not os.path.exists(destino) or os.path.getsize(destino) == 0:
         raise FileNotFoundError(f"Falha ao baixar arquivo do Drive (ID: {file_id})")
+
 
 def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
     """Processa os dois CSVs e retorna o DataFrame final."""
