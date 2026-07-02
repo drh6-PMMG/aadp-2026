@@ -1,0 +1,10 @@
+Coloque aqui os arquivos de banco de dados necessários:
+
+1. avaliacoes.csv   ← exportado do sistema de avaliações (encoding cp1252)
+2. SIGEF.csv        ← exportado do SIGEF (encoding cp1252)
+
+IMPORTANTE:
+- Os arquivos devem estar separados por ponto-e-vírgula (;)
+- O encoding deve ser Windows-1252 (cp1252)
+- Substitua os arquivos sempre que precisar atualizar os dados
+- Após substituir, clique em "🔄 Recarregar" no app
