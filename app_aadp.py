@@ -613,14 +613,22 @@ with tab1:
 with tab2:
     st.markdown(f"### 📋 Dados Gerais — {fmt_num(len(df))} avaliações")
     cols_d = [
-        "nrPM (Avaliado)","Nome (Avaliado)","Posto/Grad. (Avaliado)",
-        "Unidade RPM (Avaliado)","Unidade Principal (Avaliado)","Local/Unidade (Avaliado)",
-        "Situação Funcional","Data AV1","Conceito Geral","Data AV2","Nota Geral",
-        "Certificação Homologador","Data HOM","Nota Homologação",
-        "Nome (Av1)","Posto (Av1)","RPM (Av1)","Situação (Av1)",
-        "Nome (Av2)","Posto (Av2)","RPM (Av2)","Situação (Av2)",
-        "Situação Comissão","Status Avaliação",
+        # Avaliado
+        "nrPM (Avaliado)", "Posto/Grad. (Avaliado)", "Nome (Avaliado)",
+        "Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)", "Local/Unidade (Avaliado)",
+        "Situação Funcional",
+        # Datas e Certificação (sem notas/conceitos)
+        "Data AV1", "Data AV2", "Data HOM", "Certificação Homologador",
+        # Avaliador 1
+        "nrPM (Av1)", "Posto (Av1)", "Nome (Av1)", "RPM (Av1)", "Unid. Principal (Av1)",
+        # Avaliador 2
+        "nrPM (Av2)", "Posto (Av2)", "Nome (Av2)", "RPM (Av2)", "Unid. Principal (Av2)",
+        # Homologador
+        "nrPM (Hom)", "Posto (Hom)", "Nome (Hom)", "RPM (Hom)", "Unid. Principal (Hom)",
+        # Status
+        "Situação Comissão", "Status Avaliação",
     ]
+    cols_d = [c for c in cols_d if c in df.columns]
     safe_df(df[cols_d].style.map(color_status,subset=["Status Avaliação"])
                             .map(color_sit,   subset=["Situação Comissão"]), height=540)
     csv_d = df[cols_d].to_csv(index=False, sep=";", encoding="utf-8-sig")
@@ -659,11 +667,9 @@ with tab3:
         "nrPM (Avaliado)", "Posto/Grad. (Avaliado)", "Nome (Avaliado)",
         "Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)",
         "Situação Funcional",
-        # ── Resultado da avaliação ────────────────────────────────────────────
+        # ── Status e Datas (sem notas/conceitos) ─────────────────────────────
         "Status Avaliação", "Situação Comissão",
-        "Data AV1", "Conceito Geral",
-        "Data AV2", "Nota Geral",
-        "Certificação Homologador", "Nota Homologação",
+        "Data AV1", "Data AV2", "Data HOM", "Certificação Homologador",
         # ── Avaliador 1 ───────────────────────────────────────────────────────
         "nrPM (Av1)", "Posto (Av1)", "Nome (Av1)",
         "RPM (Av1)", "Unid. Principal (Av1)",
@@ -804,10 +810,10 @@ with tab4:
     # ── Lista detalhada das avaliações em Homologação ──────────────────────────
     if not df_hom.empty:
         with st.expander(f"📋 Ver {len(df_hom)} avaliação(ões) pendentes de homologação", expanded=False):
-            cols_det = ["nrPM (Avaliado)", "Nome (Avaliado)", "Posto/Grad. (Avaliado)",
+            cols_det = ["nrPM (Avaliado)", "Posto/Grad. (Avaliado)", "Nome (Avaliado)",
                         "Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)",
-                        "Conceito Geral", "Nota Geral", "Certificação Homologador",
-                        "nrPM (Hom)", "Nome (Hom)", "Posto (Hom)", "RPM (Hom)",
+                        "Data AV1", "Data AV2", "Data HOM", "Certificação Homologador",
+                        "nrPM (Hom)", "Posto (Hom)", "Nome (Hom)", "RPM (Hom)",
                         "Unid. Principal (Hom)", "Situação Comissão"]
             cols_ok = [c for c in cols_det if c in df_hom.columns]
             safe_df(
