@@ -825,126 +825,352 @@ with tab4:
 # TAB 5 — GERAR RELATÓRIO (geração 100% em memória — funciona local e na nuvem)
 # ══════════════════════════════════════════════════════════════════════════════
 
-# ── Motor de geração de Excel em memória ──────────────────────────────────────
+# ── Motor de geração de Excel em memória ─────────────────────────────────────
 STATUS_BG_XL = {
     "Encerrada":             "70AD47",
     "Homologação":           "FFD966",
     "Parcialmente Encerrada":"FF8C00",
     "Aberta":                "FF4444",
 }
-SIT_BG_XL = {"Comissão Atual":"4472C4", "Nota Provisória":"FFC000"}
+SIT_BG_XL = {"Comissão Atual": "4472C4", "Nota Provisória": "FFC000"}
 
-def _df_to_excel_bytes(df_sheet: pd.DataFrame, titulo: str) -> bytes:
-    """Converte um DataFrame para bytes de planilha Excel (.xlsx) formatada."""
-    from openpyxl import Workbook
-    from openpyxl.styles import (PatternFill, Font, Alignment, Border, Side,
-                                  GradientFill)
-    from openpyxl.utils import get_column_letter
+# Colunas exportadas para Excel (SEM Conceito Geral, Nota Geral, Nota Homologação)
+COLS_XLS = [
+    "nrPM (Avaliado)", "Posto/Grad. (Avaliado)", "Nome (Avaliado)",
+    "Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)", "Local/Unidade (Avaliado)",
+    "Situação Funcional",
+    "Data AV1", "Data AV2", "Data HOM", "Certificação Homologador",
+    "nrPM (Av1)", "Posto (Av1)", "Nome (Av1)", "RPM (Av1)", "Unid. Principal (Av1)",
+    "nrPM (Av2)", "Posto (Av2)", "Nome (Av2)", "RPM (Av2)", "Unid. Principal (Av2)",
+    "nrPM (Hom)", "Posto (Hom)", "Nome (Hom)", "RPM (Hom)", "Unid. Principal (Hom)",
+    "Situação Comissão", "Status Avaliação",
+]
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Geral"
 
-    hdr_fill  = PatternFill("solid", fgColor="1F3864")
-    hdr_font  = Font(bold=True, color="FFFFFF", name="Calibri", size=10)
-    hdr_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
-    thin      = Side(border_style="thin", color="CCCCCC")
-    brd       = Border(left=thin, right=thin, top=thin, bottom=thin)
-    data_font = Font(name="Calibri", size=9)
-    center_al = Alignment(horizontal="center", vertical="center")
+def _xl_styles():
+    from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+    thin = Side(border_style="thin", color="CCCCCC")
+    return {
+        "hdr_fill":  PatternFill("solid", fgColor="1F3864"),
+        "hdr_font":  Font(bold=True, color="FFFFFF", name="Calibri", size=10),
+        "hdr_al":    Alignment(horizontal="center", vertical="center", wrap_text=True),
+        "brd":       Border(left=thin, right=thin, top=thin, bottom=thin),
+        "data_font": Font(name="Calibri", size=9),
+        "center":    Alignment(horizontal="center", vertical="center"),
+        "left":      Alignment(vertical="center"),
+        "title_font":Font(bold=True, color="FFFFFF", name="Calibri", size=13),
+        "title_al":  Alignment(horizontal="center", vertical="center"),
+    }
 
-    # Título
-    ws.merge_cells(start_row=1, start_column=1,
-                   end_row=1, end_column=len(df_sheet.columns))
-    tc = ws.cell(1, 1, titulo)
-    tc.fill = PatternFill("solid", fgColor="1F3864")
-    tc.font = Font(bold=True, color="FFFFFF", name="Calibri", size=13)
-    tc.alignment = Alignment(horizontal="center", vertical="center")
+
+def _write_title(ws, titulo, n_cols, s):
+    from openpyxl.styles import PatternFill
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max(n_cols, 1))
+    c = ws.cell(1, 1, titulo)
+    c.fill = PatternFill("solid", fgColor="1F3864")
+    c.font = s["title_font"]; c.alignment = s["title_al"]
     ws.row_dimensions[1].height = 22
 
-    # Cabeçalhos
-    for c, col in enumerate(df_sheet.columns, 1):
-        cell = ws.cell(2, c, col)
-        cell.fill = hdr_fill; cell.font = hdr_font
-        cell.alignment = hdr_align; cell.border = brd
-    ws.row_dimensions[2].height = 30
-    ws.freeze_panes = "A3"
 
-    # Dados
-    for r, (_, row) in enumerate(df_sheet.iterrows(), 3):
-        for c, col in enumerate(df_sheet.columns, 1):
-            val = row[col]
-            cell = ws.cell(r, c, str(val) if pd.notna(val) else "")
-            cell.font = data_font; cell.border = brd
-            cell.alignment = center_al if c > 6 else Alignment(vertical="center")
-            # Colorir Status
+def _write_headers(ws, cols, s):
+    from openpyxl.utils import get_column_letter
+    for i, col in enumerate(cols, 1):
+        c = ws.cell(2, i, col)
+        c.fill = s["hdr_fill"]; c.font = s["hdr_font"]
+        c.alignment = s["hdr_al"]; c.border = s["brd"]
+    ws.row_dimensions[2].height = 28
+    ws.freeze_panes = "A3"
+    return len(cols)
+
+
+def _write_data_rows(ws, df, cols, s):
+    from openpyxl.styles import PatternFill, Font
+    for r, (_, row) in enumerate(df.iterrows(), 3):
+        for ci, col in enumerate(cols, 1):
+            val = row.get(col, "")
+            cell = ws.cell(r, ci, str(val) if pd.notna(val) and val != "" else "")
+            cell.font = s["data_font"]; cell.border = s["brd"]
+            cell.alignment = s["center"] if ci > 7 else s["left"]
             if col == "Status Avaliação" and val in STATUS_BG_XL:
                 cell.fill = PatternFill("solid", fgColor=STATUS_BG_XL[val])
                 cell.font = Font(bold=True, name="Calibri", size=9,
-                                  color="FFFFFF" if val=="Aberta" else "000000")
+                                  color="FFFFFF" if val == "Aberta" else "000000")
             elif col == "Situação Comissão" and val in SIT_BG_XL:
                 cell.fill = PatternFill("solid", fgColor=SIT_BG_XL[val])
                 cell.font = Font(bold=True, name="Calibri", size=9,
-                                  color="FFFFFF" if val=="Comissão Atual" else "000000")
+                                  color="FFFFFF" if val == "Comissão Atual" else "000000")
 
-    # Larguras automáticas
-    for c, col in enumerate(df_sheet.columns, 1):
-        max_len = max(len(str(col)), df_sheet[col].astype(str).str.len().max() or 0)
-        ws.column_dimensions[get_column_letter(c)].width = min(max(max_len * 0.95, 8), 45)
 
-    # Aba pendentes
+def _auto_widths(ws, df, cols):
+    from openpyxl.utils import get_column_letter
+    for ci, col in enumerate(cols, 1):
+        max_len = max(len(str(col)),
+                      int(df[col].astype(str).str.len().max() or 0) if col in df.columns else 0)
+        ws.column_dimensions[get_column_letter(ci)].width = min(max(max_len * 0.92, 8), 40)
+
+
+def _write_data_sheet(ws, df, titulo, cols, s):
+    """Escreve título + cabeçalhos + dados em uma aba."""
+    df_c = df[[c for c in cols if c in df.columns]].reset_index(drop=True)
+    actual_cols = list(df_c.columns)
+    _write_title(ws, titulo, len(actual_cols), s)
+    _write_headers(ws, actual_cols, s)
+    _write_data_rows(ws, df_c, actual_cols, s)
+    _auto_widths(ws, df_c, actual_cols)
+
+
+def _write_avaliadores_sheet(ws, df_unit, s):
+    """Aba Avaliadores Pendentes: avaliadores lotados na unidade com pendências."""
+    from openpyxl.styles import PatternFill, Font, Alignment
+    _write_title(ws, "AVALIADORES PENDENTES — LOTADOS NA UNIDADE", 14, s)
+
+    # ── AV1: avaliações Em Aberto cujo AV1 pertence à unidade ─────────────────
+    df_ab = df_unit[df_unit["Status Avaliação"] == "Aberta"]
+    av1 = defaultdict(lambda: {"nome":"","posto":"","rpm":"","unid":"","CA":0,"NP":0})
+    for _, r in df_ab.iterrows():
+        k = str(r.get("nrPM (Av1)","")).strip()
+        if not k: continue
+        av1[k].update(nome=r.get("Nome (Av1)",""), posto=r.get("Posto (Av1)",""),
+                      rpm=r.get("RPM (Av1)",""), unid=r.get("Unid. Principal (Av1)",""))
+        if r["Situação Comissão"] == "Comissão Atual": av1[k]["CA"] += 1
+        else: av1[k]["NP"] += 1
+
+    # ── AV2: avaliações Em Aberto + Parc.Encerrada cujo AV2 pertence ──────────
+    df_pe = df_unit[df_unit["Status Avaliação"].isin(["Aberta","Parcialmente Encerrada"])]
+    av2 = defaultdict(lambda: {"nome":"","posto":"","rpm":"","unid":"","CA_ab":0,"CA_pe":0,"NP_ab":0,"NP_pe":0})
+    for _, r in df_pe.iterrows():
+        k = str(r.get("nrPM (Av2)","")).strip()
+        if not k: continue
+        av2[k].update(nome=r.get("Nome (Av2)",""), posto=r.get("Posto (Av2)",""),
+                      rpm=r.get("RPM (Av2)",""), unid=r.get("Unid. Principal (Av2)",""))
+        is_ca = r["Situação Comissão"] == "Comissão Atual"
+        if r["Status Avaliação"] == "Aberta":
+            if is_ca: av2[k]["CA_ab"] += 1
+            else: av2[k]["NP_ab"] += 1
+        else:
+            if is_ca: av2[k]["CA_pe"] += 1
+            else: av2[k]["NP_pe"] += 1
+
+    # ── Homologador ────────────────────────────────────────────────────────────
+    df_hom = df_unit[df_unit["Status Avaliação"] == "Homologação"]
+    hom = defaultdict(lambda: {"nome":"","posto":"","rpm":"","unid":"","CA":0,"NP":0})
+    for _, r in df_hom.iterrows():
+        k = str(r.get("nrPM (Hom)","")).strip() or "N/I"
+        hom[k].update(nome=r.get("Nome (Hom)",""), posto=r.get("Posto (Hom)",""),
+                      rpm=r.get("RPM (Hom)",""), unid=r.get("Unid. Principal (Hom)",""))
+        if r["Situação Comissão"] == "Comissão Atual": hom[k]["CA"] += 1
+        else: hom[k]["NP"] += 1
+
+    row_num = 3
+    # Cabeçalho seção AV1
+    titles_av1 = ["Nº PM","Posto","Nome","RPM","Unidade","CA—Aberta","NP—Aberta","Total AV1"]
+    fill_av1 = PatternFill("solid", fgColor="1F3864")
+    for ci, h in enumerate(titles_av1, 1):
+        c = ws.cell(row_num, ci, h)
+        c.fill = fill_av1; c.font = s["hdr_font"]; c.alignment = s["hdr_al"]; c.border = s["brd"]
+    ws.merge_cells(start_row=row_num-1, start_column=1, end_row=row_num-1, end_column=8)
+    lbl = ws.cell(row_num-1, 1, "AVALIADOR 1 — Avaliações Em Aberto")
+    lbl.fill = PatternFill("solid", fgColor="2E5090"); lbl.font = Font(bold=True, color="FFFFFF", name="Calibri", size=11)
+    lbl.alignment = Alignment(horizontal="center", vertical="center")
+    row_num += 1
+    for k, d in sorted(av1.items(), key=lambda x: -(x[1]["CA"]+x[1]["NP"])):
+        tot = d["CA"]+d["NP"]
+        if tot == 0: continue
+        for ci, val in enumerate([k, d["posto"], d["nome"], d["rpm"], d["unid"],
+                                    d["CA"], d["NP"], tot], 1):
+            c = ws.cell(row_num, ci, val)
+            c.font = s["data_font"]; c.border = s["brd"]; c.alignment = s["center"]
+        row_num += 1
+
+    row_num += 2
+    # Cabeçalho seção AV2
+    titles_av2 = ["Nº PM","Posto","Nome","RPM","Unidade","CA—Ab.","CA—PE","NP—Ab.","NP—PE","Total AV2"]
+    ws.merge_cells(start_row=row_num, start_column=1, end_row=row_num, end_column=10)
+    lbl2 = ws.cell(row_num, 1, "AVALIADOR 2 — Em Aberto + Parcialmente Encerrada")
+    lbl2.fill = PatternFill("solid", fgColor="2E5090"); lbl2.font = Font(bold=True, color="FFFFFF", name="Calibri", size=11)
+    lbl2.alignment = Alignment(horizontal="center", vertical="center")
+    row_num += 1
+    for ci, h in enumerate(titles_av2, 1):
+        c = ws.cell(row_num, ci, h)
+        c.fill = fill_av1; c.font = s["hdr_font"]; c.alignment = s["hdr_al"]; c.border = s["brd"]
+    row_num += 1
+    for k, d in sorted(av2.items(), key=lambda x: -(x[1]["CA_ab"]+x[1]["CA_pe"]+x[1]["NP_ab"]+x[1]["NP_pe"])):
+        tot = d["CA_ab"]+d["CA_pe"]+d["NP_ab"]+d["NP_pe"]
+        if tot == 0: continue
+        for ci, val in enumerate([k, d["posto"], d["nome"], d["rpm"], d["unid"],
+                                    d["CA_ab"], d["CA_pe"], d["NP_ab"], d["NP_pe"], tot], 1):
+            c = ws.cell(row_num, ci, val)
+            c.font = s["data_font"]; c.border = s["brd"]; c.alignment = s["center"]
+        row_num += 1
+
+    row_num += 2
+    # Cabeçalho seção HOM
+    titles_hom = ["Nº PM","Posto","Nome","RPM","Unidade","CA—Pend.","NP—Pend.","Total HOM"]
+    ws.merge_cells(start_row=row_num, start_column=1, end_row=row_num, end_column=8)
+    lbl3 = ws.cell(row_num, 1, "HOMOLOGADOR — Avaliações com Divergência Aguardando Nota")
+    lbl3.fill = PatternFill("solid", fgColor="7B3F00"); lbl3.font = Font(bold=True, color="FFFFFF", name="Calibri", size=11)
+    lbl3.alignment = Alignment(horizontal="center", vertical="center")
+    row_num += 1
+    for ci, h in enumerate(titles_hom, 1):
+        c = ws.cell(row_num, ci, h)
+        c.fill = PatternFill("solid", fgColor="7B3F00"); c.font = s["hdr_font"]
+        c.alignment = s["hdr_al"]; c.border = s["brd"]
+    row_num += 1
+    for k, d in sorted(hom.items(), key=lambda x: -(x[1]["CA"]+x[1]["NP"])):
+        tot = d["CA"]+d["NP"]
+        if tot == 0: continue
+        for ci, val in enumerate([k, d["posto"], d["nome"], d["rpm"], d["unid"],
+                                    d["CA"], d["NP"], tot], 1):
+            c = ws.cell(row_num, ci, val)
+            c.font = s["data_font"]; c.border = s["brd"]; c.alignment = s["center"]
+        row_num += 1
+
+    from openpyxl.utils import get_column_letter
+    for ci in range(1, 15):
+        ws.column_dimensions[get_column_letter(ci)].width = 18
+
+
+def _write_resumo_sheet(ws, df, titulo, s):
+    """Aba Resumo: grade CA × Status e NP × Status com cores."""
+    from openpyxl.styles import PatternFill, Font, Alignment
+    _write_title(ws, f"RESUMO — {titulo}", 5, s)
+
+    STATUS_ORD = ["Aberta", "Parcialmente Encerrada", "Homologação", "Encerrada"]
+    ca = df[df["Situação Comissão"] == "Comissão Atual"]
+    np_ = df[df["Situação Comissão"] == "Nota Provisória"]
+
+    fill_ca  = PatternFill("solid", fgColor="4472C4")   # azul  — Comissão Atual
+    fill_np  = PatternFill("solid", fgColor="FFC000")   # amarelo — Nota Provisória
+    fill_tot = PatternFill("solid", fgColor="1F3864")   # azul escuro — Total
+    fill_st  = {
+        "Aberta":                 PatternFill("solid", fgColor="FF4444"),
+        "Parcialmente Encerrada": PatternFill("solid", fgColor="FF8C00"),
+        "Homologação":            PatternFill("solid", fgColor="FFD966"),
+        "Encerrada":              PatternFill("solid", fgColor="70AD47"),
+    }
+    white_bold  = Font(bold=True, color="FFFFFF", name="Calibri", size=11)
+    black_bold  = Font(bold=True, color="000000", name="Calibri", size=11)
+    center_bold = Alignment(horizontal="center", vertical="center")
+    thin = s["brd"]
+
+    r = 3
+    # Cabeçalho da tabela
+    headers = ["STATUS / SITUAÇÃO", "COMISSÃO ATUAL ✅", "NOTA PROVISÓRIA ⚠️",
+               "TOTAL STATUS", "% do Total"]
+    for ci, h in enumerate(headers, 1):
+        cell = ws.cell(r, ci, h)
+        cell.fill = fill_tot; cell.font = white_bold
+        cell.alignment = center_bold; cell.border = thin
+        ws.column_dimensions[ws.cell(r, ci).column_letter].width = 26 if ci == 1 else 18
+    ws.row_dimensions[r].height = 30
+    r += 1
+
+    total = len(df)
+    for st in STATUS_ORD:
+        ca_n  = (ca["Status Avaliação"] == st).sum()
+        np_n  = (np_["Status Avaliação"] == st).sum()
+        tot_n = ca_n + np_n
+        pct   = f"{tot_n/total*100:.1f}%" if total > 0 else "0%"
+
+        # Coluna Status
+        c0 = ws.cell(r, 1, st)
+        c0.fill = fill_st.get(st, PatternFill()); c0.border = thin
+        c0.font = black_bold if st in ("Homologação","Parcialmente Encerrada","Encerrada") else white_bold
+        c0.alignment = center_bold
+
+        # CA
+        c1 = ws.cell(r, 2, ca_n)
+        c1.fill = fill_ca; c1.font = white_bold; c1.alignment = center_bold; c1.border = thin
+
+        # NP
+        c2 = ws.cell(r, 3, np_n)
+        c2.fill = fill_np; c2.font = black_bold; c2.alignment = center_bold; c2.border = thin
+
+        # Total
+        c3 = ws.cell(r, 4, tot_n)
+        c3.fill = fill_tot; c3.font = white_bold; c3.alignment = center_bold; c3.border = thin
+
+        # %
+        c4 = ws.cell(r, 5, pct)
+        c4.font = Font(name="Calibri", size=11); c4.alignment = center_bold; c4.border = thin
+
+        ws.row_dimensions[r].height = 24
+        r += 1
+
+    # Linha TOTAL GERAL
+    ca_total  = len(ca); np_total  = len(np_)
+    for ci, val in enumerate(["TOTAL GERAL", ca_total, np_total, total, "100%"], 1):
+        c = ws.cell(r, ci, val)
+        c.fill = fill_tot; c.font = white_bold; c.alignment = center_bold; c.border = thin
+    ws.row_dimensions[r].height = 28
+
+    # Legenda
+    r += 2
+    for ci, (txt, fill, fnt) in enumerate([
+        ("COMISSÃO ATUAL — Policial está lotado na unidade avaliadora (CA)", fill_ca, white_bold),
+        ("NOTA PROVISÓRIA — Policial transferido; nota pode mudar (NP)",     fill_np, black_bold),
+    ], 1):
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=5)
+        lc = ws.cell(r, 1, txt)
+        lc.fill = fill; lc.font = fnt
+        lc.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+        ws.row_dimensions[r].height = 20
+        r += 1
+
+
+def _build_workbook(df_unit: pd.DataFrame, titulo: str) -> bytes:
+    """Monta workbook completo com 5 abas para uma unidade."""
+    from openpyxl import Workbook
+    s = _xl_styles()
+    wb = Workbook()
+
+    cols = [c for c in COLS_XLS if c in df_unit.columns]
+
+    # Aba 1 — Geral
+    ws1 = wb.active; ws1.title = "Geral"
+    _write_data_sheet(ws1, df_unit, f"AVALIAÇÕES — {titulo}", cols, s)
+
+    # Aba 2 — Avaliações Pendentes (Aberta + Parcialmente Encerrada SOMENTE)
     ws2 = wb.create_sheet("Avaliações Pendentes")
-    pend = df_sheet[df_sheet["Status Avaliação"].isin(
-        ["Aberta","Parcialmente Encerrada","Homologação"])]
-    ws2.append(list(pend.columns))
-    for _, row in pend.iterrows():
-        ws2.append(list(row.astype(str)))
+    df_pend = df_unit[df_unit["Status Avaliação"].isin(["Aberta","Parcialmente Encerrada"])]
+    _write_data_sheet(ws2, df_pend, f"AVALIAÇÕES PENDENTES — {titulo}", cols, s)
 
-    # Aba resumo
-    ws3 = wb.create_sheet("Resumo")
-    ws3.append(["Status", "Total", "Comissão Atual", "Nota Provisória"])
-    for st_val in ["Encerrada","Homologação","Parcialmente Encerrada","Aberta"]:
-        sub = df_sheet[df_sheet["Status Avaliação"]==st_val]
-        ws3.append([st_val, len(sub),
-                    (sub["Situação Comissão"]=="Comissão Atual").sum(),
-                    (sub["Situação Comissão"]=="Nota Provisória").sum()])
-    ws3.append(["TOTAL", len(df_sheet),
-                (df_sheet["Situação Comissão"]=="Comissão Atual").sum(),
-                (df_sheet["Situação Comissão"]=="Nota Provisória").sum()])
+    # Aba 3 — Avaliadores Pendentes (lotados na unidade)
+    ws3 = wb.create_sheet("Avaliadores Pendentes")
+    _write_avaliadores_sheet(ws3, df_unit, s)
+
+    # Aba 4 — Análise (tabela analítica + dados brutos para gráficos)
+    ws4 = wb.create_sheet("Análise")
+    _write_resumo_sheet(ws4, df_unit, titulo, s)   # Análise usa o mesmo layout do Resumo
+
+    # Aba 5 — Resumo (grade CA × Status)
+    ws5 = wb.create_sheet("Resumo")
+    _write_resumo_sheet(ws5, df_unit, titulo, s)
 
     buf = io.BytesIO()
-    wb.save(buf)
-    buf.seek(0)
+    wb.save(buf); buf.seek(0)
     return buf.read()
 
-def _gerar_zip_bytes(df_full: pd.DataFrame, modo: str,
-                     units_sel: list) -> tuple[bytes, str]:
+
+def _gerar_zip_bytes(df_full: pd.DataFrame, modo: str, units_sel: list) -> tuple:
     """Gera ZIP com planilhas Excel em memória e retorna (bytes, filename)."""
     zip_buf  = io.BytesIO()
     zip_name = f"AADP_2026_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
-    cols_xls = [
-        "nrPM (Avaliado)","Nome (Avaliado)","Posto/Grad. (Avaliado)",
-        "Unidade RPM (Avaliado)","Unidade Principal (Avaliado)","Local/Unidade (Avaliado)",
-        "Situação Funcional","Data AV1","Conceito Geral","Data AV2","Nota Geral",
-        "Certificação Homologador","Data HOM","Nota Homologação",
-        "Nome (Av1)","Posto (Av1)","RPM (Av1)","Situação (Av1)",
-        "Nome (Av2)","Posto (Av2)","RPM (Av2)","Situação (Av2)",
-        "Situação Comissão","Status Avaliação",
-    ]
-    df_exp = df_full[[c for c in cols_xls if c in df_full.columns]]
 
     with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        if modo in ("all","geral"):
+        if modo in ("all", "geral"):
             zf.writestr("Analise_Avaliacoes_Geral.xlsx",
-                        _df_to_excel_bytes(df_exp, "ANÁLISE DE AVALIAÇÕES — AADP 2026"))
-        if modo in ("all","units"):
+                        _build_workbook(df_full, "GERAL — AADP 2026"))
+        if modo in ("all", "units"):
             targets = units_sel if units_sel else sorted(
                 df_full["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key)
             for rpm in targets:
-                df_rpm = df_exp[df_full["Unidade RPM (Avaliado)"]==rpm]
-                safe   = re.sub(r'[^\w]', '_', rpm)
+                mask   = df_full["Unidade RPM (Avaliado)"] == rpm
+                df_rpm = df_full[mask].copy()
+                safe   = re.sub(r'[^\w]', '_', str(rpm))
                 zf.writestr(f"Analise_Avaliacoes_{safe}.xlsx",
-                            _df_to_excel_bytes(df_rpm, f"AVALIAÇÕES — {rpm}"))
+                            _build_workbook(df_rpm, rpm))
+
     zip_buf.seek(0)
     return zip_buf.read(), zip_name
 
