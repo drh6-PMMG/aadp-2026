@@ -812,9 +812,10 @@ with tab4:
         with st.expander(f"📋 Ver {len(df_hom)} avaliação(ões) pendentes de homologação", expanded=False):
             cols_det = ["nrPM (Avaliado)", "Posto/Grad. (Avaliado)", "Nome (Avaliado)",
                         "Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)",
+                        "Status Avaliação", "Situação Comissão",
                         "Data AV1", "Data AV2", "Data HOM", "Certificação Homologador",
                         "nrPM (Hom)", "Posto (Hom)", "Nome (Hom)", "RPM (Hom)",
-                        "Unid. Principal (Hom)", "Situação Comissão"]
+                        "Unid. Principal (Hom)"]
             cols_ok = [c for c in cols_det if c in df_hom.columns]
             safe_df(
                 df_hom[cols_ok]
@@ -1124,8 +1125,173 @@ def _write_resumo_sheet(ws, df, titulo, s):
         r += 1
 
 
+def _write_analise_sheet(ws, df, titulo, s):
+    """Aba Análise: tabela resumo colorida + gráfico de pizza de Status + gráfico CA/NP."""
+    from openpyxl.styles import PatternFill, Font, Alignment
+    from openpyxl.chart import PieChart, Reference
+    from openpyxl.chart.series import DataPoint
+
+    _write_title(ws, f"ANÁLISE — {titulo}", 6, s)
+
+    STATUS_ORD = ["Aberta", "Parcialmente Encerrada", "Homologação", "Encerrada"]
+    ca  = df[df["Situação Comissão"] == "Comissão Atual"]
+    np_ = df[df["Situação Comissão"] == "Nota Provisória"]
+    total = len(df)
+
+    fill_ca  = PatternFill("solid", fgColor="4472C4")
+    fill_np  = PatternFill("solid", fgColor="FFC000")
+    fill_tot = PatternFill("solid", fgColor="1F3864")
+    fill_st  = {
+        "Aberta":                 PatternFill("solid", fgColor="FF4444"),
+        "Parcialmente Encerrada": PatternFill("solid", fgColor="FF8C00"),
+        "Homologação":            PatternFill("solid", fgColor="FFD966"),
+        "Encerrada":              PatternFill("solid", fgColor="70AD47"),
+    }
+    white_bold  = Font(bold=True, color="FFFFFF", name="Calibri", size=11)
+    black_bold  = Font(bold=True, color="000000", name="Calibri", size=11)
+    center_al   = Alignment(horizontal="center", vertical="center")
+    thin = s["brd"]
+
+    # ── Cabeçalho da tabela ────────────────────────────────────────────────────
+    r = 3
+    headers = ["STATUS", "COMISSÃO ATUAL", "NOTA PROVISÓRIA", "TOTAL", "%"]
+    col_fills = [fill_tot, fill_ca, fill_np, fill_tot, fill_tot]
+    col_fonts = [white_bold, white_bold, black_bold, white_bold, white_bold]
+    for ci, (h, fll, fnt) in enumerate(zip(headers, col_fills, col_fonts), 1):
+        c = ws.cell(r, ci, h)
+        c.fill = fll; c.font = fnt; c.alignment = center_al; c.border = thin
+        ws.column_dimensions[ws.cell(r, ci).column_letter].width = 26 if ci == 1 else 18
+    ws.row_dimensions[r].height = 28
+    r += 1
+
+    # ── Dados por Status ───────────────────────────────────────────────────────
+    data_start_row = r  # usado pelo gráfico
+    for st in STATUS_ORD:
+        ca_n  = int((ca["Status Avaliação"] == st).sum())
+        np_n  = int((np_["Status Avaliação"] == st).sum())
+        tot_n = ca_n + np_n
+        pct   = f"{tot_n/total*100:.1f}%" if total > 0 else "0%"
+
+        fll_st = fill_st.get(st, PatternFill())
+        use_white = st == "Aberta"
+
+        c0 = ws.cell(r, 1, st)
+        c0.fill = fll_st; c0.border = thin
+        c0.font = white_bold if use_white else black_bold
+        c0.alignment = center_al
+
+        c1 = ws.cell(r, 2, ca_n)
+        c1.fill = fill_ca; c1.font = white_bold; c1.alignment = center_al; c1.border = thin
+
+        c2 = ws.cell(r, 3, np_n)
+        c2.fill = fill_np; c2.font = black_bold; c2.alignment = center_al; c2.border = thin
+
+        c3 = ws.cell(r, 4, tot_n)
+        c3.fill = fill_tot; c3.font = white_bold; c3.alignment = center_al; c3.border = thin
+
+        c4 = ws.cell(r, 5, pct)
+        c4.font = Font(name="Calibri", size=11); c4.alignment = center_al; c4.border = thin
+
+        ws.row_dimensions[r].height = 22
+        r += 1
+    data_end_row = r - 1
+
+    # Linha TOTAL GERAL
+    ca_tot = len(ca); np_tot = len(np_)
+    for ci, val in enumerate(["TOTAL GERAL", ca_tot, np_tot, total, "100%"], 1):
+        c = ws.cell(r, ci, val)
+        c.fill = fill_tot; c.font = white_bold; c.alignment = center_al; c.border = thin
+    ws.row_dimensions[r].height = 26
+    total_row = r
+    r += 2
+
+    # Legenda
+    for txt, fll, fnt in [
+        ("COMISSÃO ATUAL — Policial lotado na unidade avaliadora", fill_ca, white_bold),
+        ("NOTA PROVISÓRIA — Policial transferido; nota pode mudar", fill_np, black_bold),
+    ]:
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=5)
+        lc = ws.cell(r, 1, txt)
+        lc.fill = fll; lc.font = fnt
+        lc.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+        ws.row_dimensions[r].height = 18
+        r += 1
+
+    # ── Tabela auxiliar para CA vs NP (usada pelo 2º gráfico) ─────────────────
+    r += 1
+    sit_data_row = r
+    ws.cell(r, 7, "Situação");  ws.cell(r, 8, "Qtd")
+    r += 1
+    ws.cell(r, 7, "Comissão Atual");  ws.cell(r, 8, ca_tot)
+    r += 1
+    ws.cell(r, 7, "Nota Provisória"); ws.cell(r, 8, np_tot)
+    sit_end_row = r
+
+    # ── Gráfico 1: Pizza por Status (Total por status) ─────────────────────────
+    pie1 = PieChart()
+    pie1.title  = "Status das Avaliações"
+    pie1.style  = 10
+    pie1.width  = 14
+    pie1.height = 10
+
+    # Dados: coluna 4 (TOTAL) linhas data_start_row até data_end_row
+    data1 = Reference(ws, min_col=4, min_row=data_start_row,
+                      max_row=data_end_row)
+    cats1 = Reference(ws, min_col=1, min_row=data_start_row,
+                      max_row=data_end_row)
+    pie1.add_data(data1)
+    pie1.set_categories(cats1)
+    pie1.series[0].title = None
+
+    # Cores manuais para cada fatia (ordem: Aberta, Parc.Enc, Hom, Encerrada)
+    SLICE_COLORS = ["FF4444", "FF8C00", "FFD966", "70AD47"]
+    for idx, hex_color in enumerate(SLICE_COLORS):
+        pt = DataPoint(idx=idx)
+        pt.graphicalProperties.solidFill = hex_color
+        pie1.series[0].dPt.append(pt)
+
+    from openpyxl.chart.label import DataLabelList
+    pie1.dataLabels = DataLabelList()
+    pie1.dataLabels.showPercent     = True
+    pie1.dataLabels.showCatName     = True
+    pie1.dataLabels.showVal         = True
+    pie1.dataLabels.showLeaderLines = True
+
+    # Posiciona o gráfico na coluna G linha 3
+    ws.add_chart(pie1, "G3")
+
+    # ── Gráfico 2: Pizza CA vs NP ──────────────────────────────────────────────
+    pie2 = PieChart()
+    pie2.title  = "Situação da Comissão"
+    pie2.style  = 10
+    pie2.width  = 14
+    pie2.height = 10
+
+    data2 = Reference(ws, min_col=8, min_row=sit_data_row + 1,
+                      max_row=sit_end_row)
+    cats2 = Reference(ws, min_col=7, min_row=sit_data_row + 1,
+                      max_row=sit_end_row)
+    pie2.add_data(data2)
+    pie2.set_categories(cats2)
+    pie2.series[0].title = None
+
+    for idx, hex_color in enumerate(["4472C4", "FFC000"]):
+        pt = DataPoint(idx=idx)
+        pt.graphicalProperties.solidFill = hex_color
+        pie2.series[0].dPt.append(pt)
+
+    from openpyxl.chart.label import DataLabelList
+    pie2.dataLabels = DataLabelList()
+    pie2.dataLabels.showPercent     = True
+    pie2.dataLabels.showCatName     = True
+    pie2.dataLabels.showVal         = True
+    pie2.dataLabels.showLeaderLines = True
+
+    ws.add_chart(pie2, "G23")
+
+
 def _build_workbook(df_unit: pd.DataFrame, titulo: str) -> bytes:
-    """Monta workbook completo com 5 abas para uma unidade."""
+    """Monta workbook completo com 4 abas para uma unidade (sem Resumo duplicado)."""
     from openpyxl import Workbook
     s = _xl_styles()
     wb = Workbook()
@@ -1136,22 +1302,18 @@ def _build_workbook(df_unit: pd.DataFrame, titulo: str) -> bytes:
     ws1 = wb.active; ws1.title = "Geral"
     _write_data_sheet(ws1, df_unit, f"AVALIAÇÕES — {titulo}", cols, s)
 
-    # Aba 2 — Avaliações Pendentes (Aberta + Parcialmente Encerrada SOMENTE)
+    # Aba 2 — Avaliações Pendentes (Aberta, Parcialmente Encerrada e Homologação)
     ws2 = wb.create_sheet("Avaliações Pendentes")
-    df_pend = df_unit[df_unit["Status Avaliação"].isin(["Aberta","Parcialmente Encerrada"])]
+    df_pend = df_unit[df_unit["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada", "Homologação"])]
     _write_data_sheet(ws2, df_pend, f"AVALIAÇÕES PENDENTES — {titulo}", cols, s)
 
-    # Aba 3 — Avaliadores Pendentes (lotados na unidade)
+    # Aba 3 — Avaliadores Pendentes
     ws3 = wb.create_sheet("Avaliadores Pendentes")
     _write_avaliadores_sheet(ws3, df_unit, s)
 
-    # Aba 4 — Análise (tabela analítica + dados brutos para gráficos)
+    # Aba 4 — Análise (tabela + gráficos de pizza)
     ws4 = wb.create_sheet("Análise")
-    _write_resumo_sheet(ws4, df_unit, titulo, s)   # Análise usa o mesmo layout do Resumo
-
-    # Aba 5 — Resumo (grade CA × Status)
-    ws5 = wb.create_sheet("Resumo")
-    _write_resumo_sheet(ws5, df_unit, titulo, s)
+    _write_analise_sheet(ws4, df_unit, titulo, s)
 
     buf = io.BytesIO()
     wb.save(buf); buf.seek(0)
