@@ -454,7 +454,16 @@ def _build_workbook(df_unit: pd.DataFrame, titulo: str, df_global: pd.DataFrame 
     s = _xl_styles()
     wb = Workbook()
 
+    is_geral = "GERAL" in str(titulo).upper()
     cols = [c for c in COLS_XLS if c in df_unit.columns]
+    
+    if is_geral:
+        sensitive_cols = [c for c in ["Conceito Geral", "Nota Geral", "Nota Homologação"] if c in df_unit.columns]
+        if "Data HOM" in cols:
+            idx = cols.index("Data HOM") + 1
+            cols = cols[:idx] + sensitive_cols + cols[idx:]
+        else:
+            cols.extend(sensitive_cols)
 
     # Aba 1 — Geral
     ws1 = wb.active; ws1.title = "Geral"
