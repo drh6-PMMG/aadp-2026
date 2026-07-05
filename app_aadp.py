@@ -911,8 +911,12 @@ def _write_data_rows(ws, df, cols, s):
 def _auto_widths(ws, df, cols):
     from openpyxl.utils import get_column_letter
     for ci, col in enumerate(cols, 1):
-        max_len = max(len(str(col)),
-                      int(df[col].astype(str).str.len().max() or 0) if col in df.columns else 0)
+        max_len = 0
+        if col in df.columns and not df.empty:
+            max_val = df[col].astype(str).str.len().max()
+            if pd.notna(max_val):
+                max_len = int(max_val)
+        max_len = max(len(str(col)), max_len)
         ws.column_dimensions[get_column_letter(ci)].width = min(max(max_len * 0.92, 8), 40)
 
 
