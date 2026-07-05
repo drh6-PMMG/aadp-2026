@@ -218,12 +218,21 @@ def _write_data_sheet(ws, df, titulo, cols, s):
     _write_data_rows(ws, df_c, actual_cols, s)
     _auto_widths(ws, df_c, actual_cols)
 
-def _write_avaliadores_sheet(ws, df_unit, s):
+def _write_avaliadores_sheet(ws, df_unit, s, df_global=None, titulo_unidade=""):
     from openpyxl.styles import PatternFill, Font, Alignment
     _write_title(ws, "AVALIADORES PENDENTES — LOTADOS NA UNIDADE", 14, s)
 
-    # AV1
-    df_ab = df_unit[df_unit["Status Avaliação"] == "Aberta"]
+    is_geral = "GERAL" in str(titulo_unidade).upper()
+
+    if df_global is not None and not is_geral:
+        df_ab = df_global[(df_global["Status Avaliação"] == "Aberta") & (df_global["RPM (Av1)"] == titulo_unidade)]
+        df_pe = df_global[(df_global["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada"])) & (df_global["RPM (Av2)"] == titulo_unidade)]
+        df_hom = df_global[(df_global["Status Avaliação"] == "Homologação") & (df_global["RPM (Hom)"] == titulo_unidade)]
+    else:
+        df_ab = df_unit[df_unit["Status Avaliação"] == "Aberta"]
+        df_pe = df_unit[df_unit["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada"])]
+        df_hom = df_unit[df_unit["Status Avaliação"] == "Homologação"]
+
     av1 = defaultdict(lambda: {"nome":"","posto":"","rpm":"","unid":"","CA":0,"NP":0})
     for _, r in df_ab.iterrows():
         k = str(r.get("nrPM (Av1)","")).strip()
@@ -233,8 +242,6 @@ def _write_avaliadores_sheet(ws, df_unit, s):
         if r["Situação Comissão"] == "Comissão Atual": av1[k]["CA"] += 1
         else: av1[k]["NP"] += 1
 
-    # AV2
-    df_pe = df_unit[df_unit["Status Avaliação"].isin(["Aberta","Parcialmente Encerrada"])]
     av2 = defaultdict(lambda: {"nome":"","posto":"","rpm":"","unid":"","CA_ab":0,"CA_pe":0,"NP_ab":0,"NP_pe":0})
     for _, r in df_pe.iterrows():
         k = str(r.get("nrPM (Av2)","")).strip()
@@ -249,8 +256,6 @@ def _write_avaliadores_sheet(ws, df_unit, s):
             if is_ca: av2[k]["CA_pe"] += 1
             else: av2[k]["NP_pe"] += 1
 
-    # Homologador
-    df_hom = df_unit[df_unit["Status Avaliação"] == "Homologação"]
     hom = defaultdict(lambda: {"nome":"","posto":"","rpm":"","unid":"","CA":0,"NP":0})
     for _, r in df_hom.iterrows():
         k = str(r.get("nrPM (Hom)","")).strip() or "N/I"
@@ -329,7 +334,7 @@ def _write_avaliadores_sheet(ws, df_unit, s):
 
 def _write_analise_sheet(ws, df, titulo, s):
     from openpyxl.styles import PatternFill, Font, Alignment
-    from openpyxl.chart import PieChart, Reference
+    from openpyxl.chart import PieChart3D, Reference
     from openpyxl.chart.series import DataPoint
     from openpyxl.chart.label import DataLabelList
 
@@ -414,17 +419,8 @@ def _write_analise_sheet(ws, df, titulo, s):
         ws.row_dimensions[r].height = 18
         r += 1
 
-    r += 1
-    sit_data_row = r
-    ws.cell(r, 7, "Situação");  ws.cell(r, 8, "Qtd")
-    r += 1
-    ws.cell(r, 7, "Comissão Atual");  ws.cell(r, 8, ca_tot)
-    r += 1
-    ws.cell(r, 7, "Nota Provisória"); ws.cell(r, 8, np_tot)
-    sit_end_row = r
-
-    # Gráfico 1: Pizza por Status
-    pie1 = PieChart()
+    # Gráfico 1: Pizza por Status (3D)
+    pie1 = PieChart3D()
     pie1.title  = "Status das Avaliações"
     pie1.style  = 10
     pie1.width  = 14
@@ -439,36 +435,20 @@ def _write_analise_sheet(ws, df, titulo, s):
         pt = DataPoint(idx=idx)
         pt.graphicalProperties.solidFill = hex_color
         pie1.series[0].dPt.append(pt)
+    
+    # Legenda na lateral direita
+    pie1.legend.position = "r"
+    
+    # Rótulos (somente valores e linha de ligação)
     pie1.dataLabels = DataLabelList()
-    pie1.dataLabels.showPercent     = True
-    pie1.dataLabels.showCatName     = True
+    pie1.dataLabels.showPercent     = False
+    pie1.dataLabels.showCatName     = False
     pie1.dataLabels.showVal         = True
     pie1.dataLabels.showLeaderLines = True
+    
     ws.add_chart(pie1, "G3")
 
-    # Gráfico 2: Pizza CA vs NP
-    pie2 = PieChart()
-    pie2.title  = "Situação da Comissão"
-    pie2.style  = 10
-    pie2.width  = 14
-    pie2.height = 10
-    data2 = Reference(ws, min_col=8, min_row=sit_data_row + 1, max_row=sit_end_row)
-    cats2 = Reference(ws, min_col=7, min_row=sit_data_row + 1, max_row=sit_end_row)
-    pie2.add_data(data2)
-    pie2.set_categories(cats2)
-    pie2.series[0].title = None
-    for idx, hex_color in enumerate(["4472C4", "FFC000"]):
-        pt = DataPoint(idx=idx)
-        pt.graphicalProperties.solidFill = hex_color
-        pie2.series[0].dPt.append(pt)
-    pie2.dataLabels = DataLabelList()
-    pie2.dataLabels.showPercent     = True
-    pie2.dataLabels.showCatName     = True
-    pie2.dataLabels.showVal         = True
-    pie2.dataLabels.showLeaderLines = True
-    ws.add_chart(pie2, "G23")
-
-def _build_workbook(df_unit: pd.DataFrame, titulo: str) -> bytes:
+def _build_workbook(df_unit: pd.DataFrame, titulo: str, df_global: pd.DataFrame = None) -> bytes:
     from openpyxl import Workbook
     import io
     s = _xl_styles()
@@ -487,7 +467,7 @@ def _build_workbook(df_unit: pd.DataFrame, titulo: str) -> bytes:
 
     # Aba 3 — Avaliadores Pendentes
     ws3 = wb.create_sheet("Avaliadores Pendentes")
-    _write_avaliadores_sheet(ws3, df_unit, s)
+    _write_avaliadores_sheet(ws3, df_unit, s, df_global=df_global, titulo_unidade=titulo)
 
     # Aba 4 — Análise (tabela + gráficos de pizza)
     ws4 = wb.create_sheet("Análise")
@@ -525,7 +505,7 @@ arquivos_zip = []
 if args.mode in ("all", "geral"):
     print("\n=== Gerando Planilha GERAL ===")
     geral_path = os.path.join(OUT_DIR, "Analise_Avaliacoes_Geral.xlsx")
-    xlsx_bytes = _build_workbook(df_full, "GERAL — AADP 2026")
+    xlsx_bytes = _build_workbook(df_full, "GERAL — AADP 2026", df_full)
     with open(geral_path, "wb") as f_out:
         f_out.write(xlsx_bytes)
     print(f"  OK → {geral_path}")
@@ -544,7 +524,7 @@ if args.mode in ("all", "units"):
         fname = f"Analise_Avaliacoes_{safe}.xlsx"
         fp    = os.path.join(OUT_DIR, fname)
         print(f"  {fname}  ({len(df_rpm):,} reg.)")
-        xlsx_bytes = _build_workbook(df_rpm, rpm)
+        xlsx_bytes = _build_workbook(df_rpm, rpm, df_full)
         with open(fp, "wb") as f_out:
             f_out.write(xlsx_bytes)
         arquivos_zip.append(fp)
