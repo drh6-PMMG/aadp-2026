@@ -304,7 +304,7 @@ with st.sidebar:
                      horizontal=True,
                      help="Local: use pasta 'dados/'. Drive: informe os IDs dos arquivos.")
 
-    drive_av_id = drive_si_id = ""
+    drive_av_id = drive_si_id = drive_geral_id = ""
     db_path = ""
 
     if "Drive" in fonte:
@@ -316,12 +316,16 @@ with st.sidebar:
         drive_si_id = st.text_input("🔑 ID do SIGEF.csv no Drive:",
                                      value=cfg.get("drive_si_id",""),
                                      placeholder="Ex: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms")
+        drive_geral_id = st.text_input("🔑 ID do Geral.xlsx no Drive:",
+                                     value=cfg.get("drive_geral_id",""),
+                                     placeholder="Ex: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms")
         st.markdown("<small>ℹ️ O ID está na URL do arquivo compartilhado:<br>"
                     "<code>drive.google.com/file/d/<b>[ID]</b>/view</code></small>",
                     unsafe_allow_html=True)
         if st.button("💾 Salvar IDs", use_container_width=True):
             cfg["drive_av_id"] = drive_av_id
             cfg["drive_si_id"] = drive_si_id
+            cfg["drive_geral_id"] = drive_geral_id
             save_config(cfg); st.success("IDs salvos!")
     else:
         st.markdown(f"<small>📂 Pasta padrão: <code>dados/</code></small>", unsafe_allow_html=True)
@@ -427,7 +431,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📊 Análise Gráfica","📋 Dados Gerais",
     "⏳ Avaliações Pendentes","👥 Avaliadores Pendentes","📥 Gerar Relatório",
-    "🧪 Homologação — Relatório Word"
+    "📄 Relatório Word"
 ])
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1397,41 +1401,66 @@ with tab5:
 # TAB 6 — HOMOLOGAÇÃO RELATÓRIO WORD (.DOCX)
 # ══════════════════════════════════════════════════════════════════════════════
 with tab6:
-    st.markdown("### 🧪 Homologação — Relatório Executivo Word (.docx)")
+    st.markdown("### 📄 Relatório Word (.docx)")
     st.markdown('<div class="info-box">'
-                '🧪 <b>Módulo de Staging/Homologação:</b> Esta aba gera um relatório gerencial completo '
+                '📄 <b>Geração de Relatório Executivo:</b> Esta aba gera um relatório gerencial completo '
                 'em formato Word com base no arquivo Geral.xlsx.</div>',
                 unsafe_allow_html=True)
                 
-    # Detectar Geral.xlsx no caminho padrão
-    default_excel_path = r"c:\Users\guilh\Downloads\analise AADP 2026\Geral.xlsx"
-    
-    # Permitir que o usuário use o arquivo local ou faça o upload de um novo
-    src_option = st.radio("Selecione a fonte de dados:", [
-        "📂 Usar arquivo padrão local (Geral.xlsx)",
-        "📤 Fazer upload de outra planilha Geral.xlsx"
-    ])
-    
     df_word = None
-    if "padrão" in src_option:
-        if os.path.exists(default_excel_path):
-            st.success(f"✅ Arquivo local Geral.xlsx encontrado!")
+    
+    if "Drive" in fonte:
+        # ── Modo Google Drive ──────────────────────────────────────────────
+        drive_geral_id = cfg.get("drive_geral_id", "")
+        if not drive_geral_id:
+            st.warning("⚠️ O ID do arquivo Geral.xlsx no Google Drive não foi configurado. "
+                       "Por favor, informe-o no menu 'Fonte dos Dados' na barra lateral esquerda.")
+        else:
+            @st.cache_data(show_spinner="⏳ Baixando planilha Geral.xlsx do Google Drive...")
+            def load_geral_from_drive(file_id):
+                tmp_dir = tempfile.mkdtemp(prefix="aadp_word_")
+                dest_path = os.path.join(tmp_dir, "Geral.xlsx")
+                _baixar_drive(file_id, dest_path)
+                df = pd.read_excel(dest_path, sheet_name="Geral", skiprows=1)
+                try:
+                    os.remove(dest_path)
+                    os.rmdir(tmp_dir)
+                except:
+                    pass
+                return df
+                
             try:
-                # Carregar o arquivo do excel
-                df_word = pd.read_excel(default_excel_path, sheet_name="Geral", skiprows=1)
+                df_word = load_geral_from_drive(drive_geral_id)
+                st.success("✅ Planilha Geral.xlsx baixada e processada do Google Drive!")
                 st.info(f"📊 {len(df_word):,} registros carregados com sucesso!")
             except Exception as e:
-                st.error(f"❌ Erro ao ler a aba 'Geral' do arquivo padrão: {e}")
-        else:
-            st.error(f"❌ Arquivo padrão não encontrado em: {default_excel_path}")
+                st.error(f"❌ Erro ao obter planilha do Google Drive: {e}")
     else:
-        uploaded_file = st.file_uploader("Escolha a planilha Geral.xlsx", type=["xlsx"])
-        if uploaded_file is not None:
-            try:
-                df_word = pd.read_excel(uploaded_file, sheet_name="Geral", skiprows=1)
-                st.success(f"✅ {len(df_word):,} registros carregados do arquivo enviado!")
-            except Exception as e:
-                st.error(f"❌ Erro ao ler o arquivo enviado: {e}")
+        # ── Modo Pasta Local ───────────────────────────────────────────────
+        default_excel_path = r"c:\Users\guilh\Downloads\analise AADP 2026\Geral.xlsx"
+        src_option = st.radio("Selecione a fonte de dados:", [
+            "📂 Usar arquivo padrão local (Geral.xlsx)",
+            "📤 Fazer upload de outra planilha Geral.xlsx"
+        ])
+        
+        if "padrão" in src_option:
+            if os.path.exists(default_excel_path):
+                st.success(f"✅ Arquivo local Geral.xlsx encontrado!")
+                try:
+                    df_word = pd.read_excel(default_excel_path, sheet_name="Geral", skiprows=1)
+                    st.info(f"📊 {len(df_word):,} registros carregados com sucesso!")
+                except Exception as e:
+                    st.error(f"❌ Erro ao ler a aba 'Geral' do arquivo padrão: {e}")
+            else:
+                st.error(f"❌ Arquivo padrão não encontrado em: {default_excel_path}")
+        else:
+            uploaded_file = st.file_uploader("Escolha a planilha Geral.xlsx", type=["xlsx"])
+            if uploaded_file is not None:
+                try:
+                    df_word = pd.read_excel(uploaded_file, sheet_name="Geral", skiprows=1)
+                    st.success(f"✅ {len(df_word):,} registros carregados do arquivo enviado!")
+                except Exception as e:
+                    st.error(f"❌ Erro ao ler o arquivo enviado: {e}")
                 
     if df_word is not None:
         st.markdown("---")
