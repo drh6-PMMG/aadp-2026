@@ -40,7 +40,7 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 [data-testid="stSidebar"] *{color:#e5dccb!important;}
 [data-testid="stSidebar"] h1,[data-testid="stSidebar"] h2,
 [data-testid="stSidebar"] h3{color:#bca374!important;}
-.main{background:#f5f3ef;}
+.main{background:#121212;}
 
 .main-title{
   background:linear-gradient(135deg,#000000 0%,#1f1f1f 100%);
@@ -52,24 +52,24 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 .main-title h1{margin:0;font-size:2.1rem;font-weight:800;color:#bca374;letter-spacing:0.02em;}
 .main-title p{margin:0;font-size:.9rem;opacity:.9;color:#e5dccb;margin-top:6px;}
 
-.kpi-card{background:#fff;border-radius:12px;padding:16px 20px;
-  box-shadow:0 2px 12px rgba(0,0,0,.08);border-left:5px solid;
+.kpi-card{background:#1c1c1c;border-radius:12px;padding:16px 20px;
+  box-shadow:0 4px 15px rgba(0,0,0,0.3);border-left:5px solid;
   transition:transform .2s,box-shadow .2s;text-align:center;}
-.kpi-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.12);}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.4);}
 .kpi-card .label{font-size:.7rem;font-weight:700;text-transform:uppercase;
-  letter-spacing:.06em;color:#555555!important;margin-bottom:6px;}
+  letter-spacing:.06em;color:#a0a0a0!important;margin-bottom:6px;}
 .kpi-card .value{font-size:1.9rem;font-weight:800;line-height:1;}
 .kpi-card .sub{font-size:.72rem;color:#777777!important;margin-top:4px;}
-.kpi-total    {border-color:#bca374;} .kpi-total    .value{color:#8c6e42!important;}
-.kpi-ca       {border-color:#bca374;} .kpi-ca       .value{color:#8c6e42!important;}
-.kpi-np       {border-color:#8c6e42;} .kpi-np       .value{color:#8c6e42!important;}
-.kpi-aberta   {border-color:#FF4444;} .kpi-aberta   .value{color:#cc2222!important;}
-.kpi-parc     {border-color:#FF8C00;} .kpi-parc     .value{color:#cc7000!important;}
-.kpi-hom      {border-color:#FFD966;} .kpi-hom      .value{color:#b89500!important;}
-.kpi-enc      {border-color:#70AD47;} .kpi-enc      .value{color:#4a8a28!important;}
+.kpi-total    {border-color:#bca374;} .kpi-total    .value{color:#e5dccb!important;}
+.kpi-ca       {border-color:#bca374;} .kpi-ca       .value{color:#e5dccb!important;}
+.kpi-np       {border-color:#8c6e42;} .kpi-np       .value{color:#bca374!important;}
+.kpi-aberta   {border-color:#FF4444;} .kpi-aberta   .value{color:#ff6b6b!important;}
+.kpi-parc     {border-color:#FF8C00;} .kpi-parc     .value{color:#ff9f43!important;}
+.kpi-hom      {border-color:#FFD966;} .kpi-hom      .value{color:#ffd257!important;}
+.kpi-enc      {border-color:#70AD47;} .kpi-enc      .value{color:#7bed9f!important;}
 
-.stTabs [data-baseweb="tab-list"]{background:#fff;border-radius:10px;padding:6px;
-  box-shadow:0 2px 8px rgba(0,0,0,.07);gap:4px;}
+.stTabs [data-baseweb="tab-list"]{background:#1c1c1c;border-radius:10px;padding:6px;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);gap:4px;}
 .stTabs [data-baseweb="tab"]{border-radius:8px;font-weight:600;padding:8px 20px;font-size:.85rem;}
 .stTabs [aria-selected="true"]{background:#bca374!important;color:#000!important;}
 
@@ -77,12 +77,12 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
   font-weight:600;font-size:.9rem;margin:16px 0 8px 0;}
 .section-hdr-hom{background:#8c6e42;color:#fff;padding:10px 16px;border-radius:8px;
   font-weight:600;font-size:.9rem;margin:24px 0 8px 0;}
-.info-box{background:#f9f6f0;border:1px solid #e5dccb;border-radius:8px;
-  padding:12px 16px;font-size:.85rem;color:#8c6e42;margin-bottom:12px;}
-.warn-box{background:#fff8e1;border:1px solid #ffe082;border-radius:8px;
-  padding:12px 16px;font-size:.85rem;color:#7a5c00;margin-bottom:12px;}
-div[data-testid="metric-container"]{background:#fff;border-radius:10px;
-  padding:12px;box-shadow:0 2px 8px rgba(0,0,0,.07);}
+.info-box{background:#1a1a1a;border:1px solid #bca374;border-radius:8px;
+  padding:12px 16px;font-size:.85rem;color:#e5dccb;margin-bottom:12px;}
+.warn-box{background:#2a1b00;border:1px solid #ffd257;border-radius:8px;
+  padding:12px 16px;font-size:.85rem;color:#ffd257;margin-bottom:12px;}
+div[data-testid="metric-container"]{background:#1c1c1c;border-radius:10px;
+  padding:12px;box-shadow:0 2px 8px rgba(0,0,0,.3);}
 .stButton button{background:linear-gradient(135deg,#000000,#242424);
   color:#bca374;border:1px solid #bca374;font-weight:600;border-radius:8px;
   transition:all .2s;box-shadow:0 2px 8px rgba(188,163,116,.2);}
@@ -1651,3 +1651,4 @@ st.markdown("---")
 st.markdown(f"<center><small>AADP 2026 · Polícia Militar de Minas Gerais · "
             f"Resolução 5458/2025 · {datetime.now().strftime('%d/%m/%Y')}</small></center>",
             unsafe_allow_html=True)
+
