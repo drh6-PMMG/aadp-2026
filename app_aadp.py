@@ -339,7 +339,20 @@ with st.sidebar:
     st.markdown("**Sistema de Análise de Avaliações**")
     st.markdown("---")
 
-    # 🧭 BOTÕES DE NAVEGAÇÃO DA PÁGINA CENTRAL
+    # 1. Mostrar Filtros (Primeiro)
+    if "show_filtros" not in st.session_state:
+        st.session_state.show_filtros = False # Default: recolhido (False)
+
+    btn_filtros_label = "🔍 Ocultar Filtros" if st.session_state.show_filtros else "🔍 Mostrar Filtros"
+    btn_filtros_type = "primary" if st.session_state.show_filtros else "secondary"
+    if st.button(btn_filtros_label, use_container_width=True, key="btn_toggle_filtros", type=btn_filtros_type):
+        st.session_state.show_filtros = not st.session_state.show_filtros
+        st.rerun()
+
+    container_filtros = st.container()
+    st.markdown("---")
+
+    # 2. Páginas / Navegação (Segundo)
     st.markdown("#### 🧭 Páginas")
     pages = [
         ("📊 Análise Gráfica", "Análise Gráfica"),
@@ -358,78 +371,69 @@ with st.sidebar:
         if st.button(label, key=f"nav_{page_name}", use_container_width=True, type=btn_type):
             st.session_state.active_page = page_name
             st.rerun()
-            
-    st.markdown("---")
-    
-    # ⚙️ SEÇÕES COLAPSÁVEIS DA BARRA LATERAL
-    if "show_fonte" not in st.session_state:
-        st.session_state.show_fonte = False
-    if "show_filtros" not in st.session_state:
-        st.session_state.show_filtros = True
 
-    # Botão de Fonte de Dados (não muda a página central, apenas recolhe/expande no sidebar)
-    btn_fonte_label = "📂 Ocultar Fonte dos Dados" if st.session_state.show_fonte else "📂 Mostrar Fonte dos Dados"
+    st.markdown("---")
+
+    # 3. Fonte dos dados (Terceiro / Último)
+    if "show_fonte" not in st.session_state:
+        st.session_state.show_fonte = False # Default: recolhido (False)
+
+    btn_fonte_label = "📂 Ocultar Fonte dos dados" if st.session_state.show_fonte else "📂 Fonte dos dados"
     btn_fonte_type = "primary" if st.session_state.show_fonte else "secondary"
     if st.button(btn_fonte_label, use_container_width=True, key="btn_toggle_fonte", type=btn_fonte_type):
         st.session_state.show_fonte = not st.session_state.show_fonte
         st.rerun()
-        
+
+    container_fonte = st.container()
+
     # Inicializa variáveis para não dar NameError
     drive_av_id = drive_si_id = drive_geral_id = ""
     db_path = ""
     fonte = cfg.get("fonte_dados", "📁 Pasta local / Servidor")
     reload = False
     
-    if st.session_state.show_fonte:
-        st.markdown("#### 🗄️ Configurações da Fonte")
-        fonte = st.radio("Origem:", ["📁 Pasta local / Servidor", "☁️ Google Drive"],
-                         horizontal=True,
-                         index=0 if "local" in cfg.get("fonte_dados", "local") else 1,
-                         key="fonte_dados_radio",
-                         help="Local: use pasta 'dados/'. Drive: informe os IDs dos arquivos.")
-        if fonte != cfg.get("fonte_dados"):
-            cfg["fonte_dados"] = fonte
-            save_config(cfg)
-            
-        if "Drive" in fonte:
-            st.markdown("<small>📌 Compartilhe os arquivos no Drive como <b>Qualquer pessoa com o link</b></small>",
-                        unsafe_allow_html=True)
-            drive_av_id = st.text_input("🔑 ID do avaliacoes.csv no Drive:",
-                                         value=cfg.get("drive_av_id",""),
-                                         key="drive_av_id_input",
-                                         placeholder="Ex: 1BxiMVs...")
-            drive_si_id = st.text_input("🔑 ID do SIGEF.csv no Drive:",
-                                         value=cfg.get("drive_si_id",""),
-                                         key="drive_si_id_input",
-                                         placeholder="Ex: 1BxiMVs...")
-            drive_geral_id = st.text_input("🔑 ID do Geral.xlsx no Drive:",
-                                         value=cfg.get("drive_geral_id",""),
-                                         key="drive_geral_id_input",
-                                         placeholder="Ex: 1BxiMVs...")
-            st.markdown("<small>ℹ️ O ID está na URL do arquivo compartilhado</small>", unsafe_allow_html=True)
-            if st.button("💾 Salvar IDs", use_container_width=True, key="btn_save_ids"):
-                cfg["drive_av_id"] = drive_av_id
-                cfg["drive_si_id"] = drive_si_id
-                cfg["drive_geral_id"] = drive_geral_id
-                save_config(cfg); st.success("IDs salvos!")
-        else:
-            st.markdown(f"<small>📂 Pasta padrão: <code>dados/</code></small>", unsafe_allow_html=True)
-            db_path = st.text_input("Caminho da pasta CSV:", value=cfg.get("db_path",""),
-                                     key="db_path_input",
-                                     placeholder=str(DADOS_DIR))
-            if st.button("💾 Salvar Caminho", use_container_width=True, key="btn_save_caminho"):
-                cfg["db_path"] = db_path; save_config(cfg); st.success("Caminho salvo!")
+    with container_fonte:
+        if st.session_state.show_fonte:
+            st.markdown("#### 🗄️ Configurações da Fonte")
+            fonte = st.radio("Origem:", ["📁 Pasta local / Servidor", "☁️ Google Drive"],
+                             horizontal=True,
+                             index=0 if "local" in cfg.get("fonte_dados", "local") else 1,
+                             key="fonte_dados_radio",
+                             help="Local: use pasta 'dados/'. Drive: informe os IDs dos arquivos.")
+            if fonte != cfg.get("fonte_dados"):
+                cfg["fonte_dados"] = fonte
+                save_config(cfg)
                 
-        reload = st.button("🔄 Recarregar Dados", use_container_width=True, type="primary", key="btn_reload")
-        
-    st.markdown("---")
-    
-    # Botão de Filtros de Visualização
-    btn_filtros_label = "🔍 Ocultar Filtros" if st.session_state.show_filtros else "🔍 Mostrar Filtros"
-    btn_filtros_type = "primary" if st.session_state.show_filtros else "secondary"
-    if st.button(btn_filtros_label, use_container_width=True, key="btn_toggle_filtros", type=btn_filtros_type):
-        st.session_state.show_filtros = not st.session_state.show_filtros
-        st.rerun()
+            if "Drive" in fonte:
+                st.markdown("<small>📌 Compartilhe os arquivos no Drive como <b>Qualquer pessoa com o link</b></small>",
+                            unsafe_allow_html=True)
+                drive_av_id = st.text_input("🔑 ID do avaliacoes.csv no Drive:",
+                                             value=cfg.get("drive_av_id",""),
+                                             key="drive_av_id_input",
+                                             placeholder="Ex: 1BxiMVs...")
+                drive_si_id = st.text_input("🔑 ID do SIGEF.csv no Drive:",
+                                             value=cfg.get("drive_si_id",""),
+                                             key="drive_si_id_input",
+                                             placeholder="Ex: 1BxiMVs...")
+                drive_geral_id = st.text_input("🔑 ID do Geral.xlsx no Drive:",
+                                             value=cfg.get("drive_geral_id",""),
+                                             key="drive_geral_id_input",
+                                             placeholder="Ex: 1BxiMVs...")
+                st.markdown("<small>ℹ️ O ID está na URL do arquivo compartilhado</small>", unsafe_allow_html=True)
+                if st.button("💾 Salvar IDs", use_container_width=True, key="btn_save_ids"):
+                    cfg["drive_av_id"] = drive_av_id
+                    cfg["drive_si_id"] = drive_si_id
+                    cfg["drive_geral_id"] = drive_geral_id
+                    save_config(cfg); st.success("IDs salvos!")
+            else:
+                st.markdown(f"<small>📂 Pasta padrão: <code>dados/</code></small>", unsafe_allow_html=True)
+                db_path = st.text_input("Caminho da pasta CSV:", value=cfg.get("db_path",""),
+                                         key="db_path_input",
+                                         placeholder=str(DADOS_DIR))
+                if st.button("💾 Salvar Caminho", use_container_width=True, key="btn_save_caminho"):
+                    cfg["db_path"] = db_path; save_config(cfg); st.success("Caminho salvo!")
+                    
+            reload = st.button("🔄 Recarregar Dados", use_container_width=True, type="primary", key="btn_reload")
 
 # ─────────────────────── CARREGAR DADOS ───────────────────────────────────────
 try:
@@ -450,7 +454,7 @@ if data_ok:
     all_status= ["Aberta","Parcialmente Encerrada","Homologação","Encerrada"]
     all_sit   = ["Comissão Atual","Nota Provisória"]
     all_cert  = ["SIM","NÃO","-"]
-    with st.sidebar:
+    with container_filtros:
         if st.session_state.show_filtros:
             st.markdown("#### 🔍 Filtros de Visualização")
             rpm_filter = st.multiselect("🏢 Unidade RPM", all_rpm, placeholder="Todas")
@@ -590,33 +594,35 @@ if active_page == "Análise Gráfica":
     # Sombra para efeito 3D (circle com proporção assimétrica = elipse)
     fig_status.add_shape(type="circle", xref="paper", yref="paper",
         x0=0.12, y0=0.01, x1=0.88, y1=0.10,
-        fillcolor="rgba(0,0,0,0.13)", line_color="rgba(0,0,0,0)", layer="below")
+        fillcolor="rgba(0,0,0,0.18)", line_color="rgba(0,0,0,0)", layer="below")
 
     fig_status.add_trace(go.Pie(
         labels=ordered_labels, values=vals_pizza,
         hole=0.54,
         pull=[0.09, 0.06, 0.04, 0],
-        textinfo="label+percent+value",
+        texttemplate="<b>%{label}</b><br>%{value:,} (%{percent})",
         textposition="outside",
+        rotation=135,  # Inclinado (tilted starting angle) para mover valores do topo mais para o lado!
         textfont=dict(size=13, family="Inter, sans-serif"),
         insidetextorientation="radial",
-        marker=dict(colors=cols_pizza, line=dict(color="#ffffff", width=3)),
+        marker=dict(colors=cols_pizza, line=dict(color="#121212", width=3)),
         hovertemplate="<b>%{label}</b><br>Avaliações: <b>%{value:,}</b><br>%{percent}<extra></extra>",
         sort=False,
     ))
     fig_status.add_annotation(
-        text=f"<b>{fmt_num(n_total)}</b><br><span style='font-size:11px;color:#6b7280'>avaliações</span>",
+        text=f"<b>{fmt_num(n_total)}</b><br><span style='font-size:11px;color:#a0a0a0'>avaliações</span>",
         x=0.5, y=0.5, showarrow=False,
-        font=dict(size=22, color="#1F3864", family="Inter"),
+        font=dict(size=22, color="#bca374", family="Inter"),
         align="center",
     )
     fig_status.update_layout(
+        template="plotly_dark",
         title=dict(text="<b>Status das Avaliações — AADP 2026</b>",
-                   font=dict(size=20, color="#1F3864"), x=0.5, y=0.96),
-        height=500, showlegend=True,
-        legend=dict(orientation="h", yanchor="bottom", y=-0.12,
-                    xanchor="center", x=0.5, font=dict(size=13)),
-        paper_bgcolor="white", margin=dict(t=60, b=80, l=100, r=100),
+                   font=dict(size=20, color="#bca374"), x=0.5, y=0.96),
+        height=500, showlegend=False,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(t=60, b=80, l=120, r=120),
     )
     st.plotly_chart(fig_status, use_container_width=True)
 
@@ -629,17 +635,19 @@ if active_page == "Análise Gráfica":
         fig_sit = go.Figure(go.Pie(
             labels=sit_d["Situação Comissão"], values=sit_d["Qtd"],
             hole=0.50, pull=[0.05,0],
-            textinfo="label+percent+value", textposition="outside",
+            texttemplate="<b>%{label}</b><br>%{value:,} (%{percent})", textposition="outside",
             textfont=dict(size=12), sort=False,
             marker=dict(colors=[SIT_COLORS.get(s,"#aaa") for s in sit_d["Situação Comissão"]],
-                        line=dict(color="#fff", width=3)),
+                        line=dict(color="#121212", width=3)),
             hovertemplate="<b>%{label}</b><br>%{value:,} avaliações (%{percent})<extra></extra>",
         ))
         fig_sit.update_layout(
-            title=dict(text="<b>Situação da Comissão</b>", font_size=15, x=0.5),
-            height=380, showlegend=True,
-            legend=dict(orientation="h", yanchor="bottom", y=-0.18, xanchor="center", x=0.5),
-            paper_bgcolor="white", margin=dict(t=50, b=70, l=50, r=50),
+            template="plotly_dark",
+            title=dict(text="<b>Situação da Comissão</b>", font_size=15, x=0.5, font=dict(color="#bca374")),
+            height=380, showlegend=False,
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            margin=dict(t=50, b=70, l=50, r=50),
         )
         st.plotly_chart(fig_sit, use_container_width=True)
 
@@ -650,14 +658,16 @@ if active_page == "Análise Gráfica":
         cross = cross.sort_values("Status Avaliação")
         fig_bar = px.bar(cross, x="Status Avaliação", y="Qtd", color="Situação Comissão",
                          color_discrete_map=SIT_COLORS, barmode="group", text="Qtd",
+                         template="plotly_dark",
                          title="<b>Status × Situação Comissão</b>")
         fig_bar.update_traces(textposition="outside", textfont_size=11)
         fig_bar.update_layout(height=380, title_font_size=15, title_x=0.5,
-                               paper_bgcolor="white", plot_bgcolor="#f9f9f9",
+                               paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                                xaxis_title="", yaxis_title="Qtd",
-                               legend=dict(orientation="h", y=1.1, x=1, xanchor="right"))
+                               showlegend=False,
+                               title_font=dict(color="#bca374"))
         fig_bar.update_xaxes(showgrid=False)
-        fig_bar.update_yaxes(showgrid=True, gridcolor="#eee")
+        fig_bar.update_yaxes(showgrid=True, gridcolor="#2a2a2a")
         st.plotly_chart(fig_bar, use_container_width=True)
 
     # ── LINHA 3: Barras por RPM ────────────────────────────────────────────────
@@ -668,6 +678,7 @@ if active_page == "Análise Gráfica":
         rpm_cross, x="Unidade RPM (Avaliado)", y="Qtd",
         color="Status Avaliação", color_discrete_map=STATUS_COLORS,
         barmode="stack", text_auto=False,
+        template="plotly_dark",
         title="<b>Distribuição por Unidade RPM e Status</b>",
         category_orders={
             "Unidade RPM (Avaliado)": all_units_sorted,
@@ -676,12 +687,13 @@ if active_page == "Análise Gráfica":
     )
     fig_rpm.update_layout(
         height=440, title_font_size=15, title_x=0.5,
-        paper_bgcolor="white", plot_bgcolor="#f9f9f9",
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         xaxis_title="", yaxis_title="Avaliações",
-        legend=dict(orientation="h", y=1.08, x=1, xanchor="right", font_size=11),
+        showlegend=False,
+        title_font=dict(color="#bca374")
     )
     fig_rpm.update_xaxes(tickangle=45, showgrid=False)
-    fig_rpm.update_yaxes(showgrid=True, gridcolor="#eee")
+    fig_rpm.update_yaxes(showgrid=True, gridcolor="#2a2a2a")
     st.plotly_chart(fig_rpm, use_container_width=True)
 
     # ── LINHA 4: Certificação + Timeline AV1/AV2/HOM ──────────────────────────
@@ -694,13 +706,15 @@ if active_page == "Análise Gráfica":
         cert_map = {"SIM":"#FF6B6B","NÃO":"#70AD47","-":"#AAAAAA"}
         fig_cert = px.bar(cert_d, x="Cert", y="Qtd", color="Cert",
                           color_discrete_map=cert_map,
+                          template="plotly_dark",
                           title="<b>Certificação Homologador</b>", text="Qtd")
         fig_cert.update_traces(textposition="outside", textfont_size=12)
         fig_cert.update_layout(height=360, title_x=0.5, showlegend=False,
-                                paper_bgcolor="white", plot_bgcolor="#f9f9f9",
-                                xaxis_title="", yaxis_title="Qtd")
+                                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                                xaxis_title="", yaxis_title="Qtd",
+                                title_font=dict(color="#bca374"))
         fig_cert.update_xaxes(showgrid=False)
-        fig_cert.update_yaxes(showgrid=True, gridcolor="#eee")
+        fig_cert.update_yaxes(showgrid=True, gridcolor="#2a2a2a")
         st.plotly_chart(fig_cert, use_container_width=True)
 
     with c4:
@@ -724,6 +738,7 @@ if active_page == "Análise Gráfica":
             fig_time = px.line(
                 df_time, x="Data", y="Qtd", color="Função",
                 title="<b>Avaliações por Data e Função</b>",
+                template="plotly_dark",
                 markers=True,
                 color_discrete_map={
                     "AV1 — Avaliador 1":"#4472C4",
@@ -738,14 +753,15 @@ if active_page == "Análise Gráfica":
                 line=dict(width=2.5), marker=dict(size=7),
             )
             fig_time.update_layout(
-                height=360, title_x=0.5, paper_bgcolor="white", plot_bgcolor="#f9f9f9",
+                height=360, title_x=0.5, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                 xaxis_title="", yaxis_title="Avaliações encerradas",
-                legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center", font_size=11),
+                showlegend=False,
                 hovermode="x unified",
+                title_font=dict(color="#bca374")
             )
             fig_time.update_xaxes(showgrid=False, tickformat="%d/%m/%Y",
                                    rangeslider_visible=True)
-            fig_time.update_yaxes(showgrid=True, gridcolor="#eee")
+            fig_time.update_yaxes(showgrid=True, gridcolor="#2a2a2a")
             st.plotly_chart(fig_time, use_container_width=True)
         else:
             st.info("Sem dados de datas disponíveis para o gráfico de linha do tempo.")
@@ -1651,4 +1667,3 @@ st.markdown("---")
 st.markdown(f"<center><small>AADP 2026 · Polícia Militar de Minas Gerais · "
             f"Resolução 5458/2025 · {datetime.now().strftime('%d/%m/%Y')}</small></center>",
             unsafe_allow_html=True)
-
