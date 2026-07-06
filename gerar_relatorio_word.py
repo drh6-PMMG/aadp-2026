@@ -63,43 +63,62 @@ def set_cell_margins(cell, top=100, bottom=100, left=150, right=150):
 
 def create_status_pie(df_sub, filename):
     """Gera o gráfico de rosquinha (donut) para Status de Avaliação."""
-    plt.figure(figsize=(5.5, 4.2))
+    plt.figure(figsize=(6.2, 4.2))
     
     ordered = ["Aberta", "Parcialmente Encerrada", "Homologação", "Encerrada"]
     counts = df_sub["Status Avaliação"].value_counts()
     
-    labels = []
     sizes = []
     colors = []
+    legend_labels = []
+    
+    total = sum(counts.get(s, 0) for s in ordered)
     
     for status in ordered:
         qty = counts.get(status, 0)
         if qty > 0:
-            labels.append(f"{status}\n({qty:,})")
+            pct = (qty / max(total, 1)) * 100
             sizes.append(qty)
             colors.append(COLOR_STATUS.get(status, "#CCCCCC"))
+            legend_labels.append(f"{status}: {qty:,} ({pct:.1f}%)")
             
     if not sizes:
         sizes = [1]
-        labels = ["Sem registros"]
         colors = ["#E0E0E0"]
+        legend_labels = ["Sem registros"]
+
+    def make_autopct(values):
+        def my_autopct(pct):
+            total_val = sum(values)
+            val = int(round(pct * total_val / 100.0))
+            if pct > 3.0: # Apenas exibe se a fatia representar mais de 3% para não sobrepor
+                return f"{val:,}"
+            return ""
+        return my_autopct
 
     # Cria o gráfico de pizza
     wedges, texts, autotexts = plt.pie(
-        sizes, labels=labels, autopct='%1.1f%%', startangle=90,
+        sizes, autopct=make_autopct(sizes), startangle=90,
         colors=colors, wedgeprops=dict(width=0.4, edgecolor='w', linewidth=2),
         pctdistance=0.75
     )
     
     # Estiliza os textos
-    for t in texts:
-        t.set_fontsize(9)
-        t.set_fontname("Arial")
     for at in autotexts:
         at.set_fontsize(8)
         at.set_fontweight('bold')
         at.set_color('black')
         at.set_fontname("Arial")
+        
+    plt.legend(
+        wedges, legend_labels,
+        title="Status",
+        loc="center left",
+        bbox_to_anchor=(0.95, 0.5),
+        fontsize=8.5,
+        title_fontsize=9,
+        frameon=False
+    )
         
     plt.title("Status das Avaliações", fontsize=11, fontweight='bold', fontname="Arial", pad=15)
     plt.tight_layout()
@@ -343,10 +362,10 @@ def generate_word_report(df_source: pd.DataFrame, report_mode: str, selected_rpm
     cell_right = table_graphs.rows[0].cells[1]
     
     cell_left.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    cell_left.paragraphs[0].add_run().add_picture(temp_pie, width=Inches(3.1))
+    cell_left.paragraphs[0].add_run().add_picture(temp_pie, width=Inches(3.3))
     
     cell_right.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    cell_right.paragraphs[0].add_run().add_picture(temp_bar, width=Inches(2.8))
+    cell_right.paragraphs[0].add_run().add_picture(temp_bar, width=Inches(2.7))
     
     # Adicionar o gráfico de barras de pendências por UDI/UDG
     p_graph_pend = doc.add_paragraph()
@@ -522,7 +541,7 @@ def generate_word_report(df_source: pd.DataFrame, report_mode: str, selected_rpm
         cell_r = table_ugraphs.rows[0].cells[1]
         
         cell_l.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-        cell_l.paragraphs[0].add_run().add_picture(temp_upie, width=Inches(3.0))
+        cell_l.paragraphs[0].add_run().add_picture(temp_upie, width=Inches(3.3))
         
         cell_r.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
         cell_r.paragraphs[0].add_run().add_picture(temp_ubar, width=Inches(2.7))
@@ -579,10 +598,10 @@ def generate_word_report(df_source: pd.DataFrame, report_mode: str, selected_rpm
                     cell_sr = table_sgraphs.rows[0].cells[1]
                     
                     cell_sl.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    cell_sl.paragraphs[0].add_run().add_picture(temp_spie, width=Inches(2.9))
+                    cell_sl.paragraphs[0].add_run().add_picture(temp_spie, width=Inches(3.3))
                     
                     cell_sr.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    cell_sr.paragraphs[0].add_run().add_picture(temp_sbar, width=Inches(2.6))
+                    cell_sr.paragraphs[0].add_run().add_picture(temp_sbar, width=Inches(2.7))
                     
                     # Limpar temporários
                     for path in [temp_spie, temp_sbar]:
