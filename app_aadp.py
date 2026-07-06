@@ -44,17 +44,17 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 
 .main-title{
   background:linear-gradient(135deg,#000000 0%,#1f1f1f 100%);
-  color:#bca374;padding:20px 28px;border-radius:12px;margin-bottom:20px;
-  display:flex;align-items:center;gap:16px;
+  color:#bca374;padding:24px 28px;border-radius:12px;margin-bottom:20px;
+  display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;
   box-shadow:0 4px 20px rgba(0,0,0,.15);
   border-bottom:3px solid #bca374;
 }
-.main-title h1{margin:0;font-size:1.6rem;font-weight:700;color:#bca374;}
-.main-title p{margin:0;font-size:.85rem;opacity:.8;color:#e5dccb;}
+.main-title h1{margin:0;font-size:2.1rem;font-weight:800;color:#bca374;letter-spacing:0.02em;}
+.main-title p{margin:0;font-size:.9rem;opacity:.9;color:#e5dccb;margin-top:6px;}
 
 .kpi-card{background:#fff;border-radius:12px;padding:16px 20px;
   box-shadow:0 2px 12px rgba(0,0,0,.08);border-left:5px solid;
-  transition:transform .2s,box-shadow .2s;}
+  transition:transform .2s,box-shadow .2s;text-align:center;}
 .kpi-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.12);}
 .kpi-card .label{font-size:.7rem;font-weight:700;text-transform:uppercase;
   letter-spacing:.06em;color:#6b7280;margin-bottom:6px;}
@@ -379,8 +379,17 @@ else:
     df = pd.DataFrame()
 
 # ─────────────────────── CABEÇALHO ────────────────────────────────────────────
-st.markdown("""
+logo_base64 = ""
+if os.path.exists("logo_drh.png"):
+    import base64
+    with open("logo_drh.png", "rb") as f:
+        logo_base64 = base64.b64encode(f.read()).decode("utf-8")
+
+logo_html = f'<img src="data:image/png;base64,{logo_base64}" style="width: 70%; height: auto; border-radius: 8px; align-self: center;" />' if logo_base64 else ""
+
+st.markdown(f"""
 <div class="main-title">
+  {logo_html}
   <div>
     <h1>AADP 2026 — Análise de Avaliações</h1>
     <p>Polícia Militar de Minas Gerais · Resolução 5458/2025 · Painel de Controle</p>
