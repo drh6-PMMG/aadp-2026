@@ -22,7 +22,7 @@ pd.set_option("styler.render.max_elements", 5_000_000)
 
 st.set_page_config(
     page_title="AADP 2026 — Análise de Avaliações",
-    page_icon="🎖️",
+    page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -34,22 +34,23 @@ st.markdown("""
 html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 
 [data-testid="stSidebar"]{
-  background:linear-gradient(180deg,#0d1b2a 0%,#1b2838 60%,#162032 100%);
-  border-right:1px solid #2a3f5f;
+  background:linear-gradient(180deg,#000000 0%,#1a1a1a 100%);
+  border-right:1px solid #bca374;
 }
-[data-testid="stSidebar"] *{color:#c8d8e8!important;}
+[data-testid="stSidebar"] *{color:#e5dccb!important;}
 [data-testid="stSidebar"] h1,[data-testid="stSidebar"] h2,
-[data-testid="stSidebar"] h3{color:#fff!important;}
-.main{background:#f0f4f8;}
+[data-testid="stSidebar"] h3{color:#bca374!important;}
+.main{background:#f5f3ef;}
 
 .main-title{
-  background:linear-gradient(135deg,#1F3864 0%,#2E5090 50%,#1a4a8a 100%);
-  color:#fff;padding:20px 28px;border-radius:12px;margin-bottom:20px;
+  background:linear-gradient(135deg,#000000 0%,#1f1f1f 100%);
+  color:#bca374;padding:20px 28px;border-radius:12px;margin-bottom:20px;
   display:flex;align-items:center;gap:16px;
-  box-shadow:0 4px 20px rgba(31,56,100,.3);
+  box-shadow:0 4px 20px rgba(0,0,0,.15);
+  border-bottom:3px solid #bca374;
 }
-.main-title h1{margin:0;font-size:1.6rem;font-weight:700;}
-.main-title p{margin:0;font-size:.85rem;opacity:.8;}
+.main-title h1{margin:0;font-size:1.6rem;font-weight:700;color:#bca374;}
+.main-title p{margin:0;font-size:.85rem;opacity:.8;color:#e5dccb;}
 
 .kpi-card{background:#fff;border-radius:12px;padding:16px 20px;
   box-shadow:0 2px 12px rgba(0,0,0,.08);border-left:5px solid;
@@ -59,9 +60,9 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
   letter-spacing:.06em;color:#6b7280;margin-bottom:6px;}
 .kpi-card .value{font-size:1.9rem;font-weight:800;line-height:1;}
 .kpi-card .sub{font-size:.72rem;color:#9ca3af;margin-top:4px;}
-.kpi-total    {border-color:#4472C4;} .kpi-total    .value{color:#2f5496;}
-.kpi-ca       {border-color:#4472C4;} .kpi-ca       .value{color:#2f5496;}
-.kpi-np       {border-color:#FFC000;} .kpi-np       .value{color:#9a7400;}
+.kpi-total    {border-color:#bca374;} .kpi-total    .value{color:#8c6e42;}
+.kpi-ca       {border-color:#bca374;} .kpi-ca       .value{color:#8c6e42;}
+.kpi-np       {border-color:#8c6e42;} .kpi-np       .value{color:#bca374;}
 .kpi-aberta   {border-color:#FF4444;} .kpi-aberta   .value{color:#cc2222;}
 .kpi-parc     {border-color:#FF8C00;} .kpi-parc     .value{color:#cc7000;}
 .kpi-hom      {border-color:#FFD966;} .kpi-hom      .value{color:#b89500;}
@@ -70,22 +71,23 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 .stTabs [data-baseweb="tab-list"]{background:#fff;border-radius:10px;padding:6px;
   box-shadow:0 2px 8px rgba(0,0,0,.07);gap:4px;}
 .stTabs [data-baseweb="tab"]{border-radius:8px;font-weight:600;padding:8px 20px;font-size:.85rem;}
-.stTabs [aria-selected="true"]{background:#1F3864!important;color:#fff!important;}
+.stTabs [aria-selected="true"]{background:#bca374!important;color:#000!important;}
 
-.section-hdr{background:#1F3864;color:#fff;padding:10px 16px;border-radius:8px;
+.section-hdr{background:#bca374;color:#000;padding:10px 16px;border-radius:8px;
   font-weight:600;font-size:.9rem;margin:16px 0 8px 0;}
-.section-hdr-hom{background:#7B3F00;color:#fff;padding:10px 16px;border-radius:8px;
+.section-hdr-hom{background:#8c6e42;color:#fff;padding:10px 16px;border-radius:8px;
   font-weight:600;font-size:.9rem;margin:24px 0 8px 0;}
-.info-box{background:#e8f4fd;border:1px solid #bee3f8;border-radius:8px;
-  padding:12px 16px;font-size:.85rem;color:#2b6cb0;margin-bottom:12px;}
+.info-box{background:#f9f6f0;border:1px solid #e5dccb;border-radius:8px;
+  padding:12px 16px;font-size:.85rem;color:#8c6e42;margin-bottom:12px;}
 .warn-box{background:#fff8e1;border:1px solid #ffe082;border-radius:8px;
   padding:12px 16px;font-size:.85rem;color:#7a5c00;margin-bottom:12px;}
 div[data-testid="metric-container"]{background:#fff;border-radius:10px;
   padding:12px;box-shadow:0 2px 8px rgba(0,0,0,.07);}
-.stButton button{background:linear-gradient(135deg,#1F3864,#2E5090);
-  color:#fff;border:none;font-weight:600;border-radius:8px;
-  transition:all .2s;box-shadow:0 2px 8px rgba(31,56,100,.3);}
-.stButton button:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(31,56,100,.4);}
+.stButton button{background:linear-gradient(135deg,#000000,#242424);
+  color:#bca374;border:1px solid #bca374;font-weight:600;border-radius:8px;
+  transition:all .2s;box-shadow:0 2px 8px rgba(188,163,116,.2);}
+.stButton button:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(188,163,116,.4);
+  background:#bca374;color:#000;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -295,7 +297,8 @@ def color_sit(val):
 
 # ─────────────────────── SIDEBAR ──────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("### 🎖️ AADP 2026")
+    st.image("logo_drh.png", use_container_width=True)
+    st.markdown("### AADP 2026")
     st.markdown("**Sistema de Análise de Avaliações**")
     st.markdown("---")
     st.markdown("#### 🗄️ Fonte dos Dados")
@@ -378,7 +381,6 @@ else:
 # ─────────────────────── CABEÇALHO ────────────────────────────────────────────
 st.markdown("""
 <div class="main-title">
-  <div style="font-size:2.5rem">🎖️</div>
   <div>
     <h1>AADP 2026 — Análise de Avaliações</h1>
     <p>Polícia Militar de Minas Gerais · Resolução 5458/2025 · Painel de Controle</p>
@@ -408,22 +410,60 @@ filtro_ativo = bool(rpm_filter or unid_filter or sit_com_filter or status_filter
 ft = f"({fmt_num(n_total)} de {fmt_num(len(df_full))} com filtro)" if filtro_ativo else f"(total: {fmt_num(n_total)})"
 st.markdown(f'<div class="info-box">📌 Exibindo {fmt_num(n_total)} avaliações {ft}</div>', unsafe_allow_html=True)
 
-k1,k2,k3,k4,k5,k6,k7 = st.columns(7)
-for col, label, value, sub, cls in [
-    (k1,"TOTAL",           fmt_num(n_total), "avaliações",                     "kpi-total"),
-    (k2,"COMISSÃO ATUAL",  fmt_num(n_ca),    f"{n_ca/max(n_total,1)*100:.1f}%","kpi-ca"),
-    (k3,"NOTA PROVISÓRIA", fmt_num(n_np),    f"Hom.SIM: {fmt_num(n_sim)}",     "kpi-np"),
-    (k4,"ABERTAS",         fmt_num(n_aberta),"AV1 pendente",                   "kpi-aberta"),
-    (k5,"PARC. ENCERRADA", fmt_num(n_parc),  "AV2 pendente",                   "kpi-parc"),
-    (k6,"HOMOLOGAÇÃO",     fmt_num(n_hom),   "HOM pendente",                   "kpi-hom"),
-    (k7,"ENCERRADAS",      fmt_num(n_enc),   f"{n_enc/max(n_total,1)*100:.1f}%","kpi-enc"),
-]:
-    with col:
-        st.markdown(f"""<div class="kpi-card {cls}">
-          <div class="label">{label}</div>
-          <div class="value">{value}</div>
-          <div class="sub">{sub}</div>
-        </div>""", unsafe_allow_html=True)
+col_block1, col_block2 = st.columns([1, 1.25], gap="large")
+
+with col_block1:
+    # Bloco 1: Total em cima, comissão/provisória embaixo
+    st.markdown('<div class="kpi-card kpi-total">'
+                '<div class="label">TOTAL AVALIAÇÕES</div>'
+                f'<div class="value">{fmt_num(n_total)}</div>'
+                '<div class="sub">avaliações</div>'
+                '</div>', unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+    
+    cb1_1, cb1_2 = st.columns(2)
+    with cb1_1:
+        st.markdown('<div class="kpi-card kpi-ca">'
+                    '<div class="label">COMISSÃO ATUAL</div>'
+                    f'<div class="value">{fmt_num(n_ca)}</div>'
+                    f'<div class="sub">{n_ca/max(n_total,1)*100:.1f}%</div>'
+                    '</div>', unsafe_allow_html=True)
+    with cb1_2:
+        st.markdown('<div class="kpi-card kpi-np">'
+                    '<div class="label">NOTA PROVISÓRIA</div>'
+                    f'<div class="value">{fmt_num(n_np)}</div>'
+                    f'<div class="sub">Hom.SIM: {fmt_num(n_sim)}</div>'
+                    '</div>', unsafe_allow_html=True)
+
+with col_block2:
+    # Bloco 2: Abertas, Parc, Homologação em cima, Encerradas embaixo
+    cb2_1, cb2_2, cb2_3 = st.columns(3)
+    with cb2_1:
+        st.markdown('<div class="kpi-card kpi-aberta">'
+                    '<div class="label">ABERTAS</div>'
+                    f'<div class="value">{fmt_num(n_aberta)}</div>'
+                    '<div class="sub">AV1 pendente</div>'
+                    '</div>', unsafe_allow_html=True)
+    with cb2_2:
+        st.markdown('<div class="kpi-card kpi-parc">'
+                    '<div class="label">PARC. ENCERRADA</div>'
+                    f'<div class="value">{fmt_num(n_parc)}</div>'
+                    '<div class="sub">AV2 pendente</div>'
+                    '</div>', unsafe_allow_html=True)
+    with cb2_3:
+        st.markdown('<div class="kpi-card kpi-hom">'
+                    '<div class="label">HOMOLOGAÇÃO</div>'
+                    f'<div class="value">{fmt_num(n_hom)}</div>'
+                    '<div class="sub">HOM pendente</div>'
+                    '</div>', unsafe_allow_html=True)
+                    
+    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+    
+    st.markdown('<div class="kpi-card kpi-enc">'
+                '<div class="label">ENCERRADAS</div>'
+                f'<div class="value">{fmt_num(n_enc)}</div>'
+                f'<div class="sub">{n_enc/max(n_total,1)*100:.1f}%</div>'
+                '</div>', unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -1510,6 +1550,6 @@ with tab6:
 
 # ─────────────────────── RODAPÉ ───────────────────────────────────────────────
 st.markdown("---")
-st.markdown(f"<center><small>🎖️ AADP 2026 · Polícia Militar de Minas Gerais · "
+st.markdown(f"<center><small>AADP 2026 · Polícia Militar de Minas Gerais · "
             f"Resolução 5458/2025 · {datetime.now().strftime('%d/%m/%Y')}</small></center>",
             unsafe_allow_html=True)
