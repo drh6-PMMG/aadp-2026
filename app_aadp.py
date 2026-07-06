@@ -57,16 +57,16 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
   transition:transform .2s,box-shadow .2s;text-align:center;}
 .kpi-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.12);}
 .kpi-card .label{font-size:.7rem;font-weight:700;text-transform:uppercase;
-  letter-spacing:.06em;color:#6b7280;margin-bottom:6px;}
+  letter-spacing:.06em;color:#555555!important;margin-bottom:6px;}
 .kpi-card .value{font-size:1.9rem;font-weight:800;line-height:1;}
-.kpi-card .sub{font-size:.72rem;color:#9ca3af;margin-top:4px;}
-.kpi-total    {border-color:#bca374;} .kpi-total    .value{color:#8c6e42;}
-.kpi-ca       {border-color:#bca374;} .kpi-ca       .value{color:#8c6e42;}
-.kpi-np       {border-color:#8c6e42;} .kpi-np       .value{color:#bca374;}
-.kpi-aberta   {border-color:#FF4444;} .kpi-aberta   .value{color:#cc2222;}
-.kpi-parc     {border-color:#FF8C00;} .kpi-parc     .value{color:#cc7000;}
-.kpi-hom      {border-color:#FFD966;} .kpi-hom      .value{color:#b89500;}
-.kpi-enc      {border-color:#70AD47;} .kpi-enc      .value{color:#4a8a28;}
+.kpi-card .sub{font-size:.72rem;color:#777777!important;margin-top:4px;}
+.kpi-total    {border-color:#bca374;} .kpi-total    .value{color:#8c6e42!important;}
+.kpi-ca       {border-color:#bca374;} .kpi-ca       .value{color:#8c6e42!important;}
+.kpi-np       {border-color:#8c6e42;} .kpi-np       .value{color:#8c6e42!important;}
+.kpi-aberta   {border-color:#FF4444;} .kpi-aberta   .value{color:#cc2222!important;}
+.kpi-parc     {border-color:#FF8C00;} .kpi-parc     .value{color:#cc7000!important;}
+.kpi-hom      {border-color:#FFD966;} .kpi-hom      .value{color:#b89500!important;}
+.kpi-enc      {border-color:#70AD47;} .kpi-enc      .value{color:#4a8a28!important;}
 
 .stTabs [data-baseweb="tab-list"]{background:#fff;border-radius:10px;padding:6px;
   box-shadow:0 2px 8px rgba(0,0,0,.07);gap:4px;}
@@ -88,6 +88,43 @@ div[data-testid="metric-container"]{background:#fff;border-radius:10px;
   transition:all .2s;box-shadow:0 2px 8px rgba(188,163,116,.2);}
 .stButton button:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(188,163,116,.4);
   background:#bca374;color:#000;}
+
+/* Botões do Sidebar - Efeito Cristal Líquido Secundário (Inativo) */
+div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"] {
+  background: linear-gradient(135deg, #242424 0%, #000000 100%) !important;
+  color: #bca374 !important;
+  border: 1px solid #8c6e42 !important;
+  border-radius: 8px !important;
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.5) !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+}
+div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"]:hover {
+  background: linear-gradient(135deg, #bca374 0%, #1a1a1a 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #bca374 !important;
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.2), 0 4px 12px rgba(188,163,116,0.4) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Botões do Sidebar - Efeito Cristal Líquido Primário (Ativo - Caqui para Preto) */
+div[data-testid="stSidebar"] button[data-testid="baseButton-primary"] {
+  background: linear-gradient(135deg, #bca374 0%, #000000 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #ffffff !important;
+  border-radius: 8px !important;
+  box-shadow: inset 0 1px 3px rgba(255,255,255,0.3), 0 4px 15px rgba(188,163,116,0.5) !important;
+  font-weight: 700 !important;
+  transition: all 0.3s ease !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8) !important;
+}
+div[data-testid="stSidebar"] button[data-testid="baseButton-primary"]:hover {
+  background: linear-gradient(135deg, #ffffff 0%, #bca374 100%) !important;
+  color: #000000 !important;
+  border: 1px solid #ffffff !important;
+  box-shadow: inset 0 1px 3px rgba(255,255,255,0.4), 0 6px 20px rgba(188,163,116,0.7) !important;
+  transform: translateY(-2px) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -301,47 +338,98 @@ with st.sidebar:
     st.markdown("### AADP 2026")
     st.markdown("**Sistema de Análise de Avaliações**")
     st.markdown("---")
-    st.markdown("#### 🗄️ Fonte dos Dados")
 
-    fonte = st.radio("Origem:", ["📁 Pasta local / Servidor", "☁️ Google Drive"],
-                     horizontal=True,
-                     help="Local: use pasta 'dados/'. Drive: informe os IDs dos arquivos.")
+    # 🧭 BOTÕES DE NAVEGAÇÃO DA PÁGINA CENTRAL
+    st.markdown("#### 🧭 Páginas")
+    pages = [
+        ("📊 Análise Gráfica", "Análise Gráfica"),
+        ("📋 Dados Gerais", "Dados Gerais"),
+        ("⏳ Avaliações Pendentes", "Avaliações Pendentes"),
+        ("👥 Avaliadores Pendentes", "Avaliadores Pendentes"),
+        ("📥 Gerar Relatório", "Gerar Relatório"),
+        ("📄 Relatório Word", "Relatório Word"),
+    ]
+    if "active_page" not in st.session_state:
+        st.session_state.active_page = "Análise Gráfica"
+        
+    for label, page_name in pages:
+        is_active = st.session_state.active_page == page_name
+        btn_type = "primary" if is_active else "secondary"
+        if st.button(label, key=f"nav_{page_name}", use_container_width=True, type=btn_type):
+            st.session_state.active_page = page_name
+            st.rerun()
+            
+    st.markdown("---")
+    
+    # ⚙️ SEÇÕES COLAPSÁVEIS DA BARRA LATERAL
+    if "show_fonte" not in st.session_state:
+        st.session_state.show_fonte = False
+    if "show_filtros" not in st.session_state:
+        st.session_state.show_filtros = True
 
+    # Botão de Fonte de Dados (não muda a página central, apenas recolhe/expande no sidebar)
+    btn_fonte_label = "📂 Ocultar Fonte dos Dados" if st.session_state.show_fonte else "📂 Mostrar Fonte dos Dados"
+    btn_fonte_type = "primary" if st.session_state.show_fonte else "secondary"
+    if st.button(btn_fonte_label, use_container_width=True, key="btn_toggle_fonte", type=btn_fonte_type):
+        st.session_state.show_fonte = not st.session_state.show_fonte
+        st.rerun()
+        
+    # Inicializa variáveis para não dar NameError
     drive_av_id = drive_si_id = drive_geral_id = ""
     db_path = ""
-
-    if "Drive" in fonte:
-        st.markdown("<small>📌 Compartilhe os arquivos no Drive como <b>Qualquer pessoa com o link</b></small>",
-                    unsafe_allow_html=True)
-        drive_av_id = st.text_input("🔑 ID do avaliacoes.csv no Drive:",
-                                     value=cfg.get("drive_av_id",""),
-                                     placeholder="Ex: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms")
-        drive_si_id = st.text_input("🔑 ID do SIGEF.csv no Drive:",
-                                     value=cfg.get("drive_si_id",""),
-                                     placeholder="Ex: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms")
-        drive_geral_id = st.text_input("🔑 ID do Geral.xlsx no Drive:",
-                                     value=cfg.get("drive_geral_id",""),
-                                     placeholder="Ex: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms")
-        st.markdown("<small>ℹ️ O ID está na URL do arquivo compartilhado:<br>"
-                    "<code>drive.google.com/file/d/<b>[ID]</b>/view</code></small>",
-                    unsafe_allow_html=True)
-        if st.button("💾 Salvar IDs", use_container_width=True):
-            cfg["drive_av_id"] = drive_av_id
-            cfg["drive_si_id"] = drive_si_id
-            cfg["drive_geral_id"] = drive_geral_id
-            save_config(cfg); st.success("IDs salvos!")
-    else:
-        st.markdown(f"<small>📂 Pasta padrão: <code>dados/</code></small>", unsafe_allow_html=True)
-        db_path = st.text_input("Caminho da pasta CSV:", value=cfg.get("db_path",""),
-                                 placeholder=str(DADOS_DIR))
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("💾 Salvar", use_container_width=True):
-                cfg["db_path"] = db_path; save_config(cfg); st.success("Salvo!")
-
-    reload = st.button("🔄 Recarregar Dados", use_container_width=True, type="primary")
+    fonte = cfg.get("fonte_dados", "📁 Pasta local / Servidor")
+    reload = False
+    
+    if st.session_state.show_fonte:
+        st.markdown("#### 🗄️ Configurações da Fonte")
+        fonte = st.radio("Origem:", ["📁 Pasta local / Servidor", "☁️ Google Drive"],
+                         horizontal=True,
+                         index=0 if "local" in cfg.get("fonte_dados", "local") else 1,
+                         key="fonte_dados_radio",
+                         help="Local: use pasta 'dados/'. Drive: informe os IDs dos arquivos.")
+        if fonte != cfg.get("fonte_dados"):
+            cfg["fonte_dados"] = fonte
+            save_config(cfg)
+            
+        if "Drive" in fonte:
+            st.markdown("<small>📌 Compartilhe os arquivos no Drive como <b>Qualquer pessoa com o link</b></small>",
+                        unsafe_allow_html=True)
+            drive_av_id = st.text_input("🔑 ID do avaliacoes.csv no Drive:",
+                                         value=cfg.get("drive_av_id",""),
+                                         key="drive_av_id_input",
+                                         placeholder="Ex: 1BxiMVs...")
+            drive_si_id = st.text_input("🔑 ID do SIGEF.csv no Drive:",
+                                         value=cfg.get("drive_si_id",""),
+                                         key="drive_si_id_input",
+                                         placeholder="Ex: 1BxiMVs...")
+            drive_geral_id = st.text_input("🔑 ID do Geral.xlsx no Drive:",
+                                         value=cfg.get("drive_geral_id",""),
+                                         key="drive_geral_id_input",
+                                         placeholder="Ex: 1BxiMVs...")
+            st.markdown("<small>ℹ️ O ID está na URL do arquivo compartilhado</small>", unsafe_allow_html=True)
+            if st.button("💾 Salvar IDs", use_container_width=True, key="btn_save_ids"):
+                cfg["drive_av_id"] = drive_av_id
+                cfg["drive_si_id"] = drive_si_id
+                cfg["drive_geral_id"] = drive_geral_id
+                save_config(cfg); st.success("IDs salvos!")
+        else:
+            st.markdown(f"<small>📂 Pasta padrão: <code>dados/</code></small>", unsafe_allow_html=True)
+            db_path = st.text_input("Caminho da pasta CSV:", value=cfg.get("db_path",""),
+                                     key="db_path_input",
+                                     placeholder=str(DADOS_DIR))
+            if st.button("💾 Salvar Caminho", use_container_width=True, key="btn_save_caminho"):
+                cfg["db_path"] = db_path; save_config(cfg); st.success("Caminho salvo!")
+                
+        reload = st.button("🔄 Recarregar Dados", use_container_width=True, type="primary", key="btn_reload")
+        
     st.markdown("---")
-    st.markdown("#### 🔍 Filtros de Visualização")
+    
+    # Botão de Filtros de Visualização
+    btn_filtros_label = "🔍 Ocultar Filtros" if st.session_state.show_filtros else "🔍 Mostrar Filtros"
+    btn_filtros_type = "primary" if st.session_state.show_filtros else "secondary"
+    if st.button(btn_filtros_label, use_container_width=True, key="btn_toggle_filtros", type=btn_filtros_type):
+        st.session_state.show_filtros = not st.session_state.show_filtros
+        st.rerun()
 
 # ─────────────────────── CARREGAR DADOS ───────────────────────────────────────
 try:
@@ -363,17 +451,19 @@ if data_ok:
     all_sit   = ["Comissão Atual","Nota Provisória"]
     all_cert  = ["SIM","NÃO","-"]
     with st.sidebar:
-        rpm_filter = st.multiselect("🏢 Unidade RPM", all_rpm, placeholder="Todas")
-        df_tmp = df_full[df_full["Unidade RPM (Avaliado)"].isin(rpm_filter)] if rpm_filter else df_full
-        all_unid = sorted(df_tmp["Unidade Principal (Avaliado)"].dropna().unique())
-        unid_filter    = st.multiselect("🏛️ Subunidade", all_unid, placeholder="Todas")
-        st.markdown("")
-        sit_com_filter = st.multiselect("🔵 Situação Comissão", all_sit, placeholder="Todas")
-        status_filter  = st.multiselect("📊 Status",            all_status, placeholder="Todos")
-        cert_filter    = st.multiselect("✅ Cert. Homologador",  all_cert,   placeholder="Todos")
-        st.markdown("---")
-        st.markdown(f"<small>🕐 Carregado: {ts}</small>", unsafe_allow_html=True)
-        st.markdown(f"<small>📊 {fmt_num(len(df_full))} registros</small>", unsafe_allow_html=True)
+        if st.session_state.show_filtros:
+            st.markdown("#### 🔍 Filtros de Visualização")
+            rpm_filter = st.multiselect("🏢 Unidade RPM", all_rpm, placeholder="Todas")
+            df_tmp = df_full[df_full["Unidade RPM (Avaliado)"].isin(rpm_filter)] if rpm_filter else df_full
+            all_unid = sorted(df_tmp["Unidade Principal (Avaliado)"].dropna().unique())
+            unid_filter    = st.multiselect("🏛️ Subunidade", all_unid, placeholder="Todas")
+            st.markdown("")
+            sit_com_filter = st.multiselect("🔵 Situação Comissão", all_sit, placeholder="Todas")
+            status_filter  = st.multiselect("📊 Status",            all_status, placeholder="Todos")
+            cert_filter    = st.multiselect("✅ Cert. Homologador",  all_cert,   placeholder="Todos")
+            st.markdown("---")
+            st.markdown(f"<small>🕐 Carregado: {ts}</small>", unsafe_allow_html=True)
+            st.markdown(f"<small>📊 {fmt_num(len(df_full))} registros</small>", unsafe_allow_html=True)
     df = apply_filters(df_full, rpm_filter, unid_filter, sit_com_filter, status_filter, cert_filter)
 else:
     df = pd.DataFrame()
@@ -476,17 +566,16 @@ with col_block2:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ─────────────────────── TABS ─────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "📊 Análise Gráfica","📋 Dados Gerais",
-    "⏳ Avaliações Pendentes","👥 Avaliadores Pendentes","📥 Gerar Relatório",
-    "📄 Relatório Word"
-])
+# ─────────────────────── SELEÇÃO DE ABAS VIA SESSION STATE ───────────────────
+if "active_page" not in st.session_state:
+    st.session_state.active_page = "Análise Gráfica"
+
+active_page = st.session_state.active_page
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 1 — ANÁLISE GRÁFICA
 # ══════════════════════════════════════════════════════════════════════════════
-with tab1:
+if active_page == "Análise Gráfica":
     st.markdown("### 📊 Análise Gráfica das Avaliações")
 
     # ── LINHA 1: Pizza de Status (destaque, full width) ──────────────────────
@@ -664,7 +753,7 @@ with tab1:
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 2 — DADOS GERAIS
 # ══════════════════════════════════════════════════════════════════════════════
-with tab2:
+if active_page == "Dados Gerais":
     st.markdown(f"### 📋 Dados Gerais — {fmt_num(len(df))} avaliações")
     cols_d = [
         # Avaliado
@@ -693,7 +782,7 @@ with tab2:
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 3 — AVALIAÇÕES PENDENTES
 # ══════════════════════════════════════════════════════════════════════════════
-with tab3:
+if active_page == "Avaliações Pendentes":
     st.markdown("### ⏳ Avaliações Pendentes")
     STATUS_PEND = {"Homologação","Parcialmente Encerrada","Aberta"}
     df_pend = df[df["Status Avaliação"].isin(STATUS_PEND)].copy()
@@ -754,7 +843,7 @@ with tab3:
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 4 — AVALIADORES PENDENTES
 # ══════════════════════════════════════════════════════════════════════════════
-with tab4:
+if active_page == "Avaliadores Pendentes":
     st.markdown("### 👥 Avaliadores Pendentes")
 
     if rpm_filter:
@@ -1386,7 +1475,7 @@ def _gerar_zip_bytes(df_full: pd.DataFrame, modo: str, units_sel: list) -> tuple
     return zip_buf.read(), zip_name
 
 # ── Interface da aba ──────────────────────────────────────────────────────────
-with tab5:
+if active_page == "Gerar Relatório":
     st.markdown("### 📥 Gerar Relatório Excel + ZIP")
     st.markdown('<div class="info-box">'
                 '✅ Geração <b>100% em memória</b> — funciona tanto no servidor local '
@@ -1449,7 +1538,7 @@ with tab5:
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 6 — HOMOLOGAÇÃO RELATÓRIO WORD (.DOCX)
 # ══════════════════════════════════════════════════════════════════════════════
-with tab6:
+if active_page == "Relatório Word":
     st.markdown("### 📄 Relatório Word (.docx)")
     st.markdown('<div class="info-box">'
                 '📄 <b>Geração de Relatório Executivo:</b> Esta aba gera um relatório gerencial completo '
