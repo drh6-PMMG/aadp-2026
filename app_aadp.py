@@ -385,7 +385,7 @@ if os.path.exists("logo_drh.png"):
     with open("logo_drh.png", "rb") as f:
         logo_base64 = base64.b64encode(f.read()).decode("utf-8")
 
-logo_html = f'<img src="data:image/png;base64,{logo_base64}" style="width: 70%; height: auto; border-radius: 8px; align-self: center;" />' if logo_base64 else ""
+logo_html = f'<img src="data:image/png;base64,{logo_base64}" style="width: 100%; max-width: 480px; height: auto; max-height: 120px; object-fit: contain; border-radius: 8px; align-self: center;" />' if logo_base64 else ""
 
 st.markdown(f"""
 <div class="main-title">
