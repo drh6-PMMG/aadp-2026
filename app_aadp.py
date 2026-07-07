@@ -267,7 +267,7 @@ def find_sigef_user(pm_number: str) -> dict:
             reader = csv.reader(f, delimiter=";")
             header = next(reader)
             for row in reader:
-                if len(row) > 9:
+                if len(row) > 24:
                     curr_pm = row[0].strip().lstrip("0")
                     if curr_pm == pm_clean:
                         return {
@@ -276,7 +276,9 @@ def find_sigef_user(pm_number: str) -> dict:
                             "name": row[3].strip().title(),
                             "rpm": row[5].strip(),      # UDI/UDG (NOME RPM)
                             "unit": row[7].strip(),     # Unidade Principal (NOME UNIDADE PRINCIPAL)
-                            "sector": row[9].strip()    # Setor (NOME UNIDADE)
+                            "sector": row[9].strip(),    # Setor (NOME UNIDADE)
+                            "birthdate": row[16].strip(), # DATA NASCIMENTO (Q)
+                            "cpf": row[24].strip()       # NUMERO CPF (Y)
                         }
     except Exception as e:
         st.error(f"Erro ao ler banco SIGEF: {e}")
@@ -501,79 +503,117 @@ if not st.session_state.authenticated:
                         st.error("❌ Nº PM ou Senha incorretos.")
                         
         else:
-            st.markdown("##### 📝 Solicitação de Acesso via SIGEF")
+            st.markdown("##### 📝 Solicitação de acesso - Painel de Controle AADP")
             st.info("⚠️ Informe apenas os **6 primeiros dígitos** do seu Nº PM (sem o dígito verificador).")
             
-            # Campo de entrada de Nº PM
-            reg_pm = st.text_input("Nº PM (Apenas os 6 primeiros dígitos):", max_chars=6, key="reg_pm", placeholder="Ex: 053108")
-            
+            # Inicializa variáveis de estado
             if "sigef_data" not in st.session_state:
                 st.session_state.sigef_data = None
+            if "sigef_verified" not in st.session_state:
+                st.session_state.sigef_verified = False
                 
-            if st.button("🔍 Consultar", use_container_width=True, type="secondary"):
-                if not reg_pm or not reg_pm.isdigit():
-                    st.error("Por favor, informe um Nº PM válido (apenas números, máximo 6 dígitos).")
-                    st.session_state.sigef_data = None
-                else:
-                    with st.spinner("⏳ Consultando banco de dados do SIGEF..."):
-                        res = find_sigef_user(reg_pm)
-                        if res:
-                            st.session_state.sigef_data = res
-                            st.success(f"✅ Militar encontrado: **{res['rank']} {res['name']}**")
-                        else:
-                            st.error("❌ Nº PM não encontrado no banco SIGEF. Verifique se digitou os 6 primeiros dígitos corretamente.")
-                            st.session_state.sigef_data = None
+            # Entrada de Nº PM
+            reg_pm = st.text_input("Nº PM (Apenas os 6 primeiros dígitos):", max_chars=6, key="reg_pm", placeholder="Ex: 053108")
             
+            col_cons, col_clear = st.columns([3, 1])
+            with col_cons:
+                if st.button("🔍 Consultar", use_container_width=True, type="secondary"):
+                    if not reg_pm or not reg_pm.isdigit():
+                        st.error("Por favor, informe um Nº PM válido (apenas números, máximo 6 dígitos).")
+                        st.session_state.sigef_data = None
+                        st.session_state.sigef_verified = False
+                    else:
+                        with st.spinner("⏳ Consultando banco de dados do SIGEF..."):
+                            res = find_sigef_user(reg_pm)
+                            if res:
+                                st.session_state.sigef_data = res
+                                st.session_state.sigef_verified = False # Reseta a verificação para nova busca
+                                st.success("✅ Militar encontrado no SIGEF! Prossiga com a verificação de segurança abaixo.")
+                            else:
+                                st.error("❌ Nº PM não encontrado no banco SIGEF. Verifique se digitou os 6 primeiros dígitos corretamente.")
+                                st.session_state.sigef_data = None
+                                st.session_state.sigef_verified = False
+            with col_clear:
+                if st.button("🧹 Limpar", use_container_width=True):
+                    st.session_state.sigef_data = None
+                    st.session_state.sigef_verified = False
+                    st.rerun()
+
             if st.session_state.sigef_data:
                 data = st.session_state.sigef_data
                 
-                st.markdown("---")
-                st.markdown("##### 👤 Dados Funcionais Encontrados:")
-                st.text_input("Posto/Graduação:", value=data["rank"], disabled=True, key="disp_rank")
-                st.text_input("Nome Completo:", value=data["name"], disabled=True, key="disp_name")
-                st.text_input("UDI/UDG:", value=data["rpm"], disabled=True, key="disp_rpm")
-                st.text_input("Unidade Principal:", value=data["unit"], disabled=True, key="disp_unit")
-                st.text_input("Setor:", value=data["sector"], disabled=True, key="disp_sector")
+                # Etapa 2: Verificação de Segurança (CPF e Nascimento)
+                if not st.session_state.sigef_verified:
+                    st.markdown("---")
+                    st.markdown("##### 🔒 Verificação de Segurança")
+                    st.write("Para confirmar se realmente é você, confirme as duas informações abaixo:")
+                    
+                    v_cpf = st.text_input("Digite seu CPF (apenas números):", max_chars=11, key="v_cpf", placeholder="Ex: 12345678901")
+                    v_birth = st.text_input("Digite sua Data de Nascimento (DD/MM/AAAA):", max_chars=10, key="v_birth", placeholder="Ex: 25/09/1957")
+                    
+                    if st.button("Confirmar Dados", use_container_width=True, type="primary"):
+                        clean_input_cpf = re.sub(r'\D', '', v_cpf)
+                        clean_sigef_cpf = re.sub(r'\D', '', data["cpf"])
+                        
+                        clean_input_birth = v_birth.strip()
+                        clean_sigef_birth = data["birthdate"].strip()
+                        
+                        if clean_input_cpf == clean_sigef_cpf and clean_input_birth == clean_sigef_birth:
+                            st.session_state.sigef_verified = True
+                            st.success("✅ Identidade confirmada com sucesso!")
+                            st.rerun()
+                        else:
+                            st.error("❌ CPF ou Data de Nascimento incorretos. Verifique suas informações e tente novamente.")
                 
-                st.markdown("##### 🔑 Configuração de Senha de Acesso:")
-                with st.form("form_cadastro_final", clear_on_submit=False):
-                    reg_pass = st.text_input("Escolha uma Senha:", type="password", key="reg_pass")
-                    reg_pass_conf = st.text_input("Confirme a Senha:", type="password", key="reg_pass_conf")
+                # Etapa 3: Liberação do Formulário de Senha
+                if st.session_state.sigef_verified:
+                    st.markdown("---")
+                    st.markdown("##### 👤 Dados Funcionais Confirmados:")
+                    st.text_input("Posto/Graduação:", value=data["rank"], disabled=True, key="disp_rank")
+                    st.text_input("Nome Completo:", value=data["name"], disabled=True, key="disp_name")
+                    st.text_input("UDI/UDG:", value=data["rpm"], disabled=True, key="disp_rpm")
+                    st.text_input("Unidade Principal:", value=data["unit"], disabled=True, key="disp_unit")
+                    st.text_input("Setor:", value=data["sector"], disabled=True, key="disp_sector")
                     
-                    submitted = st.form_submit_button("Enviar Solicitação", use_container_width=True, type="primary")
-                    
-                if submitted:
-                    spass = reg_pass
-                    if not spass:
-                        st.error("Por favor, preencha o campo de senha.")
-                    elif spass != reg_pass_conf:
-                        st.error("As senhas não coincidem!")
-                    elif len(spass) < 6:
-                        st.error("A senha deve ter pelo menos 6 caracteres.")
-                    else:
-                        try:
-                            conn = sqlite3.connect(DB_FILE)
-                            c = conn.cursor()
-                            # Procurar pelo PM formatado exato que está no SIGEF
-                            c.execute("SELECT * FROM users WHERE pm = ?", (data["pm"],))
-                            if c.fetchone():
-                                st.error("❌ Este Nº PM já possui cadastro ou solicitação de acesso no sistema!")
-                                conn.close()
-                            else:
-                                h_pass = hashlib.sha256(spass.encode()).hexdigest()
-                                c.execute("""
-                                    INSERT INTO users (pm, name, rank, rpm, unit, function, role, status, password, created_at)
-                                    VALUES (?, ?, ?, ?, ?, ?, 'PENDENTE', 'Pendente', ?, ?)
-                                """, (data["pm"], data["name"], data["rank"], data["rpm"], data["unit"], data["sector"], h_pass, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-                                conn.commit()
-                                conn.close()
-                                
-                                log_action(data["pm"], "CADASTRO_SOLICITADO", f"Nome: {data['name']}, Posto: {data['rank']}, UDI/UDG: {data['rpm']}")
-                                st.success("✅ Solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
-                                # Limpar dados para evitar reenvios acidentais
-                                st.session_state.sigef_data = None
-                        except Exception as e:
-                            st.error(f"Erro ao salvar cadastro: {str(e)}")
+                    st.markdown("##### 🔑 Configuração de Senha de Acesso:")
+                    with st.form("form_cadastro_final", clear_on_submit=False):
+                        reg_pass = st.text_input("Escolha uma Senha:", type="password", key="reg_pass")
+                        reg_pass_conf = st.text_input("Confirme a Senha:", type="password", key="reg_pass_conf")
+                        
+                        submitted = st.form_submit_button("Enviar Solicitação", use_container_width=True, type="primary")
+                        
+                    if submitted:
+                        spass = reg_pass
+                        if not spass:
+                            st.error("Por favor, preencha o campo de senha.")
+                        elif spass != reg_pass_conf:
+                            st.error("As senhas não coincidem!")
+                        elif len(spass) < 6:
+                            st.error("A senha deve ter pelo menos 6 caracteres.")
+                        else:
+                            try:
+                                conn = sqlite3.connect(DB_FILE)
+                                c = conn.cursor()
+                                c.execute("SELECT * FROM users WHERE pm = ?", (data["pm"],))
+                                if c.fetchone():
+                                    st.error("❌ Este Nº PM já possui cadastro ou solicitação de acesso no sistema!")
+                                    conn.close()
+                                else:
+                                    h_pass = hashlib.sha256(spass.encode()).hexdigest()
+                                    c.execute("""
+                                        INSERT INTO users (pm, name, rank, rpm, unit, function, role, status, password, created_at)
+                                        VALUES (?, ?, ?, ?, ?, ?, 'PENDENTE', 'Pendente', ?, ?)
+                                    """, (data["pm"], data["name"], data["rank"], data["rpm"], data["unit"], data["sector"], h_pass, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                                    conn.commit()
+                                    conn.close()
+                                    
+                                    log_action(data["pm"], "CADASTRO_SOLICITADO", f"Nome: {data['name']}, Posto: {data['rank']}, UDI/UDG: {data['rpm']}")
+                                    st.success("✅ Solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
+                                    # Limpa estados para próxima solicitação
+                                    st.session_state.sigef_data = None
+                                    st.session_state.sigef_verified = False
+                            except Exception as e:
+                                st.error(f"Erro ao salvar cadastro: {str(e)}")
     st.stop()
 
 # ─────────────────────── SIDEBAR ──────────────────────────────────────────────
