@@ -244,6 +244,38 @@ def matches_rpm(reg_rpm, csv_rpm):
         return int(m1.group()) == int(m2.group())
     return str(reg_rpm).strip().lower() == str(csv_rpm).strip().lower()
 
+def find_sigef_user(pm_number: str) -> dict:
+    """Busca os dados do militar no SIGEF.csv pelo Nº PM (6 dígitos)."""
+    pm_clean = pm_number.strip().lstrip("0")
+    if not pm_clean:
+        return None
+    try:
+        import os, csv
+        # SIGEF.csv está na pasta raiz
+        si_path = "SIGEF.csv"
+        if not os.path.exists(si_path):
+            si_path = os.path.join("dados", "SIGEF.csv")
+            if not os.path.exists(si_path):
+                return None
+        with open(si_path, encoding="cp1252", errors="replace") as f:
+            reader = csv.reader(f, delimiter=";")
+            header = next(reader)
+            for row in reader:
+                if len(row) > 9:
+                    curr_pm = row[0].strip().lstrip("0")
+                    if curr_pm == pm_clean:
+                        return {
+                            "pm": row[0].strip(),
+                            "rank": row[2].strip().title(),
+                            "name": row[3].strip().title(),
+                            "rpm": row[5].strip(),      # UDI/UDG (NOME RPM)
+                            "unit": row[7].strip(),     # Unidade Principal (NOME UNIDADE PRINCIPAL)
+                            "sector": row[9].strip()    # Setor (NOME UNIDADE)
+                        }
+    except Exception as e:
+        st.error(f"Erro ao ler banco SIGEF: {e}")
+    return None
+
 def calc_cert(j, l):
     if is_empty(j) or is_empty(l): return "-"
     c = concordam(j, l)
@@ -463,60 +495,79 @@ if not st.session_state.authenticated:
                         st.error("❌ Nº PM ou Senha incorretos.")
                         
         else:
-            st.markdown("##### Preencha todos os dados abaixo para solicitar o seu acesso:")
-            with st.form("form_cadastro", clear_on_submit=False):
-                reg_pm = st.text_input("Nº PM (Somente números):", key="reg_pm")
-                reg_posto = st.selectbox("Posto/Graduação:", 
-                                         ["Soldado", "Cabo", "3º Sargento", "2º Sargento", "1º Sargento", "Subtenente",
-                                          "2º Tenente", "1º Tenente", "Capitão", "Major", "Tenente-Coronel", "Coronel"], 
-                                         key="reg_posto")
-                reg_nome = st.text_input("Nome Completo:", key="reg_nome")
-                reg_rpm = st.selectbox("RPM / Diretoria / UDG da sua Unidade:", 
-                                        [f"{i} RPM" for i in range(1, 20)] + 
-                                        ["AM-ALMG", "AM-TJMG", "APM", "AUD SET", "CME", "COMAVE", "CPE", 
-                                         "CPM", "DAL", "DCO", "DEE", "DF", "DINT", "DOP", "DPS", "DRH", "DTS", 
-                                         "EMPM/SCG", "GCG", "GMG"], 
-                                        key="reg_rpm")
-                reg_unidade = st.text_input("Unidade (Ex: 1º BPM, 45ª Cia, etc.):", key="reg_unidade")
-                reg_funcao = st.text_input("Função Atual:", key="reg_funcao")
-                reg_pass = st.text_input("Escolha uma Senha:", type="password", key="reg_pass")
-                reg_pass_conf = st.text_input("Confirme a Senha:", type="password", key="reg_pass_conf")
+            st.markdown("##### 📝 Solicitação de Acesso via SIGEF")
+            st.info("⚠️ Informe apenas os **6 primeiros dígitos** do seu Nº PM (Coluna A do SIGEF). O sistema buscará seus dados automaticamente.")
+            
+            # Campo de entrada de Nº PM
+            reg_pm = st.text_input("Nº PM (Apenas os 6 primeiros dígitos):", max_chars=6, key="reg_pm", placeholder="Ex: 053108")
+            
+            if "sigef_data" not in st.session_state:
+                st.session_state.sigef_data = None
                 
-                submitted = st.form_submit_button("Enviar Solicitação", use_container_width=True, type="primary")
-                
-            if submitted:
-                spm = reg_pm.strip()
-                snome = reg_nome.strip()
-                sunid = reg_unidade.strip()
-                sfunc = reg_funcao.strip()
-                spass = reg_pass
-                
-                if not spm or not snome or not sunid or not sfunc or not spass:
-                    st.error("Preencha todos os campos obrigatórios!")
-                elif spass != reg_pass_conf:
-                    st.error("As senhas não coincidem!")
-                elif len(spass) < 6:
-                    st.error("A senha deve ter pelo menos 6 caracteres.")
+            if st.button("🔍 Consultar dados no SIGEF", use_container_width=True, type="secondary"):
+                if not reg_pm or not reg_pm.isdigit():
+                    st.error("Por favor, informe um Nº PM válido (apenas números, máximo 6 dígitos).")
+                    st.session_state.sigef_data = None
                 else:
-                    try:
-                        conn = sqlite3.connect(DB_FILE)
-                        c = conn.cursor()
-                        c.execute("SELECT * FROM users WHERE pm = ?", (spm,))
-                        if c.fetchone():
-                            st.error("❌ Este Nº PM já está cadastrado!")
-                            conn.close()
+                    with st.spinner("⏳ Consultando banco de dados do SIGEF..."):
+                        res = find_sigef_user(reg_pm)
+                        if res:
+                            st.session_state.sigef_data = res
+                            st.success(f"✅ Militar encontrado: **{res['rank']} {res['name']}**")
                         else:
-                            h_pass = hashlib.sha256(spass.encode()).hexdigest()
-                            c.execute("""
-                                INSERT INTO users (pm, name, rank, rpm, unit, function, role, status, password, created_at)
-                                VALUES (?, ?, ?, ?, ?, ?, 'PENDENTE', 'Pendente', ?, ?)
-                            """, (spm, snome, reg_posto, reg_rpm, sunid, sfunc, h_pass, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-                            conn.commit()
-                            conn.close()
-                            log_action(spm, "CADASTRO_SOLICITADO", f"Nome: {snome}, Posto: {reg_posto}")
-                            st.success("✅ Solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
-                    except Exception as e:
-                        st.error(f"Erro ao salvar cadastro: {str(e)}")
+                            st.error("❌ Nº PM não encontrado no banco SIGEF. Verifique se digitou os 6 primeiros dígitos corretamente.")
+                            st.session_state.sigef_data = None
+            
+            if st.session_state.sigef_data:
+                data = st.session_state.sigef_data
+                
+                st.markdown("---")
+                st.markdown("##### 👤 Dados Funcionais Encontrados:")
+                st.text_input("Posto/Graduação:", value=data["rank"], disabled=True, key="disp_rank")
+                st.text_input("Nome Completo:", value=data["name"], disabled=True, key="disp_name")
+                st.text_input("UDI/UDG:", value=data["rpm"], disabled=True, key="disp_rpm")
+                st.text_input("Unidade Principal:", value=data["unit"], disabled=True, key="disp_unit")
+                st.text_input("Setor:", value=data["sector"], disabled=True, key="disp_sector")
+                
+                st.markdown("##### 🔑 Configuração de Senha de Acesso:")
+                with st.form("form_cadastro_final", clear_on_submit=False):
+                    reg_pass = st.text_input("Escolha uma Senha:", type="password", key="reg_pass")
+                    reg_pass_conf = st.text_input("Confirme a Senha:", type="password", key="reg_pass_conf")
+                    
+                    submitted = st.form_submit_button("Enviar Solicitação", use_container_width=True, type="primary")
+                    
+                if submitted:
+                    spass = reg_pass
+                    if not spass:
+                        st.error("Por favor, preencha o campo de senha.")
+                    elif spass != reg_pass_conf:
+                        st.error("As senhas não coincidem!")
+                    elif len(spass) < 6:
+                        st.error("A senha deve ter pelo menos 6 caracteres.")
+                    else:
+                        try:
+                            conn = sqlite3.connect(DB_FILE)
+                            c = conn.cursor()
+                            # Procurar pelo PM formatado exato que está no SIGEF
+                            c.execute("SELECT * FROM users WHERE pm = ?", (data["pm"],))
+                            if c.fetchone():
+                                st.error("❌ Este Nº PM já possui cadastro ou solicitação de acesso no sistema!")
+                                conn.close()
+                            else:
+                                h_pass = hashlib.sha256(spass.encode()).hexdigest()
+                                c.execute("""
+                                    INSERT INTO users (pm, name, rank, rpm, unit, function, role, status, password, created_at)
+                                    VALUES (?, ?, ?, ?, ?, ?, 'PENDENTE', 'Pendente', ?, ?)
+                                """, (data["pm"], data["name"], data["rank"], data["rpm"], data["unit"], data["sector"], h_pass, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                                conn.commit()
+                                conn.close()
+                                
+                                log_action(data["pm"], "CADASTRO_SOLICITADO", f"Nome: {data['name']}, Posto: {data['rank']}, UDI/UDG: {data['rpm']}")
+                                st.success("✅ Solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
+                                # Limpar dados para evitar reenvios acidentais
+                                st.session_state.sigef_data = None
+                        except Exception as e:
+                            st.error(f"Erro ao salvar cadastro: {str(e)}")
     st.stop()
 
 # ─────────────────────── SIDEBAR ──────────────────────────────────────────────
