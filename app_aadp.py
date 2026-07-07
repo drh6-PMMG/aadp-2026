@@ -309,6 +309,14 @@ def apply_filters(df, rpm_f, unid_f, sc_f, st_f, cert_f):
 
 def fmt_num(n): return f"{n:,}".replace(",",".")
 
+def df_to_xlsx(df: pd.DataFrame) -> bytes:
+    import io
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Planilha')
+    output.seek(0)
+    return output.read()
+
 MAX_STYLE = 4_000_000
 def safe_df(styled_or_df, height=520):
     if hasattr(styled_or_df, "data"):
@@ -945,6 +953,25 @@ if active_page == "Avaliadores Pendentes":
             cols_ok1 = [c for c in cols_det1 if c in df_det1.columns]
             safe_df(df_det1[cols_ok1].reset_index(drop=True).style.map(color_status, subset=["Status Avaliação"]), height=180)
             
+            # Botões de download lado a lado para esta lista filtrada específica
+            dl1, dl2 = st.columns(2)
+            with dl1:
+                st.download_button(
+                    "⬇️ Baixar esta lista (Excel .xlsx)",
+                    df_to_xlsx(df_det1[cols_ok1]),
+                    f"pendencias_AV1_{selected_pm}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="dl_av1_xlsx"
+                )
+            with dl2:
+                st.download_button(
+                    "⬇️ Baixar esta lista (CSV)",
+                    df_det1[cols_ok1].to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
+                    f"pendencias_AV1_{selected_pm}_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                    mime="text/csv",
+                    key="dl_av1_csv"
+                )
+            
         st.download_button("⬇️ AV1 (CSV)", tb1.to_csv(index=False,sep=";",encoding="utf-8-sig").encode("utf-8-sig"),
                             f"av1_{datetime.now().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
     else: st.success("✅ Nenhum AV1 com pendências!")
@@ -1003,6 +1030,25 @@ if active_page == "Avaliadores Pendentes":
                          "Status Avaliação", "Situação Comissão", "Data AV1", "Data AV2"]
             cols_ok2 = [c for c in cols_det2 if c in df_det2.columns]
             safe_df(df_det2[cols_ok2].reset_index(drop=True).style.map(color_status, subset=["Status Avaliação"]), height=180)
+            
+            # Botões de download lado a lado para esta lista filtrada específica
+            dl1, dl2 = st.columns(2)
+            with dl1:
+                st.download_button(
+                    "⬇️ Baixar esta lista (Excel .xlsx)",
+                    df_to_xlsx(df_det2[cols_ok2]),
+                    f"pendencias_AV2_{selected_pm2}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="dl_av2_xlsx"
+                )
+            with dl2:
+                st.download_button(
+                    "⬇️ Baixar esta lista (CSV)",
+                    df_det2[cols_ok2].to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
+                    f"pendencias_AV2_{selected_pm2}_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                    mime="text/csv",
+                    key="dl_av2_csv"
+                )
             
         st.download_button("⬇️ AV2 (CSV)", tb2.to_csv(index=False,sep=";",encoding="utf-8-sig").encode("utf-8-sig"),
                             f"av2_{datetime.now().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
@@ -1084,6 +1130,25 @@ if active_page == "Avaliadores Pendentes":
                          "Status Avaliação", "Situação Comissão", "Data AV1", "Data AV2", "Data HOM"]
             cols_ok3 = [c for c in cols_det3 if c in df_det3.columns]
             safe_df(df_det3[cols_ok3].reset_index(drop=True).style.map(color_status, subset=["Status Avaliação"]), height=180)
+            
+            # Botões de download lado a lado para esta lista filtrada específica
+            dl1, dl2 = st.columns(2)
+            with dl1:
+                st.download_button(
+                    "⬇️ Baixar esta lista (Excel .xlsx)",
+                    df_to_xlsx(df_det3[cols_ok3]),
+                    f"pendencias_HOM_{selected_pm3}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="dl_hom_xlsx"
+                )
+            with dl2:
+                st.download_button(
+                    "⬇️ Baixar esta lista (CSV)",
+                    df_det3[cols_ok3].to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
+                    f"pendencias_HOM_{selected_pm3}_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                    mime="text/csv",
+                    key="dl_hom_csv"
+                )
             
         st.download_button(
             "⬇️ Homologadores pendentes (CSV)",
