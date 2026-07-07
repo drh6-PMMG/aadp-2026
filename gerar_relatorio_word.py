@@ -8,8 +8,12 @@ import io
 import os
 import re
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import pandas as pd
+
+def now_br():
+    """Retorna datetime no fuso de Brasília (UTC-3)."""
+    return datetime.now(timezone(timedelta(hours=-3)))
 
 import matplotlib
 matplotlib.use("Agg")  # Garante thread-safety e evita problemas com GUI em servidores (Streamlit Cloud)
@@ -206,7 +210,7 @@ def create_pending_units_bar(df, udi_udg_list, filename):
     plt.savefig(filename, dpi=180, bbox_inches='tight')
     plt.close()
 
-def generate_word_report(df_source: pd.DataFrame, report_mode: str, selected_rpms: list = None) -> bytes:
+def generate_word_report(df_source: pd.DataFrame, report_mode: str, selected_rpms: list = None, user_role: str = "ADMINISTRADOR") -> bytes:
     """Processa os dados e cria o relatório Word em bytes."""
     # 1. Limpeza e Normalização dos Dados
     df = df_source.copy()
@@ -308,7 +312,7 @@ def generate_word_report(df_source: pd.DataFrame, report_mode: str, selected_rpm
         ("Encerradas (Concluídas)", f"{total_enc:,} ({total_enc/max(total_evals, 1)*100:.1f}%)"),
         ("Pendentes (AV1 / AV2)", f"{total_pend:,} ({total_pend/max(total_evals, 1)*100:.1f}%)"),
         ("Aguardando Homologação", f"{total_hom:,} ({total_hom/max(total_evals, 1)*100:.1f}%)"),
-        ("Data de Referência", datetime.now().strftime("%d/%m/%Y")),
+        ("Data de Referência", now_br().strftime("%d/%m/%Y")),
     ]
     
     for i, (label, val) in enumerate(capa_data):
@@ -326,183 +330,185 @@ def generate_word_report(df_source: pd.DataFrame, report_mode: str, selected_rpm
         
     p_footer = doc.add_paragraph()
     p_footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run_foot = p_footer.add_run(f"Polícia Militar de Minas Gerais\nDiretoria de Recursos Humanos · {datetime.now().year}")
+    run_foot = p_footer.add_run(f"Polícia Militar de Minas Gerais\nDiretoria de Recursos Humanos · {now_br().year}")
     run_foot.font.size = Pt(9.5)
     run_foot.font.color.rgb = RGBColor(0x88, 0x88, 0x88)
     
     doc.add_page_break()
 
     # ──────────────────────────────────────────────────────────────────────────
-    # SEÇÃO: VISÃO GERAL — ESTADO
+    # SEÇÃO: VISÃO GERAL — ESTADO (Pular para P1 e SADM)
     # ──────────────────────────────────────────────────────────────────────────
-    h1 = doc.add_paragraph()
-    r_h1 = h1.add_run("1. Visão Geral — Estado")
-    r_h1.font.size = Pt(20)
-    r_h1.font.bold = True
-    r_h1.font.color.rgb = RGBColor(0x1F, 0x38, 0x64)
+    show_state_summary = (user_role not in ("P1", "SADM"))
     
-    doc.add_paragraph("Esta seção apresenta o panorama geral consolidado do estado de Minas Gerais com base em todos os registros válidos do AADP 2026.")
-    
-    # Gerar gráficos estaduais em arquivos temporários
-    fd_pie, temp_pie = tempfile.mkstemp(suffix=".png")
-    os.close(fd_pie)
-    fd_bar, temp_bar = tempfile.mkstemp(suffix=".png")
-    os.close(fd_bar)
-    fd_pend, temp_pend = tempfile.mkstemp(suffix=".png")
-    os.close(fd_pend)
-    
-    create_status_pie(df_context, temp_pie)
-    create_comissao_bar(df_context, temp_bar)
-    create_pending_units_bar(df_context, units_to_render, temp_pend)
-    
-    # Inserir par de gráficos lado a lado em uma tabela sem bordas
-    table_graphs = doc.add_table(rows=1, cols=2)
-    table_graphs.alignment = docx.enum.table.WD_TABLE_ALIGNMENT.CENTER
-    cell_left = table_graphs.rows[0].cells[0]
-    cell_right = table_graphs.rows[0].cells[1]
-    
-    cell_left.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    cell_left.paragraphs[0].add_run().add_picture(temp_pie, width=Inches(3.3))
-    
-    cell_right.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    cell_right.paragraphs[0].add_run().add_picture(temp_bar, width=Inches(2.7))
-    
-    # Adicionar o gráfico de barras de pendências por UDI/UDG
-    p_graph_pend = doc.add_paragraph()
-    p_graph_pend.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_graph_pend.add_run().add_picture(temp_pend, width=Inches(6.2))
-    
-    # ── TABELA 1: Subunidades 100% Concluídas ─────────────────────────────────
-    doc.add_paragraph()
-    h2_1 = doc.add_paragraph()
-    r_h2_1 = h2_1.add_run("1.1 Subunidades 100% Encerradas")
-    r_h2_1.font.size = Pt(13)
-    r_h2_1.font.bold = True
-    r_h2_1.font.color.rgb = RGBColor(0x2E, 0x50, 0x90)
-    
-    doc.add_paragraph("Abaixo estão listadas as Subunidades que concluíram 100% de seus processos avaliativos, sem nenhuma pendência em aberto ou parcialmente encerrada.")
-    
-    # Agrupa por Subunidade para calcular pendências
-    sub_stats = df_context.groupby(["Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)"]).agg(
-        total=("Status Avaliação", "count"),
-        concluidas=("Status Avaliação", lambda x: sum(x == "Encerrada")),
-        pendentes=("Status Avaliação", lambda x: sum(x.isin(["Aberta", "Parcialmente Encerrada"])))
-    ).reset_index()
-    
-    sub_100 = sub_stats[sub_stats["pendentes"] == 0].sort_values("total", ascending=False)
-    
-    # Cria a tabela de concluídos
-    table_100 = doc.add_table(rows=1, cols=3)
-    table_100.alignment = docx.enum.table.WD_TABLE_ALIGNMENT.CENTER
-    table_100.style = 'Light Shading Accent 1' # Estilo padrão limpo do Word
-    
-    hdr_cells = table_100.rows[0].cells
-    hdr_cells[0].paragraphs[0].add_run("UDI / UDG").font.bold = True
-    hdr_cells[1].paragraphs[0].add_run("Subunidade").font.bold = True
-    hdr_cells[2].paragraphs[0].add_run("Total Avaliações").font.bold = True
-    
-    # Cor do cabeçalho
-    for cell in hdr_cells:
-        set_cell_background(cell, "1F3864")
-        cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
-        set_cell_margins(cell, top=100, bottom=100, left=150, right=150)
+    if show_state_summary:
+        h1 = doc.add_paragraph()
+        r_h1 = h1.add_run("1. Visão Geral — Estado")
+        r_h1.font.size = Pt(20)
+        r_h1.font.bold = True
+        r_h1.font.color.rgb = RGBColor(0x1F, 0x38, 0x64)
         
-    if sub_100.empty:
-        row_cells = table_100.add_row().cells
-        row_cells[0].paragraphs[0].add_run("Nenhuma subunidade 100% encerrada no momento.")
-        row_cells[1].paragraphs[0].add_run("-")
-        row_cells[2].paragraphs[0].add_run("-")
-    else:
-        for idx, r in sub_100.iterrows():
+        doc.add_paragraph("Esta seção apresenta o panorama geral consolidado do estado de Minas Gerais com base em todos os registros válidos do AADP 2026.")
+        
+        # Gerar gráficos estaduais em arquivos temporários
+        fd_pie, temp_pie = tempfile.mkstemp(suffix=".png")
+        os.close(fd_pie)
+        fd_bar, temp_bar = tempfile.mkstemp(suffix=".png")
+        os.close(fd_bar)
+        fd_pend, temp_pend = tempfile.mkstemp(suffix=".png")
+        os.close(fd_pend)
+        
+        create_status_pie(df_context, temp_pie)
+        create_comissao_bar(df_context, temp_bar)
+        create_pending_units_bar(df_context, units_to_render, temp_pend)
+        
+        # Inserir par de gráficos lado a lado em uma tabela sem bordas
+        table_graphs = doc.add_table(rows=1, cols=2)
+        table_graphs.alignment = docx.enum.table.WD_TABLE_ALIGNMENT.CENTER
+        cell_left = table_graphs.rows[0].cells[0]
+        cell_right = table_graphs.rows[0].cells[1]
+        
+        cell_left.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        cell_left.paragraphs[0].add_run().add_picture(temp_pie, width=Inches(3.3))
+        
+        cell_right.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        cell_right.paragraphs[0].add_run().add_picture(temp_bar, width=Inches(2.7))
+        
+        # Adicionar o gráfico de barras de pendências por UDI/UDG
+        p_graph_pend = doc.add_paragraph()
+        p_graph_pend.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_graph_pend.add_run().add_picture(temp_pend, width=Inches(6.2))
+        
+        # ── TABELA 1: Subunidades 100% Concluídas ─────────────────────────────────
+        doc.add_paragraph()
+        h2_1 = doc.add_paragraph()
+        r_h2_1 = h2_1.add_run("1.1 Subunidades 100% Encerradas")
+        r_h2_1.font.size = Pt(13)
+        r_h2_1.font.bold = True
+        r_h2_1.font.color.rgb = RGBColor(0x2E, 0x50, 0x90)
+        
+        doc.add_paragraph("Abaixo estão listadas as Subunidades que concluíram 100% de seus processos avaliativos, sem nenhuma pendência em aberto ou parcialmente encerrada.")
+        
+        # Agrupa por Subunidade para calcular pendências
+        sub_stats = df_context.groupby(["Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)"]).agg(
+            total=("Status Avaliação", "count"),
+            concluidas=("Status Avaliação", lambda x: sum(x == "Encerrada")),
+            pendentes=("Status Avaliação", lambda x: sum(x.isin(["Aberta", "Parcialmente Encerrada"])))
+        ).reset_index()
+        
+        sub_100 = sub_stats[sub_stats["pendentes"] == 0].sort_values("total", ascending=False)
+        
+        # Cria a tabela de concluídos
+        table_100 = doc.add_table(rows=1, cols=3)
+        table_100.alignment = docx.enum.table.WD_TABLE_ALIGNMENT.CENTER
+        table_100.style = 'Light Shading Accent 1' # Estilo padrão limpo do Word
+        
+        hdr_cells = table_100.rows[0].cells
+        hdr_cells[0].paragraphs[0].add_run("UDI / UDG").font.bold = True
+        hdr_cells[1].paragraphs[0].add_run("Subunidade").font.bold = True
+        hdr_cells[2].paragraphs[0].add_run("Total Avaliações").font.bold = True
+        
+        # Cor do cabeçalho
+        for cell in hdr_cells:
+            set_cell_background(cell, "1F3864")
+            cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+            set_cell_margins(cell, top=100, bottom=100, left=150, right=150)
+            
+        if sub_100.empty:
             row_cells = table_100.add_row().cells
-            row_cells[0].paragraphs[0].add_run(str(r["Unidade RPM (Avaliado)"]))
-            row_cells[1].paragraphs[0].add_run(str(r["Unidade Principal (Avaliado)"]))
-            row_cells[2].paragraphs[0].add_run(f"{int(r['total']):,}")
-            for cell in row_cells:
-                set_cell_margins(cell, top=80, bottom=80, left=150, right=150)
-                
-    # ── TABELA 2: Ranking de Subunidades com Pendências ───────────────────────
-    doc.add_paragraph()
-    h2_2 = doc.add_paragraph()
-    r_h2_2 = h2_2.add_run("1.2 Ranking de Subunidades com Pendências")
-    r_h2_2.font.size = Pt(13)
-    r_h2_2.font.bold = True
-    r_h2_2.font.color.rgb = RGBColor(0x2E, 0x50, 0x90)
-    
-    doc.add_paragraph("Abaixo estão ranqueadas as Subunidades com pendências ativas (AV1 aberta ou AV2 parcial), classificadas da menor para a maior pendência.")
-    
-    # Subunidades com pendência > 0
-    sub_pend = sub_stats[sub_stats["pendentes"] > 0].copy()
-    
-    # Calcula detalhadamente Em Aberto e Parcialmente Encerradas
-    det_pend = df_context[df_context["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada"])].groupby(
-        ["Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)", "Status Avaliação"]
-    ).size().unstack(fill_value=0).reset_index()
-    
-    # Garante que colunas existam
-    for st_col in ["Aberta", "Parcialmente Encerrada"]:
-        if st_col not in det_pend.columns:
-            det_pend[st_col] = 0
-            
-    # Junta de volta com sub_stats
-    sub_pend = sub_pend.merge(det_pend, on=["Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)"], how="left").fillna(0)
-    
-    # Total de pendências do estado para calcular o percentual do passivo
-    total_state_pend = df_context[df_context["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada"])].shape[0]
-    
-    sub_pend["Passivo PMMG %"] = (sub_pend["pendentes"] / max(total_state_pend, 1)) * 100
-    
-    # Ordenar da MENOR para a MAIOR pendência
-    sub_pend = sub_pend.sort_values("pendentes", ascending=True)
-    
-    # Cria a tabela de pendentes
-    table_pend = doc.add_table(rows=1, cols=6)
-    table_pend.alignment = docx.enum.table.WD_TABLE_ALIGNMENT.CENTER
-    table_pend.style = 'Light Shading Accent 1'
-    
-    hdr_cells = table_pend.rows[0].cells
-    hdr_cells[0].paragraphs[0].add_run("UDI / UDG").font.bold = True
-    hdr_cells[1].paragraphs[0].add_run("Subunidade").font.bold = True
-    hdr_cells[2].paragraphs[0].add_run("Em Aberto").font.bold = True
-    hdr_cells[3].paragraphs[0].add_run("Parc. Encerrada").font.bold = True
-    hdr_cells[4].paragraphs[0].add_run("Total Pendentes").font.bold = True
-    hdr_cells[5].paragraphs[0].add_run("Passivo %").font.bold = True
-    
-    for cell in hdr_cells:
-        set_cell_background(cell, "A52A2A") # Cor vermelha/marrom escuro para sinalizar alerta/pendência
-        cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
-        set_cell_margins(cell, top=100, bottom=100, left=150, right=150)
+            row_cells[0].paragraphs[0].add_run("Nenhuma subunidade 100% encerrada no momento.")
+            row_cells[1].paragraphs[0].add_run("-")
+            row_cells[2].paragraphs[0].add_run("-")
+        else:
+            for idx, r in sub_100.iterrows():
+                row_cells = table_100.add_row().cells
+                row_cells[0].paragraphs[0].add_run(str(r["Unidade RPM (Avaliado)"]))
+                row_cells[1].paragraphs[0].add_run(str(r["Unidade Principal (Avaliado)"]))
+                row_cells[2].paragraphs[0].add_run(f"{int(r['total']):,}")
+                for cell in row_cells:
+                    set_cell_margins(cell, top=80, bottom=80, left=150, right=150)
+                    
+        # ── TABELA 2: Ranking de Subunidades com Pendências ───────────────────────
+        doc.add_paragraph()
+        h2_2 = doc.add_paragraph()
+        r_h2_2 = h2_2.add_run("1.2 Ranking de Subunidades com Pendências")
+        r_h2_2.font.size = Pt(13)
+        r_h2_2.font.bold = True
+        r_h2_2.font.color.rgb = RGBColor(0x2E, 0x50, 0x90)
         
-    if sub_pend.empty:
-        row_cells = table_pend.add_row().cells
-        row_cells[0].paragraphs[0].add_run("Nenhuma subunidade com pendências pendentes.")
-        for i in range(1, 6):
-            row_cells[i].paragraphs[0].add_run("-")
-    else:
-        for idx, r in sub_pend.iterrows():
-            row_cells = table_pend.add_row().cells
-            row_cells[0].paragraphs[0].add_run(str(r["Unidade RPM (Avaliado)"]))
-            row_cells[1].paragraphs[0].add_run(str(r["Unidade Principal (Avaliado)"]))
-            row_cells[2].paragraphs[0].add_run(f"{int(r['Aberta']):,}")
-            row_cells[3].paragraphs[0].add_run(f"{int(r['Parcialmente Encerrada']):,}")
-            row_cells[4].paragraphs[0].add_run(f"{int(r['pendentes']):,}").font.bold = True
-            row_cells[5].paragraphs[0].add_run(f"{r['Passivo PMMG %']:.2f}%")
-            for cell in row_cells:
-                set_cell_margins(cell, top=80, bottom=80, left=150, right=150)
+        doc.add_paragraph("Abaixo estão ranqueadas as Subunidades com pendências ativas (AV1 aberta ou AV2 parcial), classificadas da menor para a maior pendência.")
+        
+        # Subunidades com pendência > 0
+        sub_pend = sub_stats[sub_stats["pendentes"] > 0].copy()
+        
+        # Calcula detalhadamente Em Aberto e Parcialmente Encerradas
+        det_pend = df_context[df_context["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada"])].groupby(
+            ["Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)", "Status Avaliação"]
+        ).size().unstack(fill_value=0).reset_index()
+        
+        # Garante que colunas existam
+        for st_col in ["Aberta", "Parcialmente Encerrada"]:
+            if st_col not in det_pend.columns:
+                det_pend[st_col] = 0
                 
-    # Limpa arquivos temporários estaduais
-    for path in [temp_pie, temp_bar, temp_pend]:
-        try:
-            os.remove(path)
-        except Exception:
-            pass
+        # Junta de volta com sub_stats
+        sub_pend = sub_pend.merge(det_pend, on=["Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)"], how="left").fillna(0)
+        
+        # Total de pendências do estado para calcular o percentual do passivo
+        total_state_pend = df_context[df_context["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada"])].shape[0]
+        
+        sub_pend["Passivo PMMG %"] = (sub_pend["pendentes"] / max(total_state_pend, 1)) * 100
+        
+        # Ordenar da MENOR para a MAIOR pendência
+        sub_pend = sub_pend.sort_values("pendentes", ascending=True)
+        
+        # Cria a tabela de pendentes
+        table_pend = doc.add_table(rows=1, cols=6)
+        table_pend.alignment = docx.enum.table.WD_TABLE_ALIGNMENT.CENTER
+        table_pend.style = 'Light Shading Accent 1'
+        
+        hdr_cells = table_pend.rows[0].cells
+        hdr_cells[0].paragraphs[0].add_run("UDI / UDG").font.bold = True
+        hdr_cells[1].paragraphs[0].add_run("Subunidade").font.bold = True
+        hdr_cells[2].paragraphs[0].add_run("Em Aberto").font.bold = True
+        hdr_cells[3].paragraphs[0].add_run("Parc. Encerrada").font.bold = True
+        hdr_cells[4].paragraphs[0].add_run("Total Pendentes").font.bold = True
+        hdr_cells[5].paragraphs[0].add_run("Passivo %").font.bold = True
+        
+        for cell in hdr_cells:
+            set_cell_background(cell, "A52A2A") # Cor vermelha/marrom escuro para sinalizar alerta/pendência
+            cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+            set_cell_margins(cell, top=100, bottom=100, left=150, right=150)
             
-    # ──────────────────────────────────────────────────────────────────────────
-    # SEÇÕES: DETALHAMENTO DE UNIDADES (UDI / UDG)
-    # ──────────────────────────────────────────────────────────────────────────
-    doc.add_page_break()
-    
-    sec_num = 2
+        if sub_pend.empty:
+            row_cells = table_pend.add_row().cells
+            row_cells[0].paragraphs[0].add_run("Nenhuma subunidade com pendências pendentes.")
+            for i in range(1, 6):
+                row_cells[i].paragraphs[0].add_run("-")
+        else:
+            for idx, r in sub_pend.iterrows():
+                row_cells = table_pend.add_row().cells
+                row_cells[0].paragraphs[0].add_run(str(r["Unidade RPM (Avaliado)"]))
+                row_cells[1].paragraphs[0].add_run(str(r["Unidade Principal (Avaliado)"]))
+                row_cells[2].paragraphs[0].add_run(f"{int(r['Aberta']):,}")
+                row_cells[3].paragraphs[0].add_run(f"{int(r['Parcialmente Encerrada']):,}")
+                row_cells[4].paragraphs[0].add_run(f"{int(r['pendentes']):,}").font.bold = True
+                row_cells[5].paragraphs[0].add_run(f"{r['Passivo PMMG %']:.2f}%")
+                for cell in row_cells:
+                    set_cell_margins(cell, top=80, bottom=80, left=150, right=150)
+                    
+        # Limpa arquivos temporários estaduais
+        for path in [temp_pie, temp_bar, temp_pend]:
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+                
+        doc.add_page_break()
+        sec_num = 2
+    else:
+        sec_num = 1
+        doc.add_page_break()
     for unit_name in units_to_render:
         df_unit = df[df["Unidade RPM (Avaliado)"] == unit_name].copy()
         if df_unit.empty:
