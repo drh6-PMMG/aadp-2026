@@ -708,9 +708,16 @@ with st.sidebar:
     st.markdown("### AADP 2026")
     st.markdown("**Sistema de Análise de Avaliações**")
     
+    # Determina o perfil ativo (real vs simulado) para ajustar as opções da barra lateral
+    sidebar_active_role = st.session_state.get("simulated_role", st.session_state.user_role) if st.session_state.get("simulation_active", False) else st.session_state.user_role
+    
     # Exibe informações do militar
     st.markdown(f"<small>👤 <b>Militar:</b> {st.session_state.user_name} ({st.session_state.user_pm})</small>", unsafe_allow_html=True)
-    st.markdown(f"<small>🔑 <b>Perfil:</b> <span style='color:#bca374;'>{st.session_state.user_role}</span></small>", unsafe_allow_html=True)
+    if st.session_state.get("simulation_active", False) and st.session_state.user_role == "ADMINISTRADOR":
+        st.markdown(f"<small>🔑 <b>Perfil Real:</b> ADMINISTRADOR</small>", unsafe_allow_html=True)
+        st.markdown(f"<small>🕵️ <b>Simulado:</b> <span style='color:#ff9f43;'>{st.session_state.simulated_role}</span></small>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<small>🔑 <b>Perfil:</b> <span style='color:#bca374;'>{sidebar_active_role}</span></small>", unsafe_allow_html=True)
         
     st.markdown("---")
 
@@ -735,8 +742,11 @@ with st.sidebar:
         ("⏳ Avaliações Pendentes", "Avaliações Pendentes"),
         ("👥 Avaliadores Pendentes", "Avaliadores Pendentes"),
         ("📥 Gerar Relatório", "Gerar Relatório"),
-        ("📄 Relatório Word", "Relatório Word"),
     ]
+    # O perfil SADM não possui a funcionalidade Relatório Word
+    if sidebar_active_role != "SADM":
+        pages.append(("📄 Relatório Word", "Relatório Word"))
+        
     # O administrador real sempre vê o painel administrador
     if st.session_state.user_role == "ADMINISTRADOR":
         pages.append(("⚙️ Painel Administrador", "Painel Administrador"))
@@ -745,6 +755,9 @@ with st.sidebar:
         st.session_state.active_page = "Análise Gráfica"
         
     if st.session_state.active_page == "Painel Administrador" and st.session_state.user_role != "ADMINISTRADOR":
+        st.session_state.active_page = "Análise Gráfica"
+        
+    if st.session_state.active_page == "Relatório Word" and sidebar_active_role == "SADM":
         st.session_state.active_page = "Análise Gráfica"
 
     for label, page_name in pages:
@@ -2634,4 +2647,3 @@ st.markdown("---")
 st.markdown(f"<center><small>AADP 2026 · Polícia Militar de Minas Gerais · "
             f"Resolução 5458/2025 · {now_br().strftime('%d/%m/%Y')}</small></center>",
             unsafe_allow_html=True)
-
