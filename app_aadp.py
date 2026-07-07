@@ -889,11 +889,18 @@ with st.sidebar:
 
 # ─────────────────────── CARREGAR DADOS ───────────────────────────────────────
 # Calcula as variáveis ativas considerando simulação
-active_role = st.session_state.get("simulated_role", st.session_state.user_role)
-active_rpm = st.session_state.get("simulated_rpm", st.session_state.user_rpm)
-active_unit = st.session_state.get("simulated_unit", st.session_state.user_unit)
-active_pm = st.session_state.get("simulated_pm", st.session_state.user_pm)
-active_name = st.session_state.get("simulated_name", st.session_state.user_name)
+if st.session_state.get("simulation_active", False):
+    active_role = st.session_state.get("simulated_role", st.session_state.user_role)
+    active_rpm = st.session_state.get("simulated_rpm", st.session_state.user_rpm)
+    active_unit = st.session_state.get("simulated_unit", st.session_state.user_unit)
+    active_pm = st.session_state.get("simulated_pm", st.session_state.user_pm)
+    active_name = st.session_state.get("simulated_name", st.session_state.user_name)
+else:
+    active_role = st.session_state.user_role
+    active_rpm = st.session_state.user_rpm
+    active_unit = st.session_state.user_unit
+    active_pm = st.session_state.user_pm
+    active_name = st.session_state.user_name
 
 try:
     if reload: st.cache_data.clear()
@@ -2580,3 +2587,4 @@ st.markdown("---")
 st.markdown(f"<center><small>AADP 2026 · Polícia Militar de Minas Gerais · "
             f"Resolução 5458/2025 · {now_br().strftime('%d/%m/%Y')}</small></center>",
             unsafe_allow_html=True)
+
