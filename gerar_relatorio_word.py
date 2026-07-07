@@ -514,23 +514,36 @@ def generate_word_report(df_source: pd.DataFrame, report_mode: str, selected_rpm
         if df_unit.empty:
             continue
             
-        h_unit = doc.add_paragraph()
-        r_hu = h_unit.add_run(f"{sec_num}. Detalhamento da Unidade: {unit_name}")
-        r_hu.font.size = Pt(16)
-        r_hu.font.bold = True
-        r_hu.font.color.rgb = RGBColor(0x1F, 0x38, 0x64)
-        
         # Totais específicos da unidade
         u_total = len(df_unit)
         u_enc = len(df_unit[df_unit["Status Avaliação"] == "Encerrada"])
         u_pend = len(df_unit[df_unit["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada"])])
         u_hom = len(df_unit[df_unit["Status Avaliação"] == "Homologação"])
         
-        doc.add_paragraph(
-            f"A unidade {unit_name} possui no momento {u_total:,} avaliações processadas, das quais "
-            f"{u_enc:,} estão encerradas ({u_enc/max(u_total,1)*100:.1f}%), {u_pend:,} estão pendentes "
-            f"({u_pend/max(u_total,1)*100:.1f}%) e {u_hom:,} aguardam homologação."
-        )
+        h_unit = doc.add_paragraph()
+        if user_role == "SADM":
+            unique_subs = df_unit["Unidade Principal (Avaliado)"].dropna().unique().tolist()
+            disp_name = unique_subs[0] if unique_subs else unit_name
+            r_hu = h_unit.add_run(f"{sec_num}. Detalhamento da Subunidade: {disp_name}")
+            intro_text = (
+                f"A subunidade {disp_name} possui no momento {u_total:,} avaliações processadas, das quais "
+                f"{u_enc:,} estão encerradas ({u_enc/max(u_total,1)*100:.1f}%), {u_pend:,} estão pendentes "
+                f"({u_pend/max(u_total,1)*100:.1f}%) e {u_hom:,} aguardam homologação."
+            )
+        else:
+            disp_name = unit_name
+            r_hu = h_unit.add_run(f"{sec_num}. Detalhamento da Unidade: {disp_name}")
+            intro_text = (
+                f"A unidade {disp_name} possui no momento {u_total:,} avaliações processadas, das quais "
+                f"{u_enc:,} estão encerradas ({u_enc/max(u_total,1)*100:.1f}%), {u_pend:,} estão pendentes "
+                f"({u_pend/max(u_total,1)*100:.1f}%) e {u_hom:,} aguardam homologação."
+            )
+            
+        r_hu.font.size = Pt(16)
+        r_hu.font.bold = True
+        r_hu.font.color.rgb = RGBColor(0x1F, 0x38, 0x64)
+        
+        doc.add_paragraph(intro_text)
         
         # Gráficos da unidade
         fd_upie, temp_upie = tempfile.mkstemp(suffix=".png")
