@@ -418,9 +418,13 @@ if not st.session_state.authenticated:
         st.markdown("<h4 style='text-align: center; color: #a0a0a0;'>Painel de Controle de Avaliações</h4>", unsafe_allow_html=True)
         st.markdown("---")
         
-        tab_login, tab_register = st.tabs(["🔑 Acessar Conta", "📝 Solicitar Cadastro"])
+        if "auth_mode" not in st.session_state:
+            st.session_state.auth_mode = "🔑 Acessar Conta"
+            
+        auth_mode = st.radio("Selecione uma opção:", ["🔑 Acessar Conta", "📝 Solicitar Cadastro"], horizontal=True, key="auth_mode_radio")
+        st.markdown("---")
         
-        with tab_login:
+        if auth_mode == "🔑 Acessar Conta":
             login_pm = st.text_input("Nº PM:", key="login_pm_val", placeholder="Ex: 123456 ou ADM")
             login_pass = st.text_input("Senha:", type="password", key="login_pass_val")
             if st.button("Entrar", use_container_width=True, type="primary"):
@@ -452,7 +456,7 @@ if not st.session_state.authenticated:
                     else:
                         st.error("❌ Nº PM ou Senha incorretos.")
                         
-        with tab_register:
+        else:
             st.markdown("##### Preencha todos os dados abaixo para solicitar o seu acesso:")
             reg_pm = st.text_input("Nº PM (Somente números):", key="reg_pm")
             reg_posto = st.selectbox("Posto/Graduação:", 
