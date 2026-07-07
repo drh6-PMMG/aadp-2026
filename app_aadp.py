@@ -466,7 +466,6 @@ if not st.session_state.authenticated:
                                          key="reg_posto")
                 reg_nome = st.text_input("Nome Completo:", key="reg_nome")
                 reg_rpm = st.selectbox("RPM / Diretoria / UDG da sua Unidade:", 
-                                        ["Gestor"] +
                                         [f"{i} RPM" for i in range(1, 20)] + 
                                         ["AM-ALMG", "AM-TJMG", "APM", "AUD SET", "CME", "COMAVE", "CPE", 
                                          "CPM", "DAL", "DCO", "DEE", "DF", "DINT", "DOP", "DPS", "DRH", "DTS", 
@@ -2130,7 +2129,8 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                     col_ap, col_rec, _ = st.columns([1, 1, 4])
                     if col_ap.button("✅ Autorizar Acesso", key=f"ap_{pm_str}", type="primary"):
                         c = conn.cursor()
-                        c.execute("UPDATE users SET status = 'Ativo', role = ? WHERE pm = ?", (c_role, pm_str))
+                        target_rpm = "Gestor" if c_role in ("DRH6", "ADMINISTRADOR") else rpm
+                        c.execute("UPDATE users SET status = 'Ativo', role = ?, rpm = ? WHERE pm = ?", (c_role, target_rpm, pm_str))
                         conn.commit()
                         conn.close()
                         log_action("ADM", "AUTORIZAR_ACESSO", f"Usuario {pm_str} ({name}) aprovado como {c_role}")
