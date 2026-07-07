@@ -251,12 +251,18 @@ def find_sigef_user(pm_number: str) -> dict:
         return None
     try:
         import os, csv
-        # SIGEF.csv está na pasta raiz
         si_path = "SIGEF.csv"
+        # Se não existe localmente, tenta baixar do Google Drive
         if not os.path.exists(si_path):
-            si_path = os.path.join("dados", "SIGEF.csv")
-            if not os.path.exists(si_path):
-                return None
+            sigef_drive_id = "10Ld_4XEz9b4kI_T6TC9W19tQdtBJCz5F"
+            try:
+                _baixar_drive(sigef_drive_id, si_path)
+            except Exception as e:
+                # Tenta olhar na subpasta dados/
+                si_path = os.path.join("dados", "SIGEF.csv")
+                if not os.path.exists(si_path):
+                    st.error(f"Erro ao baixar base SIGEF do Google Drive: {e}")
+                    return None
         with open(si_path, encoding="cp1252", errors="replace") as f:
             reader = csv.reader(f, delimiter=";")
             header = next(reader)
@@ -496,7 +502,7 @@ if not st.session_state.authenticated:
                         
         else:
             st.markdown("##### 📝 Solicitação de Acesso via SIGEF")
-            st.info("⚠️ Informe apenas os **6 primeiros dígitos** do seu Nº PM (Coluna A do SIGEF). O sistema buscará seus dados automaticamente.")
+            st.info("⚠️ Informe apenas os **6 primeiros dígitos** do seu Nº PM (sem o dígito verificador).")
             
             # Campo de entrada de Nº PM
             reg_pm = st.text_input("Nº PM (Apenas os 6 primeiros dígitos):", max_chars=6, key="reg_pm", placeholder="Ex: 053108")
@@ -504,7 +510,7 @@ if not st.session_state.authenticated:
             if "sigef_data" not in st.session_state:
                 st.session_state.sigef_data = None
                 
-            if st.button("🔍 Consultar dados no SIGEF", use_container_width=True, type="secondary"):
+            if st.button("🔍 Consultar", use_container_width=True, type="secondary"):
                 if not reg_pm or not reg_pm.isdigit():
                     st.error("Por favor, informe um Nº PM válido (apenas números, máximo 6 dígitos).")
                     st.session_state.sigef_data = None
