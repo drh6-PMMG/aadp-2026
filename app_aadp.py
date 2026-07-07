@@ -62,7 +62,7 @@ st.set_page_config(
 # ─────────────────────── CSS ──────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&display=swap');
 html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 
 [data-testid="stSidebar"]{
@@ -147,7 +147,7 @@ div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"]:hover {
   transform: translateY(-1px) !important;
 }
 
-/* Botões do Sidebar - Efeito Cristal Líquido Primário (Ativo - Caqui para Preto) */
+/* Botões do Sidebar - Efeito Cristal Líquido Primário (Ativo) */
 div[data-testid="stSidebar"] button[data-testid="baseButton-primary"] {
   background: linear-gradient(135deg, #bca374 0%, #000000 100%) !important;
   color: #ffffff !important;
@@ -264,7 +264,9 @@ def normaliza(t):
     return "".join(c for c in s if unicodedata.category(c) != "Mn")
 
 def is_empty(v):
-    return not v or str(v).strip() in ("", "-")
+    if v == 0 or v == 0.0:
+        return False
+    return not v or str(v).strip() in ("", "-", "nan", "none")
 
 def concordam(j, l):
     if is_empty(j) or is_empty(l): return None
@@ -355,12 +357,16 @@ def calc_cert(j, l):
     return "NÃO" if c is True else ("SIM" if c is False else "-")
 
 def calc_status(j, l, n):
-    if is_empty(j): return "Aberta"
-    if is_empty(l): return "Parcialmente Encerrada"
+    if is_empty(j):
+        return "Aberta"
+    if is_empty(l):
+        return "Parcialmente Encerrada"
     c = concordam(j, l)
-    if c is True: return "Encerrada"
-    if c is False: return "Encerrada" if not is_empty(n) else "Homologação"
-    return "Encerrada"
+    if c is True:
+        return "Encerrada"
+    elif c is False:
+        return "Encerrada" if not is_empty(n) else "Homologação"
+    return "Parcialmente Encerrada"
 
 def rpm_sort_key(name):
     m = re.match(r'^(\d+)\s+RPM', str(name))
@@ -749,7 +755,20 @@ with st.sidebar:
         
     # O administrador real sempre vê o painel administrador
     if st.session_state.user_role == "ADMINISTRADOR":
-        pages.append(("⚙️ Painel Administrador", "Painel Administrador"))
+        # Conta as solicitações de cadastro pendentes no banco
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("SELECT COUNT(*) FROM users WHERE status = 'Pendente'")
+            pending_count = c.fetchone()[0]
+            conn.close()
+        except Exception:
+            pending_count = 0
+            
+        if pending_count > 0:
+            pages.append((f"⚙️ Painel Administrador (🔴 :red[{pending_count}])", "Painel Administrador"))
+        else:
+            pages.append(("⚙️ Painel Administrador", "Painel Administrador"))
 
     if "active_page" not in st.session_state:
         st.session_state.active_page = "Análise Gráfica"
