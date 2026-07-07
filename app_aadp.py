@@ -74,6 +74,14 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 [data-testid="stSidebar"] h3{color:#bca374!important;}
 .main{background:#121212;}
 
+/* Garante que a seta de recolhimento e expansão da barra lateral esteja sempre visível */
+[data-testid="collapsedControl"], button[data-testid="stSidebarCollapseButton"] {
+  color: #bca374 !important;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
 .main-title{
   background:linear-gradient(135deg,#000000 0%,#1f1f1f 100%);
   color:#bca374;padding:24px 28px;border-radius:12px;margin-bottom:20px;
@@ -700,94 +708,16 @@ with st.sidebar:
     st.markdown("### AADP 2026")
     st.markdown("**Sistema de Análise de Avaliações**")
     
-    # Exibe informações do militar (real vs simulado)
+    # Exibe informações do militar
     st.markdown(f"<small>👤 <b>Militar:</b> {st.session_state.user_name} ({st.session_state.user_pm})</small>", unsafe_allow_html=True)
-    if st.session_state.get("simulation_active", False) and st.session_state.user_role == "ADMINISTRADOR":
-        st.markdown(f"<small>🔑 <b>Perfil Real:</b> ADMINISTRADOR</small>", unsafe_allow_html=True)
-        st.markdown(f"<small>🕵️ <b>Simulado:</b> <span style='color:#ff9f43;'>{st.session_state.simulated_role}</span></small>", unsafe_allow_html=True)
-        st.markdown(f"<small>🏛️ <b>UDI/UDG:</b> {st.session_state.simulated_rpm}</small>", unsafe_allow_html=True)
-    else:
-        st.markdown(f"<small>🔑 <b>Perfil:</b> <span style='color:#bca374;'>{st.session_state.user_role}</span></small>", unsafe_allow_html=True)
+    st.markdown(f"<small>🔑 <b>Perfil:</b> <span style='color:#bca374;'>{st.session_state.user_role}</span></small>", unsafe_allow_html=True)
         
-    if st.button("🚪 Sair / Logoff", use_container_width=True, key="btn_logoff"):
-        log_action(st.session_state.user_pm, "LOGOFF", "Saída voluntária")
-        st.session_state.authenticated = False
-        st.session_state.user_pm = ""
-        st.session_state.user_name = ""
-        st.session_state.user_role = ""
-        st.session_state.user_rpm = ""
-        st.session_state.user_unit = ""
-        st.session_state.simulation_active = False
-        st.session_state.simulated_pm = ""
-        st.session_state.simulated_name = ""
-        st.session_state.simulated_role = ""
-        st.session_state.simulated_rpm = ""
-        st.session_state.simulated_unit = ""
-        st.rerun()
-        
-    # --- SIMULADOR DE TELA (Apenas para ADMINISTRADOR) ---
-    if st.session_state.user_role == "ADMINISTRADOR":
-        st.markdown("---")
-        st.markdown("🕵️ **Simulador de Tela**")
-        try:
-            conn = sqlite3.connect(DB_FILE)
-            c = conn.cursor()
-            c.execute("SELECT pm, name, rank, role, rpm, unit FROM users WHERE status = 'Ativo' AND pm != 'ADM' ORDER BY name ASC")
-            sim_users = c.fetchall()
-            conn.close()
-        except Exception:
-            sim_users = []
-            
-        sim_options = ["Desativado"]
-        for u in sim_users:
-            sim_options.append(f"{u[2]} {u[1]} ({u[3]} - {u[4]}) [PM: {u[0]}]")
-            
-        current_sim_index = 0
-        if st.session_state.get("simulation_active", False):
-            for i, u in enumerate(sim_users):
-                if u[0] == st.session_state.get("simulated_pm"):
-                    current_sim_index = i + 1
-                    break
-                    
-        selected_sim = st.selectbox(
-            "Simular visão do usuário:",
-            sim_options,
-            index=current_sim_index,
-            key="sim_user_select"
-        )
-        
-        if selected_sim != "Desativado":
-            pm_match = re.search(r'\[PM:\s*(\w+)\]', selected_sim)
-            if pm_match:
-                target_pm = pm_match.group(1)
-                for u in sim_users:
-                    if u[0] == target_pm:
-                        if not st.session_state.get("simulation_active") or st.session_state.get("simulated_pm") != u[0]:
-                            st.session_state.simulation_active = True
-                            st.session_state.simulated_pm = u[0]
-                            st.session_state.simulated_name = f"{u[2]} {u[1]}"
-                            st.session_state.simulated_role = u[3]
-                            st.session_state.simulated_rpm = u[4]
-                            st.session_state.simulated_unit = u[5]
-                            log_action("ADM", "INICIAR_SIMULACAO", f"Simulando usuario {u[0]}")
-                            st.rerun()
-        else:
-            if st.session_state.get("simulation_active", False):
-                st.session_state.simulation_active = False
-                st.session_state.simulated_pm = ""
-                st.session_state.simulated_name = ""
-                st.session_state.simulated_role = ""
-                st.session_state.simulated_rpm = ""
-                st.session_state.simulated_unit = ""
-                log_action("ADM", "ENCERRAR_SIMULACAO", "Simulacao desativada")
-                st.rerun()
-                
     st.markdown("---")
 
     # 1. Mostrar Filtros (Primeiro)
     if "show_filtros" not in st.session_state:
-        st.session_state.show_filtros = False # Default: recolhido (False)
-
+        st.session_state.show_filtros = False
+        
     btn_filtros_label = "🔍 Ocultar Filtros" if st.session_state.show_filtros else "🔍 Mostrar Filtros"
     btn_filtros_type = "primary" if st.session_state.show_filtros else "secondary"
     if st.button(btn_filtros_label, use_container_width=True, key="btn_toggle_filtros", type=btn_filtros_type):
@@ -807,7 +737,7 @@ with st.sidebar:
         ("📥 Gerar Relatório", "Gerar Relatório"),
         ("📄 Relatório Word", "Relatório Word"),
     ]
-    # O administrador real sempre vê o painel administrador, mesmo se simulando
+    # O administrador real sempre vê o painel administrador
     if st.session_state.user_role == "ADMINISTRADOR":
         pages.append(("⚙️ Painel Administrador", "Painel Administrador"))
 
@@ -824,68 +754,85 @@ with st.sidebar:
             st.session_state.active_page = page_name
             st.rerun()
 
-    st.markdown("---")
-
-    # 3. Fonte dos dados (Terceiro / Último)
-    if "show_fonte" not in st.session_state:
-        st.session_state.show_fonte = False # Default: recolhido (False)
-
-    btn_fonte_label = "📂 Ocultar Fonte dos dados" if st.session_state.show_fonte else "📂 Fonte dos dados"
-    btn_fonte_type = "primary" if st.session_state.show_fonte else "secondary"
-    if st.button(btn_fonte_label, use_container_width=True, key="btn_toggle_fonte", type=btn_fonte_type):
-        st.session_state.show_fonte = not st.session_state.show_fonte
-        st.rerun()
-
-    container_fonte = st.container()
-
     # Inicializa variáveis para não dar NameError
     drive_av_id = drive_si_id = drive_geral_id = ""
     db_path = ""
     fonte = cfg.get("fonte_dados", "📁 Pasta local / Servidor")
     reload = False
-    
-    with container_fonte:
-        if st.session_state.show_fonte:
-            st.markdown("#### 🗄️ Configurações da Fonte")
-            fonte = st.radio("Origem:", ["📁 Pasta local / Servidor", "☁️ Google Drive"],
-                             horizontal=True,
-                             index=0 if "local" in cfg.get("fonte_dados", "local") else 1,
-                             key="fonte_dados_radio",
-                             help="Local: use pasta 'dados/'. Drive: informe os IDs dos arquivos.")
-            if fonte != cfg.get("fonte_dados"):
-                cfg["fonte_dados"] = fonte
-                save_config(cfg)
-                
-            if "Drive" in fonte:
-                st.markdown("<small>📌 Compartilhe os arquivos no Drive como <b>Qualquer pessoa com o link</b></small>",
-                            unsafe_allow_html=True)
-                drive_av_id = st.text_input("🔑 ID do avaliacoes.csv no Drive:",
-                                             value=cfg.get("drive_av_id",""),
-                                             key="drive_av_id_input",
-                                             placeholder="Ex: 1BxiMVs...")
-                drive_si_id = st.text_input("🔑 ID do SIGEF.csv no Drive:",
-                                             value=cfg.get("drive_si_id",""),
-                                             key="drive_si_id_input",
-                                             placeholder="Ex: 1BxiMVs...")
-                drive_geral_id = st.text_input("🔑 ID do Geral.xlsx no Drive:",
-                                             value=cfg.get("drive_geral_id",""),
-                                             key="drive_geral_id_input",
-                                             placeholder="Ex: 1BxiMVs...")
-                st.markdown("<small>ℹ️ O ID está na URL do arquivo compartilhado</small>", unsafe_allow_html=True)
-                if st.button("💾 Salvar IDs", use_container_width=True, key="btn_save_ids"):
-                    cfg["drive_av_id"] = drive_av_id
-                    cfg["drive_si_id"] = drive_si_id
-                    cfg["drive_geral_id"] = drive_geral_id
-                    save_config(cfg); st.success("IDs salvos!")
-            else:
-                st.markdown(f"<small>📂 Pasta padrão: <code>dados/</code></small>", unsafe_allow_html=True)
-                db_path = st.text_input("Caminho da pasta CSV:", value=cfg.get("db_path",""),
-                                         key="db_path_input",
-                                         placeholder=str(DADOS_DIR))
-                if st.button("💾 Salvar Caminho", use_container_width=True, key="btn_save_caminho"):
-                    cfg["db_path"] = db_path; save_config(cfg); st.success("Caminho salvo!")
+
+    # 3. Fonte dos dados (Terceiro / Último) - Apenas para o perfil real ADMINISTRADOR
+    if st.session_state.user_role == "ADMINISTRADOR":
+        st.markdown("---")
+        if "show_fonte" not in st.session_state:
+            st.session_state.show_fonte = False
+
+        btn_fonte_label = "📂 Ocultar Fonte dos dados" if st.session_state.show_fonte else "📂 Fonte dos dados"
+        btn_fonte_type = "primary" if st.session_state.show_fonte else "secondary"
+        if st.button(btn_fonte_label, use_container_width=True, key="btn_toggle_fonte", type=btn_fonte_type):
+            st.session_state.show_fonte = not st.session_state.show_fonte
+            st.rerun()
+
+        container_fonte = st.container()
+        with container_fonte:
+            if st.session_state.show_fonte:
+                st.markdown("#### 🗄️ Configurações da Fonte")
+                fonte = st.radio("Origem:", ["📁 Pasta local / Servidor", "☁️ Google Drive"],
+                                 horizontal=True,
+                                 index=0 if "local" in cfg.get("fonte_dados", "local") else 1,
+                                 key="fonte_dados_radio",
+                                 help="Local: use pasta 'dados/'. Drive: informe os IDs dos arquivos.")
+                if fonte != cfg.get("fonte_dados"):
+                    cfg["fonte_dados"] = fonte
+                    save_config(cfg)
                     
-            reload = st.button("🔄 Recarregar Dados", use_container_width=True, type="primary", key="btn_reload")
+                if "Drive" in fonte:
+                    st.markdown("<small>📌 Compartilhe os arquivos no Drive como <b>Qualquer pessoa com o link</b></small>",
+                                unsafe_allow_html=True)
+                    drive_av_id = st.text_input("🔑 ID do avaliacoes.csv no Drive:",
+                                                 value=cfg.get("drive_av_id",""),
+                                                 key="drive_av_id_input",
+                                                 placeholder="Ex: 1BxiMVs...")
+                    drive_si_id = st.text_input("🔑 ID do SIGEF.csv no Drive:",
+                                                 value=cfg.get("drive_si_id",""),
+                                                 key="drive_si_id_input",
+                                                 placeholder="Ex: 1BxiMVs...")
+                    drive_geral_id = st.text_input("🔑 ID do Geral.xlsx no Drive:",
+                                                 value=cfg.get("drive_geral_id",""),
+                                                 key="drive_geral_id_input",
+                                                 placeholder="Ex: 1BxiMVs...")
+                    st.markdown("<small>ℹ️ O ID está na URL do arquivo compartilhado</small>", unsafe_allow_html=True)
+                    if st.button("💾 Salvar IDs", use_container_width=True, key="btn_save_ids"):
+                        cfg["drive_av_id"] = drive_av_id
+                        cfg["drive_si_id"] = drive_si_id
+                        cfg["drive_geral_id"] = drive_geral_id
+                        save_config(cfg); st.success("IDs salvos!")
+                else:
+                    st.markdown(f"<small>📂 Pasta padrão: <code>dados/</code></small>", unsafe_allow_html=True)
+                    db_path = st.text_input("Caminho da pasta CSV:", value=cfg.get("db_path",""),
+                                             key="db_path_input",
+                                             placeholder=str(DADOS_DIR))
+                    if st.button("💾 Salvar Caminho", use_container_width=True, key="btn_save_caminho"):
+                        cfg["db_path"] = db_path; save_config(cfg); st.success("Caminho salvo!")
+                        
+                reload = st.button("🔄 Recarregar Dados", use_container_width=True, type="primary", key="btn_reload")
+
+    # Botão Sair/Logoff deslocado para o final da barra lateral
+    st.markdown("---")
+    if st.button("🚪 Sair / Logoff", use_container_width=True, key="btn_logoff"):
+        log_action(st.session_state.user_pm, "LOGOFF", "Saída voluntária")
+        st.session_state.authenticated = False
+        st.session_state.user_pm = ""
+        st.session_state.user_name = ""
+        st.session_state.user_role = ""
+        st.session_state.user_rpm = ""
+        st.session_state.user_unit = ""
+        st.session_state.simulation_active = False
+        st.session_state.simulated_pm = ""
+        st.session_state.simulated_name = ""
+        st.session_state.simulated_role = ""
+        st.session_state.simulated_rpm = ""
+        st.session_state.simulated_unit = ""
+        st.rerun()
 
 # ─────────────────────── CARREGAR DADOS ───────────────────────────────────────
 # Calcula as variáveis ativas considerando simulação
@@ -2394,6 +2341,64 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
     # Sincroniza dados com o SIGEF.csv para mantê-los sempre atualizados
     sync_users_with_sigef()
     
+    # --- SIMULADOR DE TELA ---
+    with st.container():
+        st.markdown("🕵️ **Simulador de Visão de Tela**")
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("SELECT pm, name, rank, role, rpm, unit FROM users WHERE status = 'Ativo' AND pm != 'ADM' ORDER BY name ASC")
+            sim_users = c.fetchall()
+            conn.close()
+        except Exception:
+            sim_users = []
+            
+        sim_options = ["Desativado"]
+        for u in sim_users:
+            sim_options.append(f"{u[2]} {u[1]} ({u[3]} - {u[4]}) [PM: {u[0]}]")
+            
+        current_sim_index = 0
+        if st.session_state.get("simulation_active", False):
+            for i, u in enumerate(sim_users):
+                if u[0] == st.session_state.get("simulated_pm"):
+                    current_sim_index = i + 1
+                    break
+                    
+        selected_sim = st.selectbox(
+            "Selecione um usuário para simular a visão dele no sistema:",
+            sim_options,
+            index=current_sim_index,
+            key="sim_user_select"
+        )
+        
+        if selected_sim != "Desativado":
+            pm_match = re.search(r'\[PM:\s*(\w+)\]', selected_sim)
+            if pm_match:
+                target_pm = pm_match.group(1)
+                for u in sim_users:
+                    if u[0] == target_pm:
+                        if not st.session_state.get("simulation_active") or st.session_state.get("simulated_pm") != u[0]:
+                            st.session_state.simulation_active = True
+                            st.session_state.simulated_pm = u[0]
+                            st.session_state.simulated_name = f"{u[2]} {u[1]}"
+                            st.session_state.simulated_role = u[3]
+                            st.session_state.simulated_rpm = u[4]
+                            st.session_state.simulated_unit = u[5]
+                            log_action("ADM", "INICIAR_SIMULACAO", f"Simulando usuario {u[0]}")
+                            st.rerun()
+        else:
+            if st.session_state.get("simulation_active", False):
+                st.session_state.simulation_active = False
+                st.session_state.simulated_pm = ""
+                st.session_state.simulated_name = ""
+                st.session_state.simulated_role = ""
+                st.session_state.simulated_rpm = ""
+                st.session_state.simulated_unit = ""
+                log_action("ADM", "ENCERRAR_SIMULACAO", "Simulacao desativada")
+                st.rerun()
+                
+    st.markdown("---")
+    
     tab_users, tab_logs = st.tabs(["👥 Gerenciamento de Usuários", "📜 Logs do Sistema"])
     
     with tab_users:
@@ -2587,4 +2592,3 @@ st.markdown("---")
 st.markdown(f"<center><small>AADP 2026 · Polícia Militar de Minas Gerais · "
             f"Resolução 5458/2025 · {now_br().strftime('%d/%m/%Y')}</small></center>",
             unsafe_allow_html=True)
-
