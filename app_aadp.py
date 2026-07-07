@@ -425,28 +425,34 @@ if not st.session_state.authenticated:
         st.markdown("---")
         
         if auth_mode == "🔑 Acessar Conta":
-            login_pm = st.text_input("Nº PM:", key="login_pm_val", placeholder="Ex: 123456 ou ADM")
-            login_pass = st.text_input("Senha:", type="password", key="login_pass_val")
-            if st.button("Entrar", use_container_width=True, type="primary"):
-                if not login_pm or not login_pass:
+            with st.form("form_login", clear_on_submit=False):
+                login_pm = st.text_input("Nº PM:", key="login_pm_val", placeholder="Ex: 123456 ou ADM")
+                login_pass = st.text_input("Senha:", type="password", key="login_pass_val")
+                submitted_login = st.form_submit_button("Entrar", use_container_width=True, type="primary")
+                
+            if submitted_login:
+                spm = login_pm.strip()
+                spass = login_pass
+                
+                if not spm or not spass:
                     st.error("Por favor, preencha todos os campos.")
                 else:
-                    h_pass = hashlib.sha256(login_pass.encode()).hexdigest()
+                    h_pass = hashlib.sha256(spass.encode()).hexdigest()
                     conn = sqlite3.connect(DB_FILE)
                     c = conn.cursor()
-                    c.execute("SELECT name, role, rpm, unit, status FROM users WHERE pm = ? AND password = ?", (login_pm, h_pass))
+                    c.execute("SELECT name, role, rpm, unit, status FROM users WHERE pm = ? AND password = ?", (spm, h_pass))
                     res = c.fetchone()
                     conn.close()
                     if res:
                         name, role, rpm, unit, status = res
                         if status == "Ativo":
                             st.session_state.authenticated = True
-                            st.session_state.user_pm = login_pm
+                            st.session_state.user_pm = spm
                             st.session_state.user_name = name
                             st.session_state.user_role = role
                             st.session_state.user_rpm = rpm
                             st.session_state.user_unit = unit
-                            log_action(login_pm, "LOGIN", "Acesso realizado com sucesso")
+                            log_action(spm, "LOGIN", "Acesso realizado com sucesso")
                             st.success(f"Bem-vindo, {name}!")
                             st.rerun()
                         elif status == "Pendente":
