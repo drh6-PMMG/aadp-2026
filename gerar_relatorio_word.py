@@ -637,3 +637,4 @@ def generate_word_report(df_source: pd.DataFrame, report_mode: str, selected_rpm
     doc.save(bio)
     bio.seek(0)
     return bio.read()
+
