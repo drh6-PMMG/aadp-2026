@@ -816,8 +816,12 @@ with st.sidebar:
                         
                 reload = st.button("🔄 Recarregar Dados", use_container_width=True, type="primary", key="btn_reload")
 
-    # Botão Sair/Logoff deslocado para o final da barra lateral
+    # Botões de Alterar Senha e Sair/Logoff no final da barra lateral
     st.markdown("---")
+    if st.button("🔑 Alterar Senha", use_container_width=True, key="btn_toggle_change_password"):
+        st.session_state.show_change_password = not st.session_state.get("show_change_password", False)
+        st.rerun()
+
     if st.button("🚪 Sair / Logoff", use_container_width=True, key="btn_logoff"):
         log_action(st.session_state.user_pm, "LOGOFF", "Saída voluntária")
         st.session_state.authenticated = False
@@ -919,6 +923,44 @@ st.markdown(f"""
     <p style="font-size: 0.9rem; margin-top: 8px; color: #a0a0a0; font-style: italic;">Dados consolidados em {last_mod_str}</p>
   </div>
 </div>""", unsafe_allow_html=True)
+
+# --- FORMULÁRIO DE ALTERAÇÃO DE SENHA ---
+if st.session_state.get("show_change_password", False):
+    st.markdown('<div class="info-box" style="border-left: 5px solid #bca374;">🛡️ <b>Alterar Senha do Usuário</b></div>', unsafe_allow_html=True)
+    with st.form("form_change_password", clear_on_submit=True):
+        curr_pw = st.text_input("Senha Atual:", type="password", key="chg_curr_pw")
+        new_pw = st.text_input("Nova Senha:", type="password", key="chg_new_pw")
+        conf_pw = st.text_input("Confirmar Nova Senha:", type="password", key="chg_conf_pw")
+        submit_chg = st.form_submit_button("💾 Atualizar Senha", use_container_width=True, type="primary")
+            
+    if submit_chg:
+        if not curr_pw or not new_pw or not conf_pw:
+            st.error("❌ Por favor, preencha todos os campos.")
+        elif new_pw != conf_pw:
+            st.error("❌ A nova senha e a confirmação não coincidem.")
+        else:
+            h_curr = hashlib.sha256(curr_pw.encode()).hexdigest()
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("SELECT password FROM users WHERE pm = ?", (st.session_state.user_pm,))
+            row = c.fetchone()
+            if not row or row[0] != h_curr:
+                st.error("❌ Senha atual incorreta.")
+                conn.close()
+            else:
+                h_new = hashlib.sha256(new_pw.encode()).hexdigest()
+                c.execute("UPDATE users SET password = ? WHERE pm = ?", (h_new, st.session_state.user_pm))
+                conn.commit()
+                conn.close()
+                log_action(st.session_state.user_pm, "ALTERAR_SENHA", "Senha alterada com sucesso pelo proprio usuario")
+                st.success("✅ Senha alterada com sucesso!")
+                st.session_state.show_change_password = False
+                st.rerun()
+                
+    if st.button("❌ Cancelar / Fechar", use_container_width=True, key="btn_cancel_change_pw"):
+        st.session_state.show_change_password = False
+        st.rerun()
+    st.markdown("---")
 
 if not data_ok:
     st.error(f"❌ {err_msg}")
@@ -2592,3 +2634,4 @@ st.markdown("---")
 st.markdown(f"<center><small>AADP 2026 · Polícia Militar de Minas Gerais · "
             f"Resolução 5458/2025 · {now_br().strftime('%d/%m/%Y')}</small></center>",
             unsafe_allow_html=True)
+
