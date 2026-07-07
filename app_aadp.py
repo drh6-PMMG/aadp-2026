@@ -6,7 +6,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import io, os, re, json, subprocess, unicodedata, csv, tempfile, zipfile
+import io, os, re, json, subprocess, unicodedata, csv, tempfile, zipfile, sqlite3, hashlib
 from pathlib import Path
 from collections import defaultdict
 from datetime import datetime
@@ -165,6 +165,57 @@ def load_config():
 def save_config(cfg):
     CONFIG_FILE.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
 
+DB_FILE = "aadp_secure.db"
+
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            pm TEXT PRIMARY KEY,
+            name TEXT,
+            rank TEXT,
+            rpm TEXT,
+            unit TEXT,
+            function TEXT,
+            role TEXT,
+            status TEXT,
+            password TEXT,
+            created_at TEXT
+        )
+    """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,
+            pm TEXT,
+            action TEXT,
+            details TEXT
+        )
+    """)
+    c.execute("SELECT * FROM users WHERE pm = 'ADM'")
+    if not c.fetchone():
+        adm_pass = hashlib.sha256("DRH@2026".encode()).hexdigest()
+        c.execute("""
+            INSERT INTO users (pm, name, rank, rpm, unit, function, role, status, password, created_at)
+            VALUES ('ADM', 'Administrador Geral', 'Desenvolvedor', 'Geral', 'DRH', 'Administrador', 'ADMINISTRADOR', 'Ativo', ?, ?)
+        """, (adm_pass, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    conn.commit()
+    conn.close()
+
+def log_action(pm: str, action: str, details: str = ""):
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("INSERT INTO logs (timestamp, pm, action, details) VALUES (?, ?, ?, ?)",
+                  (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), pm, action, details))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+init_db()
+
 cfg = load_config()
 
 # ─────────────────────── LÓGICA DADOS ─────────────────────────────────────────
@@ -182,6 +233,16 @@ def concordam(j, l):
     faixa = CONCEITO_FAIXA.get(normaliza(j.strip()))
     if faixa is None: return None
     return faixa[0] <= nota <= faixa[1]
+
+def matches_rpm(reg_rpm, csv_rpm):
+    import re
+    if str(reg_rpm).strip().lower() == "gestor":
+        return True
+    m1 = re.search(r'\d+', str(reg_rpm))
+    m2 = re.search(r'\d+', str(csv_rpm))
+    if m1 and m2:
+        return int(m1.group()) == int(m2.group())
+    return str(reg_rpm).strip().lower() == str(csv_rpm).strip().lower()
 
 def calc_cert(j, l):
     if is_empty(j) or is_empty(l): return "-"
@@ -340,11 +401,122 @@ def color_sit(val):
     if val == "Nota Provisória":  return "background-color:#fff9e6;color:#7a5c00;font-weight:600"
     return ""
 
+# ─────────────────────── SEGURANÇA E AUTENTICAÇÃO ──────────────────────────────
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+    st.session_state.user_pm = ""
+    st.session_state.user_name = ""
+    st.session_state.user_role = ""
+    st.session_state.user_rpm = ""
+    st.session_state.user_unit = ""
+
+if not st.session_state.authenticated:
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c2:
+        st.image("logo_drh.png", use_container_width=True)
+        st.markdown("<h2 style='text-align: center; color: #bca374;'>AADP 2026</h2>", unsafe_allow_html=True)
+        st.markdown("<h4 style='text-align: center; color: #a0a0a0;'>Painel de Controle de Avaliações</h4>", unsafe_allow_html=True)
+        st.markdown("---")
+        
+        tab_login, tab_register = st.tabs(["🔑 Acessar Conta", "📝 Solicitar Cadastro"])
+        
+        with tab_login:
+            login_pm = st.text_input("Nº PM:", key="login_pm_val", placeholder="Ex: 123456 ou ADM")
+            login_pass = st.text_input("Senha:", type="password", key="login_pass_val")
+            if st.button("Entrar", use_container_width=True, type="primary"):
+                if not login_pm or not login_pass:
+                    st.error("Por favor, preencha todos os campos.")
+                else:
+                    h_pass = hashlib.sha256(login_pass.encode()).hexdigest()
+                    conn = sqlite3.connect(DB_FILE)
+                    c = conn.cursor()
+                    c.execute("SELECT name, role, rpm, unit, status FROM users WHERE pm = ? AND password = ?", (login_pm, h_pass))
+                    res = c.fetchone()
+                    conn.close()
+                    if res:
+                        name, role, rpm, unit, status = res
+                        if status == "Ativo":
+                            st.session_state.authenticated = True
+                            st.session_state.user_pm = login_pm
+                            st.session_state.user_name = name
+                            st.session_state.user_role = role
+                            st.session_state.user_rpm = rpm
+                            st.session_state.user_unit = unit
+                            log_action(login_pm, "LOGIN", "Acesso realizado com sucesso")
+                            st.success(f"Bem-vindo, {name}!")
+                            st.rerun()
+                        elif status == "Pendente":
+                            st.warning("⚠️ Sua conta está aguardando liberação do Administrador.")
+                        else:
+                            st.error("❌ Acesso revogado/bloqueado. Entre em contato com a DRH.")
+                    else:
+                        st.error("❌ Nº PM ou Senha incorretos.")
+                        
+        with tab_register:
+            st.markdown("##### Preencha todos os dados abaixo para solicitar o seu acesso:")
+            reg_pm = st.text_input("Nº PM (Somente números):", key="reg_pm")
+            reg_posto = st.selectbox("Posto/Graduação:", 
+                                     ["Soldado", "Cabo", "3º Sargento", "2º Sargento", "1º Sargento", "Subtenente",
+                                      "2º Tenente", "1º Tenente", "Capitão", "Major", "Tenente-Coronel", "Coronel"], 
+                                     key="reg_posto")
+            reg_nome = st.text_input("Nome Completo:", key="reg_nome")
+            reg_rpm = st.selectbox("RPM / Diretoria / UDG da sua Unidade:", 
+                                    ["Gestor"] +
+                                    [f"{i} RPM" for i in range(1, 20)] + 
+                                    ["AM-ALMG", "AM-TJMG", "APM", "AUD SET", "CME", "COMAVE", "CPE", 
+                                     "CPM", "DAL", "DCO", "DEE", "DF", "DINT", "DOP", "DPS", "DRH", "DTS", 
+                                     "EMPM/SCG", "GCG", "GMG"], 
+                                    key="reg_rpm")
+            reg_unidade = st.text_input("Unidade (Ex: 1º BPM, 45ª Cia, etc.):", key="reg_unidade")
+            reg_funcao = st.text_input("Função Atual:", key="reg_funcao")
+            reg_pass = st.text_input("Escolha uma Senha:", type="password", key="reg_pass")
+            reg_pass_conf = st.text_input("Confirme a Senha:", type="password", key="reg_pass_conf")
+            
+            if st.button("Enviar Solicitação", use_container_width=True, type="primary"):
+                if not reg_pm or not reg_nome or not reg_unidade or not reg_funcao or not reg_pass:
+                    st.error("Preencha todos os campos obrigatórios!")
+                elif reg_pass != reg_pass_conf:
+                    st.error("As senhas não coincidem!")
+                elif len(reg_pass) < 6:
+                    st.error("A senha deve ter pelo menos 6 caracteres.")
+                else:
+                    try:
+                        conn = sqlite3.connect(DB_FILE)
+                        c = conn.cursor()
+                        c.execute("SELECT * FROM users WHERE pm = ?", (reg_pm,))
+                        if c.fetchone():
+                            st.error("❌ Este Nº PM já está cadastrado!")
+                            conn.close()
+                        else:
+                            h_pass = hashlib.sha256(reg_pass.encode()).hexdigest()
+                            c.execute("""
+                                INSERT INTO users (pm, name, rank, rpm, unit, function, role, status, password, created_at)
+                                VALUES (?, ?, ?, ?, ?, ?, 'PENDENTE', 'Pendente', ?, ?)
+                            """, (reg_pm, reg_nome, reg_posto, reg_rpm, reg_unidade, reg_funcao, h_pass, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                            conn.commit()
+                            conn.close()
+                            log_action(reg_pm, "CADASTRO_SOLICITADO", f"Nome: {reg_nome}, Posto: {reg_posto}")
+                            st.success("✅ Solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
+                    except Exception as e:
+                        st.error(f"Erro ao salvar cadastro: {str(e)}")
+    st.stop()
+
 # ─────────────────────── SIDEBAR ──────────────────────────────────────────────
 with st.sidebar:
     st.image("logo_drh.png", use_container_width=True)
     st.markdown("### AADP 2026")
     st.markdown("**Sistema de Análise de Avaliações**")
+    st.markdown(f"<small>👤 <b>Militar:</b> {st.session_state.user_name} ({st.session_state.user_pm})</small>", unsafe_allow_html=True)
+    st.markdown(f"<small>🔑 <b>Perfil:</b> <span style='color:#bca374;'>{st.session_state.user_role}</span></small>", unsafe_allow_html=True)
+    if st.button("🚪 Sair / Logoff", use_container_width=True, key="btn_logoff"):
+        log_action(st.session_state.user_pm, "LOGOFF", "Saída voluntária")
+        st.session_state.authenticated = False
+        st.session_state.user_pm = ""
+        st.session_state.user_name = ""
+        st.session_state.user_role = ""
+        st.session_state.user_rpm = ""
+        st.session_state.user_unit = ""
+        st.rerun()
     st.markdown("---")
 
     # 1. Mostrar Filtros (Primeiro)
@@ -370,9 +542,15 @@ with st.sidebar:
         ("📥 Gerar Relatório", "Gerar Relatório"),
         ("📄 Relatório Word", "Relatório Word"),
     ]
+    if st.session_state.user_role == "ADMINISTRADOR":
+        pages.append(("⚙️ Painel Administrador", "Painel Administrador"))
+
     if "active_page" not in st.session_state:
         st.session_state.active_page = "Análise Gráfica"
         
+    if st.session_state.active_page == "Painel Administrador" and st.session_state.user_role != "ADMINISTRADOR":
+        st.session_state.active_page = "Análise Gráfica"
+
     for label, page_name in pages:
         is_active = st.session_state.active_page == page_name
         btn_type = "primary" if is_active else "secondary"
@@ -451,6 +629,8 @@ try:
         drive_av_id = drive_av_id or cfg.get("drive_av_id", ""),
         drive_si_id = drive_si_id or cfg.get("drive_si_id", ""),
     )
+    if st.session_state.user_role == "P1/SADM":
+        df_full = df_full[df_full["Unidade RPM (Avaliado)"].apply(lambda x: matches_rpm(st.session_state.user_rpm, x))]
     data_ok = True; ts = datetime.now().strftime("%d/%m/%Y %H:%M")
 except Exception as e:
     data_ok = False; err_msg = str(e)
@@ -465,7 +645,10 @@ if data_ok:
     with container_filtros:
         if st.session_state.show_filtros:
             st.markdown("#### 🔍 Filtros de Visualização")
-            rpm_filter = st.multiselect("🏢 Unidade RPM", all_rpm, placeholder="Todas")
+            if st.session_state.user_role != "P1/SADM":
+                rpm_filter = st.multiselect("🏢 Unidade RPM", all_rpm, placeholder="Todas")
+            else:
+                rpm_filter = []
             df_tmp = df_full[df_full["Unidade RPM (Avaliado)"].isin(rpm_filter)] if rpm_filter else df_full
             all_unid = sorted(df_tmp["Unidade Principal (Avaliado)"].dropna().unique())
             unid_filter    = st.multiselect("🏛️ Subunidade", all_unid, placeholder="Todas")
@@ -1716,6 +1899,7 @@ if active_page == "Gerar Relatório":
                 try:
                     zip_bytes, zip_name = _gerar_zip_bytes(df_full, modo_code, units_sel)
                     st.success(f"✅ ZIP gerado com sucesso! ({len(zip_bytes)//1024:,} KB)")
+                    log_action(st.session_state.user_pm, "EXPORTAR_EXCEL", f"Modo: {modo_code}, Unidades: {units_sel}")
                     st.download_button(
                         label=f"⬇️ Baixar {zip_name}",
                         data=zip_bytes,
@@ -1837,6 +2021,7 @@ if active_page == "Relatório Word":
                         doc_bytes = generate_word_report(df_word, mode_code, selected_rpms)
                         
                         st.success("✅ Relatório Word gerado com sucesso!")
+                        log_action(st.session_state.user_pm, "EXPORTAR_WORD", f"Modo: {mode_code}, RPMs: {selected_rpms}")
                         
                         doc_name = f"Relatorio_Executivo_AADP2026_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
                         
@@ -1849,6 +2034,102 @@ if active_page == "Relatório Word":
                         )
                     except Exception as ex:
                         st.error(f"❌ Erro ao gerar o relatório: {ex}")
+
+# ─────────────────────── TAB 7 — PAINEL ADMINISTRADOR ─────────────────────────
+if active_page == "Painel Administrador" and st.session_state.user_role == "ADMINISTRADOR":
+    st.markdown("### ⚙️ Painel Administrador")
+    
+    tab_users, tab_logs = st.tabs(["👥 Gerenciamento de Usuários", "📜 Logs do Sistema"])
+    
+    with tab_users:
+        st.markdown("#### ⏳ Solicitações de Cadastro Pendentes")
+        conn = sqlite3.connect(DB_FILE)
+        df_pend = pd.read_sql_query("SELECT pm, name, rank, rpm, unit, function, created_at FROM users WHERE status = 'Pendente'", conn)
+        
+        if df_pend.empty:
+            st.info("Não há solicitações pendentes no momento.")
+        else:
+            for idx, r in df_pend.iterrows():
+                with st.container():
+                    st.markdown(f"**{r['rank']} {r['name']}** (PM: `{r['pm']}`)")
+                    st.markdown(f"RPM: `{r['rpm']}` | Unidade: `{r['unit']}` | Função: `{r['function']}` | Data: `{r['created_at']}`")
+                    
+                    c_role = st.selectbox("Selecione o perfil de acesso:", ["P1/SADM", "DRH6", "ADMINISTRADOR"], key=f"role_{r['pm']}")
+                    
+                    col_ap, col_rec, _ = st.columns([1, 1, 4])
+                    if col_ap.button("✅ Autorizar Acesso", key=f"ap_{r['pm']}", type="primary"):
+                        c = conn.cursor()
+                        c.execute("UPDATE users SET status = 'Ativo', role = ? WHERE pm = ?", (c_role, r['pm']))
+                        conn.commit()
+                        log_action("ADM", "AUTORIZAR_ACESSO", f"Usuario {r['pm']} ({r['name']}) aprovado como {c_role}")
+                        st.success(f"Acesso de {r['name']} autorizado com sucesso!")
+                        st.rerun()
+                    if col_rec.button("❌ Recusar", key=f"rec_{r['pm']}", type="secondary"):
+                        c = conn.cursor()
+                        c.execute("UPDATE users SET status = 'Recusado' WHERE pm = ?", (r['pm'],))
+                        conn.commit()
+                        log_action("ADM", "RECUSAR_CADASTRO", f"Cadastro do usuario {r['pm']} ({r['name']}) recusado")
+                        st.warning(f"Cadastro de {r['name']} recusado!")
+                        st.rerun()
+                    st.markdown("---")
+                    
+        st.markdown("#### 👥 Usuários Ativos e Controle de Acesso")
+        df_act = pd.read_sql_query("SELECT pm, name, rank, rpm, unit, role, created_at FROM users WHERE status = 'Ativo' AND pm != 'ADM'", conn)
+        conn.close()
+        
+        if df_act.empty:
+            st.info("Nenhum outro usuário ativo cadastrado.")
+        else:
+            df_act_disp = df_act.copy()
+            df_act_disp.index = range(1, len(df_act_disp) + 1)
+            st.dataframe(df_act_disp, use_container_width=True)
+            
+            st.markdown("##### Revogar Acesso de Usuário:")
+            user_to_revoke = st.selectbox("Escolha o usuário para revogar acesso:", df_act["name"].tolist(), key="revoke_select")
+            if st.button("🚫 Revogar Acesso", type="primary", key="btn_revoke_exec"):
+                row = df_act[df_act["name"] == user_to_revoke].iloc[0]
+                conn = sqlite3.connect(DB_FILE)
+                c = conn.cursor()
+                c.execute("UPDATE users SET status = 'Bloqueado' WHERE pm = ?", (row['pm'],))
+                conn.commit()
+                conn.close()
+                log_action("ADM", "REVOGAR_ACESSO", f"Acesso do usuario {row['pm']} ({row['name']}) revogado")
+                st.warning(f"Acesso de {row['name']} revogado com sucesso!")
+                st.rerun()
+                
+    with tab_logs:
+        st.markdown("#### 📜 Logs de Atividades")
+        conn = sqlite3.connect(DB_FILE)
+        df_logs = pd.read_sql_query("SELECT timestamp, pm, action, details FROM logs ORDER BY id DESC", conn)
+        conn.close()
+        
+        if df_logs.empty:
+            st.info("Nenhum log registrado.")
+        else:
+            df_logs_disp = df_logs.copy()
+            df_logs_disp.index = range(1, len(df_logs_disp) + 1)
+            st.dataframe(df_logs_disp, use_container_width=True)
+            
+            dl_log_xlsx = df_to_xlsx(df_logs)
+            dl_log_csv = df_logs.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+            
+            col_l1, col_l2 = st.columns(2)
+            with col_l1:
+                st.download_button(
+                    "⬇️ Baixar Logs (Excel .xlsx)",
+                    dl_log_xlsx,
+                    f"logs_sistema_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="dl_logs_xlsx"
+                )
+            with col_l2:
+                st.download_button(
+                    "⬇️ Baixar Logs (CSV)",
+                    dl_log_csv,
+                    f"logs_sistema_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                    mime="text/csv",
+                    key="dl_logs_csv"
+                )
 
 # ─────────────────────── RODAPÉ ───────────────────────────────────────────────
 st.markdown("---")
