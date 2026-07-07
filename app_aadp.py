@@ -903,7 +903,48 @@ if active_page == "Avaliadores Pendentes":
     k1.metric("Avaliadores pendentes (AV1)", len(tb1))
     k2.metric("Total avaliações Em Aberto", tb1["Total AV1"].sum() if not tb1.empty else 0)
     if not tb1.empty:
-        st.dataframe(tb1.reset_index(drop=True), use_container_width=True, height=260)
+        tb1_disp = tb1.reset_index(drop=True)
+        tb1_disp.index = range(1, len(tb1_disp) + 1)
+        
+        import inspect
+        sig = inspect.signature(st.dataframe)
+        has_select = "on_select" in sig.parameters
+        
+        selected_pm = None
+        selected_nome = None
+        
+        if has_select:
+            st.write("💡 *Dica: Clique em uma linha da tabela abaixo para abrir as avaliações deste avaliador.*")
+            event1 = st.dataframe(
+                tb1_disp,
+                use_container_width=True,
+                height=260,
+                on_select="rerun",
+                selection_mode="single_row",
+                key="select_tb1"
+            )
+            rows1 = event1.get("selection", {}).get("rows", [])
+            if rows1:
+                idx = rows1[0]
+                selected_pm = tb1.iloc[idx]["Nº PM"]
+                selected_nome = tb1.iloc[idx]["Nome"]
+        else:
+            st.dataframe(tb1_disp, use_container_width=True, height=260)
+            sel_nome = st.selectbox("🔎 Selecione um Avaliador 1 para ver as avaliações:", ["-- Selecione --"] + list(tb1["Nome"].unique()), key="sel_tb1")
+            if sel_nome != "-- Selecione --":
+                row_sel = tb1[tb1["Nome"] == sel_nome].iloc[0]
+                selected_pm = row_sel["Nº PM"]
+                selected_nome = row_sel["Nome"]
+                
+        if selected_pm:
+            df_det1 = df_ab[df_ab["nrPM (Av1)"] == selected_pm].copy()
+            st.markdown(f"#### 📋 Avaliações pendentes de AV1: **{selected_nome}** ({selected_pm})")
+            cols_det1 = ["nrPM (Avaliado)", "Posto/Grad. (Avaliado)", "Nome (Avaliado)",
+                         "Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)",
+                         "Status Avaliação", "Situação Comissão", "Data AV1"]
+            cols_ok1 = [c for c in cols_det1 if c in df_det1.columns]
+            safe_df(df_det1[cols_ok1].reset_index(drop=True).style.map(color_status, subset=["Status Avaliação"]), height=180)
+            
         st.download_button("⬇️ AV1 (CSV)", tb1.to_csv(index=False,sep=";",encoding="utf-8-sig").encode("utf-8-sig"),
                             f"av1_{datetime.now().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
     else: st.success("✅ Nenhum AV1 com pendências!")
@@ -921,7 +962,48 @@ if active_page == "Avaliadores Pendentes":
     k1.metric("Avaliadores pendentes (AV2)", len(tb2))
     k2.metric("Total pendências AV2", tb2["Total AV2"].sum() if not tb2.empty else 0)
     if not tb2.empty:
-        st.dataframe(tb2.reset_index(drop=True), use_container_width=True, height=260)
+        tb2_disp = tb2.reset_index(drop=True)
+        tb2_disp.index = range(1, len(tb2_disp) + 1)
+        
+        import inspect
+        sig = inspect.signature(st.dataframe)
+        has_select = "on_select" in sig.parameters
+        
+        selected_pm2 = None
+        selected_nome2 = None
+        
+        if has_select:
+            st.write("💡 *Dica: Clique em uma linha da tabela abaixo para abrir as avaliações deste avaliador.*")
+            event2 = st.dataframe(
+                tb2_disp,
+                use_container_width=True,
+                height=260,
+                on_select="rerun",
+                selection_mode="single_row",
+                key="select_tb2"
+            )
+            rows2 = event2.get("selection", {}).get("rows", [])
+            if rows2:
+                idx = rows2[0]
+                selected_pm2 = tb2.iloc[idx]["Nº PM"]
+                selected_nome2 = tb2.iloc[idx]["Nome"]
+        else:
+            st.dataframe(tb2_disp, use_container_width=True, height=260)
+            sel_nome2 = st.selectbox("🔎 Selecione um Avaliador 2 para ver as avaliações:", ["-- Selecione --"] + list(tb2["Nome"].unique()), key="sel_tb2")
+            if sel_nome2 != "-- Selecione --":
+                row_sel2 = tb2[tb2["Nome"] == sel_nome2].iloc[0]
+                selected_pm2 = row_sel2["Nº PM"]
+                selected_nome2 = row_sel2["Nome"]
+                
+        if selected_pm2:
+            df_det2 = df_pe[df_pe["nrPM (Av2)"] == selected_pm2].copy()
+            st.markdown(f"#### 📋 Avaliações pendentes de AV2: **{selected_nome2}** ({selected_pm2})")
+            cols_det2 = ["nrPM (Avaliado)", "Posto/Grad. (Avaliado)", "Nome (Avaliado)",
+                         "Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)",
+                         "Status Avaliação", "Situação Comissão", "Data AV1", "Data AV2"]
+            cols_ok2 = [c for c in cols_det2 if c in df_det2.columns]
+            safe_df(df_det2[cols_ok2].reset_index(drop=True).style.map(color_status, subset=["Status Avaliação"]), height=180)
+            
         st.download_button("⬇️ AV2 (CSV)", tb2.to_csv(index=False,sep=";",encoding="utf-8-sig").encode("utf-8-sig"),
                             f"av2_{datetime.now().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
     else: st.success("✅ Nenhum AV2 com pendências!")
@@ -961,7 +1043,48 @@ if active_page == "Avaliadores Pendentes":
               f"{(df_hom['Situação Comissão']=='Nota Provisória').sum()}")
 
     if not tb3.empty:
-        st.dataframe(tb3.reset_index(drop=True), use_container_width=True, height=280)
+        tb3_disp = tb3.reset_index(drop=True)
+        tb3_disp.index = range(1, len(tb3_disp) + 1)
+        
+        import inspect
+        sig = inspect.signature(st.dataframe)
+        has_select = "on_select" in sig.parameters
+        
+        selected_pm3 = None
+        selected_nome3 = None
+        
+        if has_select:
+            st.write("💡 *Dica: Clique em uma linha da tabela abaixo para abrir as avaliações deste homologador.*")
+            event3 = st.dataframe(
+                tb3_disp,
+                use_container_width=True,
+                height=280,
+                on_select="rerun",
+                selection_mode="single_row",
+                key="select_tb3"
+            )
+            rows3 = event3.get("selection", {}).get("rows", [])
+            if rows3:
+                idx = rows3[0]
+                selected_pm3 = tb3.iloc[idx]["Nº PM"]
+                selected_nome3 = tb3.iloc[idx]["Nome"]
+        else:
+            st.dataframe(tb3_disp, use_container_width=True, height=280)
+            sel_nome3 = st.selectbox("🔎 Selecione um Homologador para ver as avaliações:", ["-- Selecione --"] + list(tb3["Nome"].unique()), key="sel_tb3")
+            if sel_nome3 != "-- Selecione --":
+                row_sel3 = tb3[tb3["Nome"] == sel_nome3].iloc[0]
+                selected_pm3 = row_sel3["Nº PM"]
+                selected_nome3 = row_sel3["Nome"]
+                
+        if selected_pm3:
+            df_det3 = df_hom[df_hom["nrPM (Hom)"] == selected_pm3].copy()
+            st.markdown(f"#### 📋 Avaliações pendentes do Homologador: **{selected_nome3}** ({selected_pm3})")
+            cols_det3 = ["nrPM (Avaliado)", "Posto/Grad. (Avaliado)", "Nome (Avaliado)",
+                         "Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)",
+                         "Status Avaliação", "Situação Comissão", "Data AV1", "Data AV2", "Data HOM"]
+            cols_ok3 = [c for c in cols_det3 if c in df_det3.columns]
+            safe_df(df_det3[cols_ok3].reset_index(drop=True).style.map(color_status, subset=["Status Avaliação"]), height=180)
+            
         st.download_button(
             "⬇️ Homologadores pendentes (CSV)",
             tb3.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
