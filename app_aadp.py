@@ -920,7 +920,7 @@ if active_page == "Avaliadores Pendentes":
                 use_container_width=True,
                 height=260,
                 on_select="rerun",
-                selection_mode="single_row",
+                selection_mode="single-row",
                 key="select_tb1"
             )
             rows1 = event1.get("selection", {}).get("rows", [])
@@ -979,7 +979,7 @@ if active_page == "Avaliadores Pendentes":
                 use_container_width=True,
                 height=260,
                 on_select="rerun",
-                selection_mode="single_row",
+                selection_mode="single-row",
                 key="select_tb2"
             )
             rows2 = event2.get("selection", {}).get("rows", [])
@@ -1060,7 +1060,7 @@ if active_page == "Avaliadores Pendentes":
                 use_container_width=True,
                 height=280,
                 on_select="rerun",
-                selection_mode="single_row",
+                selection_mode="single-row",
                 key="select_tb3"
             )
             rows3 = event3.get("selection", {}).get("rows", [])
