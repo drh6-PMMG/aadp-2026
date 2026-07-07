@@ -9,7 +9,39 @@ import plotly.graph_objects as go
 import io, os, re, json, subprocess, unicodedata, csv, tempfile, zipfile, sqlite3, hashlib
 from pathlib import Path
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+def now_br():
+    """Retorna datetime no fuso de Brasília (UTC-3)."""
+    return datetime.now(timezone(timedelta(hours=-3)))
+
+def get_last_updated_time(av_f, drive_av_id=None):
+    """Retorna a data e hora de consolidação dos dados em horário de Brasília."""
+    import requests, email.utils, os
+    dt_utc = None
+    if drive_av_id:
+        try:
+            url = f"https://drive.google.com/uc?id={drive_av_id}&export=download"
+            r = requests.head(url, allow_redirects=True, timeout=5)
+            last_mod = r.headers.get("Last-Modified")
+            if last_mod:
+                dt_utc = email.utils.parsedate_to_datetime(last_mod)
+        except Exception:
+            pass
+            
+    if not dt_utc and os.path.exists(av_f):
+        try:
+            mtime = os.path.getmtime(av_f)
+            dt_utc = datetime.fromtimestamp(mtime, timezone.utc)
+        except Exception:
+            pass
+            
+    if dt_utc:
+        tz_br = timezone(timedelta(hours=-3))
+        dt_br = dt_utc.astimezone(tz_br)
+        return dt_br.strftime("%d/%m/%Y, às %H:%M horas")
+        
+    return "Data/Hora indisponível"
 
 # gdown: download do Google Drive (opcional — só necessário no modo Drive)
 try:
@@ -199,7 +231,7 @@ def init_db():
         c.execute("""
             INSERT INTO users (pm, name, rank, rpm, unit, function, role, status, password, created_at)
             VALUES ('ADM', 'Administrador Geral', 'Desenvolvedor', 'Geral', 'DRH', 'Administrador', 'ADMINISTRADOR', 'Ativo', ?, ?)
-        """, (adm_pass, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        """, (adm_pass, now_br().strftime("%Y-%m-%d %H:%M:%S")))
     conn.commit()
     conn.close()
 
@@ -208,7 +240,7 @@ def log_action(pm: str, action: str, details: str = ""):
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
         c.execute("INSERT INTO logs (timestamp, pm, action, details) VALUES (?, ?, ?, ?)",
-                  (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), pm, action, details))
+                  (now_br().strftime("%Y-%m-%d %H:%M:%S"), pm, action, details))
         conn.commit()
         conn.close()
     except Exception:
@@ -283,6 +315,31 @@ def find_sigef_user(pm_number: str) -> dict:
     except Exception as e:
         st.error(f"Erro ao ler banco SIGEF: {e}")
     return None
+
+def sync_users_with_sigef():
+    """Sincroniza os dados cadastrais de todos os usuários com o SIGEF.csv."""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT pm FROM users")
+        pms = [r[0] for r in c.fetchall()]
+        
+        for pm in pms:
+            # Não sincronizamos o ADM fictício
+            if pm == "ADM":
+                continue
+            sigef_info = find_sigef_user(pm)
+            if sigef_info:
+                # Atualiza os dados no banco
+                c.execute("""
+                    UPDATE users
+                    SET name = ?, rank = ?, rpm = ?, unit = ?, function = ?
+                    WHERE pm = ?
+                """, (sigef_info["name"], sigef_info["rank"], sigef_info["rpm"], sigef_info["unit"], sigef_info["sector"], pm))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 def calc_cert(j, l):
     if is_empty(j) or is_empty(l): return "-"
@@ -454,8 +511,8 @@ if not st.session_state.authenticated:
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
         st.image("logo_drh.png", use_container_width=True)
-        st.markdown("<h2 style='text-align: center; color: #bca374;'>AADP 2026</h2>", unsafe_allow_html=True)
-        st.markdown("<h4 style='text-align: center; color: #a0a0a0;'>Painel de Controle de Avaliações</h4>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; color: #bca374; margin-top: -15px;'>Painel de Controle AADP</h2>", unsafe_allow_html=True)
+        st.markdown("<h4 style='text-align: center; color: #a0a0a0; font-size: 0.95rem;'>Polícia Militar de Minas Gerais · Resolução 5458/2025</h4>", unsafe_allow_html=True)
         st.markdown("---")
         
         if "auth_mode" not in st.session_state:
@@ -489,6 +546,8 @@ if not st.session_state.authenticated:
                             st.session_state.authenticated = True
                             st.session_state.user_pm = spm
                             st.session_state.user_name = name
+                            if role == "P1/SADM":
+                                role = "P1"
                             st.session_state.user_role = role
                             st.session_state.user_rpm = rpm
                             st.session_state.user_unit = unit
@@ -610,7 +669,7 @@ if not st.session_state.authenticated:
                                             UPDATE users 
                                             SET name = ?, rank = ?, rpm = ?, unit = ?, function = ?, role = 'PENDENTE', status = 'Pendente', password = ?, created_at = ?
                                             WHERE pm = ?
-                                        """, (data["name"], data["rank"], data["rpm"], data["unit"], data["sector"], h_pass, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), data["pm"]))
+                                        """, (data["name"], data["rank"], data["rpm"], data["unit"], data["sector"], h_pass, now_br().strftime("%Y-%m-%d %H:%M:%S"), data["pm"]))
                                         conn.commit()
                                         conn.close()
                                         
@@ -623,7 +682,7 @@ if not st.session_state.authenticated:
                                     c.execute("""
                                         INSERT INTO users (pm, name, rank, rpm, unit, function, role, status, password, created_at)
                                         VALUES (?, ?, ?, ?, ?, ?, 'PENDENTE', 'Pendente', ?, ?)
-                                    """, (data["pm"], data["name"], data["rank"], data["rpm"], data["unit"], data["sector"], h_pass, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                                    """, (data["pm"], data["name"], data["rank"], data["rpm"], data["unit"], data["sector"], h_pass, now_br().strftime("%Y-%m-%d %H:%M:%S")))
                                     conn.commit()
                                     conn.close()
                                     
@@ -640,8 +699,16 @@ with st.sidebar:
     st.image("logo_drh.png", use_container_width=True)
     st.markdown("### AADP 2026")
     st.markdown("**Sistema de Análise de Avaliações**")
+    
+    # Exibe informações do militar (real vs simulado)
     st.markdown(f"<small>👤 <b>Militar:</b> {st.session_state.user_name} ({st.session_state.user_pm})</small>", unsafe_allow_html=True)
-    st.markdown(f"<small>🔑 <b>Perfil:</b> <span style='color:#bca374;'>{st.session_state.user_role}</span></small>", unsafe_allow_html=True)
+    if st.session_state.get("simulation_active", False) and st.session_state.user_role == "ADMINISTRADOR":
+        st.markdown(f"<small>🔑 <b>Perfil Real:</b> ADMINISTRADOR</small>", unsafe_allow_html=True)
+        st.markdown(f"<small>🕵️ <b>Simulado:</b> <span style='color:#ff9f43;'>{st.session_state.simulated_role}</span></small>", unsafe_allow_html=True)
+        st.markdown(f"<small>🏛️ <b>UDI/UDG:</b> {st.session_state.simulated_rpm}</small>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<small>🔑 <b>Perfil:</b> <span style='color:#bca374;'>{st.session_state.user_role}</span></small>", unsafe_allow_html=True)
+        
     if st.button("🚪 Sair / Logoff", use_container_width=True, key="btn_logoff"):
         log_action(st.session_state.user_pm, "LOGOFF", "Saída voluntária")
         st.session_state.authenticated = False
@@ -650,7 +717,71 @@ with st.sidebar:
         st.session_state.user_role = ""
         st.session_state.user_rpm = ""
         st.session_state.user_unit = ""
+        st.session_state.simulation_active = False
+        st.session_state.simulated_pm = ""
+        st.session_state.simulated_name = ""
+        st.session_state.simulated_role = ""
+        st.session_state.simulated_rpm = ""
+        st.session_state.simulated_unit = ""
         st.rerun()
+        
+    # --- SIMULADOR DE TELA (Apenas para ADMINISTRADOR) ---
+    if st.session_state.user_role == "ADMINISTRADOR":
+        st.markdown("---")
+        st.markdown("🕵️ **Simulador de Tela**")
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("SELECT pm, name, rank, role, rpm, unit FROM users WHERE status = 'Ativo' AND pm != 'ADM' ORDER BY name ASC")
+            sim_users = c.fetchall()
+            conn.close()
+        except Exception:
+            sim_users = []
+            
+        sim_options = ["Desativado"]
+        for u in sim_users:
+            sim_options.append(f"{u[2]} {u[1]} ({u[3]} - {u[4]}) [PM: {u[0]}]")
+            
+        current_sim_index = 0
+        if st.session_state.get("simulation_active", False):
+            for i, u in enumerate(sim_users):
+                if u[0] == st.session_state.get("simulated_pm"):
+                    current_sim_index = i + 1
+                    break
+                    
+        selected_sim = st.selectbox(
+            "Simular visão do usuário:",
+            sim_options,
+            index=current_sim_index,
+            key="sim_user_select"
+        )
+        
+        if selected_sim != "Desativado":
+            pm_match = re.search(r'\[PM:\s*(\w+)\]', selected_sim)
+            if pm_match:
+                target_pm = pm_match.group(1)
+                for u in sim_users:
+                    if u[0] == target_pm:
+                        if not st.session_state.get("simulation_active") or st.session_state.get("simulated_pm") != u[0]:
+                            st.session_state.simulation_active = True
+                            st.session_state.simulated_pm = u[0]
+                            st.session_state.simulated_name = f"{u[2]} {u[1]}"
+                            st.session_state.simulated_role = u[3]
+                            st.session_state.simulated_rpm = u[4]
+                            st.session_state.simulated_unit = u[5]
+                            log_action("ADM", "INICIAR_SIMULACAO", f"Simulando usuario {u[0]}")
+                            st.rerun()
+        else:
+            if st.session_state.get("simulation_active", False):
+                st.session_state.simulation_active = False
+                st.session_state.simulated_pm = ""
+                st.session_state.simulated_name = ""
+                st.session_state.simulated_role = ""
+                st.session_state.simulated_rpm = ""
+                st.session_state.simulated_unit = ""
+                log_action("ADM", "ENCERRAR_SIMULACAO", "Simulacao desativada")
+                st.rerun()
+                
     st.markdown("---")
 
     # 1. Mostrar Filtros (Primeiro)
@@ -676,6 +807,7 @@ with st.sidebar:
         ("📥 Gerar Relatório", "Gerar Relatório"),
         ("📄 Relatório Word", "Relatório Word"),
     ]
+    # O administrador real sempre vê o painel administrador, mesmo se simulando
     if st.session_state.user_role == "ADMINISTRADOR":
         pages.append(("⚙️ Painel Administrador", "Painel Administrador"))
 
@@ -756,18 +888,31 @@ with st.sidebar:
             reload = st.button("🔄 Recarregar Dados", use_container_width=True, type="primary", key="btn_reload")
 
 # ─────────────────────── CARREGAR DADOS ───────────────────────────────────────
+# Calcula as variáveis ativas considerando simulação
+active_role = st.session_state.get("simulated_role", st.session_state.user_role)
+active_rpm = st.session_state.get("simulated_rpm", st.session_state.user_rpm)
+active_unit = st.session_state.get("simulated_unit", st.session_state.user_unit)
+active_pm = st.session_state.get("simulated_pm", st.session_state.user_pm)
+active_name = st.session_state.get("simulated_name", st.session_state.user_name)
+
 try:
     if reload: st.cache_data.clear()
+    av_csv_path = os.path.join(db_path or cfg.get("db_path", str(DADOS_DIR)), "avaliacoes.csv")
+    last_mod_str = get_last_updated_time(av_csv_path, drive_av_id or cfg.get("drive_av_id", ""))
+    
     df_full = load_data(
         db_path   = db_path or cfg.get("db_path", str(DADOS_DIR)),
         drive_av_id = drive_av_id or cfg.get("drive_av_id", ""),
         drive_si_id = drive_si_id or cfg.get("drive_si_id", ""),
     )
-    if st.session_state.user_role == "P1/SADM":
-        df_full = df_full[df_full["Unidade RPM (Avaliado)"].apply(lambda x: matches_rpm(st.session_state.user_rpm, x))]
-    data_ok = True; ts = datetime.now().strftime("%d/%m/%Y %H:%M")
+    if active_role == "P1":
+        df_full = df_full[df_full["Unidade RPM (Avaliado)"].apply(lambda x: matches_rpm(active_rpm, x))]
+    elif active_role == "SADM":
+        df_full = df_full[df_full["Unidade Principal (Avaliado)"].str.strip().str.upper() == active_unit.strip().upper()]
+        
+    data_ok = True; ts = now_br().strftime("%d/%m/%Y %H:%M")
 except Exception as e:
-    data_ok = False; err_msg = str(e)
+    data_ok = False; err_msg = str(e); last_mod_str = "Data/Hora indisponível"
 
 # ─────────────────────── FILTROS ──────────────────────────────────────────────
 rpm_filter = unid_filter = sit_com_filter = status_filter = cert_filter = []
@@ -779,13 +924,18 @@ if data_ok:
     with container_filtros:
         if st.session_state.show_filtros:
             st.markdown("#### 🔍 Filtros de Visualização")
-            if st.session_state.user_role != "P1/SADM":
+            if active_role not in ("P1", "SADM"):
                 rpm_filter = st.multiselect("🏢 Unidade RPM", all_rpm, placeholder="Todas")
             else:
                 rpm_filter = []
             df_tmp = df_full[df_full["Unidade RPM (Avaliado)"].isin(rpm_filter)] if rpm_filter else df_full
             all_unid = sorted(df_tmp["Unidade Principal (Avaliado)"].dropna().unique())
-            unid_filter    = st.multiselect("🏛️ Subunidade", all_unid, placeholder="Todas")
+            
+            if active_role != "SADM":
+                unid_filter = st.multiselect("🏛️ Subunidade", all_unid, placeholder="Todas")
+            else:
+                unid_filter = []
+                
             st.markdown("")
             sit_com_filter = st.multiselect("🔵 Situação Comissão", all_sit, placeholder="Todas")
             status_filter  = st.multiselect("📊 Status",            all_status, placeholder="Todos")
@@ -809,9 +959,10 @@ logo_html = f'<img src="data:image/png;base64,{logo_base64}" style="width: 100%;
 st.markdown(f"""
 <div class="main-title">
   {logo_html}
-  <div>
-    <h1>AADP 2026 — Análise de Avaliações</h1>
-    <p>Polícia Militar de Minas Gerais · Resolução 5458/2025 · Painel de Controle</p>
+  <div style="margin-top: 10px;">
+    <h1 style="font-size: 2.3rem; margin: 0; font-weight: 800; color: #bca374; text-transform: uppercase;">Painel de Controle AADP</h1>
+    <p style="font-size: 1.05rem; margin: 5px 0 0 0; color: #e5dccb; font-weight: 500;">Polícia Militar de Minas Gerais · Resolução 5458/2025</p>
+    <p style="font-size: 0.9rem; margin-top: 8px; color: #a0a0a0; font-style: italic;">Dados consolidados em {last_mod_str}</p>
   </div>
 </div>""", unsafe_allow_html=True)
 
@@ -1117,7 +1268,7 @@ if active_page == "Dados Gerais":
                             .map(color_sit,   subset=["Situação Comissão"]), height=540)
     csv_d = df[cols_d].to_csv(index=False, sep=";", encoding="utf-8-sig")
     st.download_button("⬇️ Baixar dados filtrados (CSV)", csv_d.encode("utf-8-sig"),
-                        f"avaliacoes_filtradas_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                        f"avaliacoes_filtradas_{now_br().strftime('%Y%m%d_%H%M')}.csv",
                         mime="text/csv")
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1177,7 +1328,7 @@ if active_page == "Avaliações Pendentes":
         ["Unidade RPM (Avaliado)", "Status Avaliação", "Nome (Avaliado)"]
     ).to_csv(index=False, sep=";", encoding="utf-8-sig")
     st.download_button("⬇️ Baixar pendentes (CSV)", csv_p.encode("utf-8-sig"),
-                        f"avaliacoes_pendentes_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                        f"avaliacoes_pendentes_{now_br().strftime('%Y%m%d_%H%M')}.csv",
                         mime="text/csv")
 
 
@@ -1276,7 +1427,7 @@ if active_page == "Avaliadores Pendentes":
                 st.download_button(
                     "⬇️ Baixar esta lista (Excel .xlsx)",
                     df_to_xlsx(df_det1[cols_ok1]),
-                    f"pendencias_AV1_{selected_pm}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                    f"pendencias_AV1_{selected_pm}_{now_br().strftime('%Y%m%d_%H%M')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     key="dl_av1_xlsx"
                 )
@@ -1284,13 +1435,13 @@ if active_page == "Avaliadores Pendentes":
                 st.download_button(
                     "⬇️ Baixar esta lista (CSV)",
                     df_det1[cols_ok1].to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
-                    f"pendencias_AV1_{selected_pm}_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                    f"pendencias_AV1_{selected_pm}_{now_br().strftime('%Y%m%d_%H%M')}.csv",
                     mime="text/csv",
                     key="dl_av1_csv"
                 )
             
         st.download_button("⬇️ AV1 (CSV)", tb1.to_csv(index=False,sep=";",encoding="utf-8-sig").encode("utf-8-sig"),
-                            f"av1_{datetime.now().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
+                            f"av1_{now_br().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
     else: st.success("✅ Nenhum AV1 com pendências!")
 
     # AV2
@@ -1354,7 +1505,7 @@ if active_page == "Avaliadores Pendentes":
                 st.download_button(
                     "⬇️ Baixar esta lista (Excel .xlsx)",
                     df_to_xlsx(df_det2[cols_ok2]),
-                    f"pendencias_AV2_{selected_pm2}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                    f"pendencias_AV2_{selected_pm2}_{now_br().strftime('%Y%m%d_%H%M')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     key="dl_av2_xlsx"
                 )
@@ -1362,13 +1513,13 @@ if active_page == "Avaliadores Pendentes":
                 st.download_button(
                     "⬇️ Baixar esta lista (CSV)",
                     df_det2[cols_ok2].to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
-                    f"pendencias_AV2_{selected_pm2}_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                    f"pendencias_AV2_{selected_pm2}_{now_br().strftime('%Y%m%d_%H%M')}.csv",
                     mime="text/csv",
                     key="dl_av2_csv"
                 )
             
         st.download_button("⬇️ AV2 (CSV)", tb2.to_csv(index=False,sep=";",encoding="utf-8-sig").encode("utf-8-sig"),
-                            f"av2_{datetime.now().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
+                            f"av2_{now_br().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
     else: st.success("✅ Nenhum AV2 com pendências!")
 
     # HOMOLOGADOR
@@ -1454,7 +1605,7 @@ if active_page == "Avaliadores Pendentes":
                 st.download_button(
                     "⬇️ Baixar esta lista (Excel .xlsx)",
                     df_to_xlsx(df_det3[cols_ok3]),
-                    f"pendencias_HOM_{selected_pm3}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                    f"pendencias_HOM_{selected_pm3}_{now_br().strftime('%Y%m%d_%H%M')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     key="dl_hom_xlsx"
                 )
@@ -1462,7 +1613,7 @@ if active_page == "Avaliadores Pendentes":
                 st.download_button(
                     "⬇️ Baixar esta lista (CSV)",
                     df_det3[cols_ok3].to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
-                    f"pendencias_HOM_{selected_pm3}_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                    f"pendencias_HOM_{selected_pm3}_{now_br().strftime('%Y%m%d_%H%M')}.csv",
                     mime="text/csv",
                     key="dl_hom_csv"
                 )
@@ -1470,7 +1621,7 @@ if active_page == "Avaliadores Pendentes":
         st.download_button(
             "⬇️ Homologadores pendentes (CSV)",
             tb3.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
-            f"hom_{datetime.now().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
+            f"hom_{now_br().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
     else:
         st.success("✅ Nenhum Homologador com pendências!")
 
@@ -1493,7 +1644,7 @@ if active_page == "Avaliadores Pendentes":
             st.download_button(
                 "⬇️ Lista detalhada (CSV)",
                 df_hom[cols_ok].to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
-                f"hom_detalhe_{datetime.now().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
+                f"hom_detalhe_{now_br().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 5 — GERAR RELATÓRIO (geração 100% em memória — funciona local e na nuvem)
@@ -1976,7 +2127,7 @@ def _build_workbook(df_unit: pd.DataFrame, titulo: str, df_global: pd.DataFrame 
 def _gerar_zip_bytes(df_full: pd.DataFrame, modo: str, units_sel: list) -> tuple:
     """Gera ZIP com planilhas Excel em memória e retorna (bytes, filename)."""
     zip_buf  = io.BytesIO()
-    zip_name = f"AADP_2026_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+    zip_name = f"AADP_2026_{now_br().strftime('%Y%m%d_%H%M%S')}.zip"
 
     with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
         if modo in ("all", "geral"):
@@ -1999,18 +2150,19 @@ def _gerar_zip_bytes(df_full: pd.DataFrame, modo: str, units_sel: list) -> tuple
 if active_page == "Gerar Relatório":
     st.markdown("### 📥 Gerar Relatório Excel")
     
-    if st.session_state.user_role == "P1/SADM":
-        st.markdown(f'<div class="info-box">📊 Relatório Excel completo disponível para a sua unidade: **{st.session_state.user_rpm}**</div>', unsafe_allow_html=True)
+    if active_role in ("P1", "SADM"):
+        target_scope_name = active_rpm if active_role == "P1" else active_unit
+        st.markdown(f'<div class="info-box">📊 Relatório Excel completo disponível para a sua unidade: **{target_scope_name}**</div>', unsafe_allow_html=True)
         st.markdown("---")
         
         if st.button("🚀 Gerar e Baixar Relatório Excel", type="primary", use_container_width=True):
             with st.spinner("⏳ Gerando planilha Excel da sua unidade... aguarde."):
                 try:
-                    excel_bytes = _build_workbook(df_full, st.session_state.user_rpm, df_full)
+                    excel_bytes = _build_workbook(df_full, target_scope_name, df_full)
                     st.success("✅ Relatório Excel gerado com sucesso!")
-                    log_action(st.session_state.user_pm, "EXPORTAR_EXCEL", f"Modo: SADM, Unidade: {st.session_state.user_rpm}")
-                    
-                    safe_name = re.sub(r'[^\w]', '_', str(st.session_state.user_rpm))
+                    log_action(active_pm, "EXPORTAR_EXCEL", f"Modo: {active_role}, Unidade: {target_scope_name}")
+                      
+                    safe_name = re.sub(r'[^\w]', '_', str(target_scope_name))
                     st.download_button(
                         label=f"⬇️ Baixar Analise_Avaliacoes_{safe_name}.xlsx",
                         data=excel_bytes,
@@ -2148,27 +2300,31 @@ if active_page == "Relatório Word":
     if df_word is not None:
         st.markdown("---")
         
-        if st.session_state.user_role == "P1/SADM":
-            st.markdown(f'<div class="info-box">📊 Relatório Word executivo disponível para a sua unidade: **{st.session_state.user_rpm}**</div>', unsafe_allow_html=True)
+        if active_role in ("P1", "SADM"):
+            target_scope_name = active_rpm if active_role == "P1" else active_unit
+            st.markdown(f'<div class="info-box">📊 Relatório Word executivo disponível para a sua unidade: **{target_scope_name}**</div>', unsafe_allow_html=True)
             st.markdown("---")
             
-            # Filtro de segurança: SADM só vê sua própria RPM na base carregada
-            df_word_sadm = df_word[df_word["Unidade RPM (Avaliado)"].apply(lambda x: matches_rpm(st.session_state.user_rpm, x))].copy()
+            # Filtro de segurança: P1 vê sua RPM, SADM vê apenas sua Unidade Principal
+            if active_role == "P1":
+                df_word_active = df_word[df_word["Unidade RPM (Avaliado)"].apply(lambda x: matches_rpm(active_rpm, x))].copy()
+            else:
+                df_word_active = df_word[df_word["Unidade Principal (Avaliado)"].str.strip().str.upper() == active_unit.strip().upper()].copy()
             
-            if df_word_sadm.empty:
+            if df_word_active.empty:
                 st.warning("⚠️ Nenhum registro encontrado para a sua unidade na planilha carregada.")
             else:
                 if st.button("🚀 Gerar e Baixar Relatório Word", key="btn_word_gen_sadm", use_container_width=True):
                     with st.spinner("⏳ Gerando relatório executivo Word..."):
                         try:
                             from gerar_relatorio_word import generate_word_report
-                            doc_bytes = generate_word_report(df_word_sadm, "especifica", [st.session_state.user_rpm])
+                            doc_bytes = generate_word_report(df_word_active, "especifica", [target_scope_name], user_role=active_role)
                             
                             st.success("✅ Relatório Word gerado com sucesso!")
-                            log_action(st.session_state.user_pm, "EXPORTAR_WORD", f"Modo: SADM, RPM: {st.session_state.user_rpm}")
+                            log_action(active_pm, "EXPORTAR_WORD", f"Modo: {active_role}, Unidade: {target_scope_name}")
                             
-                            safe_rpm_name = re.sub(r'[^\w]', '_', str(st.session_state.user_rpm))
-                            doc_name = f"Relatorio_Executivo_{safe_rpm_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+                            safe_scope_name = re.sub(r'[^\w]', '_', str(target_scope_name))
+                            doc_name = f"Relatorio_Executivo_{safe_scope_name}_{now_br().strftime('%Y%m%d_%H%M%S')}.docx"
                             st.download_button(
                                 label=f"⬇️ Baixar {doc_name}",
                                 data=doc_bytes,
@@ -2207,12 +2363,12 @@ if active_page == "Relatório Word":
                             # Mapear escopo para código
                             mode_code = "geral_rpm" if "Geral RPM" in rel_scope else "geral_subordinadas" if "Geral Subordinadas" in rel_scope else "especifica"
                             
-                            doc_bytes = generate_word_report(df_word, mode_code, selected_rpms)
+                            doc_bytes = generate_word_report(df_word, mode_code, selected_rpms, user_role=active_role)
                             
                             st.success("✅ Relatório Word gerado com sucesso!")
-                            log_action(st.session_state.user_pm, "EXPORTAR_WORD", f"Modo: {mode_code}, RPMs: {selected_rpms}")
+                            log_action(active_pm, "EXPORTAR_WORD", f"Modo: {mode_code}, RPMs: {selected_rpms}")
                             
-                            doc_name = f"Relatorio_Executivo_AADP2026_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+                            doc_name = f"Relatorio_Executivo_AADP2026_{now_br().strftime('%Y%m%d_%H%M%S')}.docx"
                             
                             st.download_button(
                                 label=f"⬇️ Baixar {doc_name}",
@@ -2227,6 +2383,9 @@ if active_page == "Relatório Word":
 # ─────────────────────── TAB 7 — PAINEL ADMINISTRADOR ─────────────────────────
 if active_page == "Painel Administrador" and st.session_state.user_role == "ADMINISTRADOR":
     st.markdown("### ⚙️ Painel Administrador")
+    
+    # Sincroniza dados com o SIGEF.csv para mantê-los sempre atualizados
+    sync_users_with_sigef()
     
     tab_users, tab_logs = st.tabs(["👥 Gerenciamento de Usuários", "📜 Logs do Sistema"])
     
@@ -2246,7 +2405,7 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                     st.markdown(f"**{rank} {name}** (PM: `{pm_str}`)")
                     st.markdown(f"RPM: `{rpm}` | Unidade: `{unit}` | Função: `{function}` | Data: `{created_at}`")
                     
-                    c_role = st.selectbox("Selecione o perfil de acesso:", ["P1/SADM", "DRH6", "ADMINISTRADOR"], key=f"role_{pm_str}")
+                    c_role = st.selectbox("Selecione o perfil de acesso:", ["P1", "SADM", "DRH6", "ADMINISTRADOR"], key=f"role_{pm_str}")
                     
                     col_ap, col_rec, _ = st.columns([1, 1, 4])
                     if col_ap.button("✅ Autorizar Acesso", key=f"ap_{pm_str}", type="primary"):
@@ -2295,8 +2454,8 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                 
                 col_role, col_rpm = st.columns(2)
                 with col_role:
-                    new_role = st.selectbox("Alterar Perfil de Acesso:", ["P1/SADM", "DRH6", "ADMINISTRADOR"], 
-                                            index=["P1/SADM", "DRH6", "ADMINISTRADOR"].index(row_sel["Perfil"]) if row_sel["Perfil"] in ["P1/SADM", "DRH6", "ADMINISTRADOR"] else 0,
+                    new_role = st.selectbox("Alterar Perfil de Acesso:", ["P1", "SADM", "DRH6", "ADMINISTRADOR"], 
+                                            index=["P1", "SADM", "DRH6", "ADMINISTRADOR"].index(row_sel["Perfil"]) if row_sel["Perfil"] in ["P1", "SADM", "DRH6", "ADMINISTRADOR"] else 0,
                                             key=f"edit_role_{m_pm}")
                 with col_rpm:
                     rpm_choices = ["Gestor"] + [f"{i} RPM" for i in range(1, 20)] + [
@@ -2334,13 +2493,62 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                         st.rerun()
                 
     with tab_logs:
-        st.markdown("#### 📜 Logs de Atividades")
+        st.markdown("#### 📜 Auditoria de Atividades / Logs")
+        
         conn = sqlite3.connect(DB_FILE)
-        df_logs = pd.read_sql_query("SELECT timestamp, pm, action, details FROM logs ORDER BY id DESC", conn)
+        # Buscar lista de usuários únicos que possuem ações nos logs
+        c = conn.cursor()
+        c.execute("SELECT DISTINCT pm FROM logs")
+        logged_pms = [r[0] for r in c.fetchall()]
+        
+        # Mapear PM para Nome de forma amigável
+        user_map = {"Todos": "Todos os Usuários"}
+        for pm_id in logged_pms:
+            c.execute("SELECT rank, name FROM users WHERE pm = ?", (pm_id,))
+            u_row = c.fetchone()
+            if u_row:
+                user_map[pm_id] = f"{u_row[0]} {u_row[1]} (PM: {pm_id})"
+            else:
+                user_map[pm_id] = f"PM: {pm_id}"
+        conn.close()
+        
+        # Componente de filtro de militares
+        sel_log_user = st.selectbox(
+            "Filtrar logs por militar:",
+            list(user_map.keys()),
+            format_func=lambda x: user_map[x],
+            key="filter_log_user"
+        )
+        
+        # Filtro de período por data
+        col_d1, col_d2 = st.columns(2)
+        with col_d1:
+            start_date = st.date_input("Data de início:", value=now_br().date() - timedelta(days=7), key="log_start_date")
+        with col_d2:
+            end_date = st.date_input("Data de fim:", value=now_br().date(), key="log_end_date")
+            
+        start_str = start_date.strftime("%Y-%m-%d")
+        end_str = end_date.strftime("%Y-%m-%d")
+        
+        conn = sqlite3.connect(DB_FILE)
+        if sel_log_user == "Todos":
+            df_logs = pd.read_sql_query(
+                "SELECT timestamp, pm, action, details FROM logs "
+                "WHERE date(timestamp) >= ? AND date(timestamp) <= ? "
+                "ORDER BY id DESC", 
+                conn, params=(start_str, end_str)
+            )
+        else:
+            df_logs = pd.read_sql_query(
+                "SELECT timestamp, pm, action, details FROM logs "
+                "WHERE pm = ? AND date(timestamp) >= ? AND date(timestamp) <= ? "
+                "ORDER BY id DESC", 
+                conn, params=(sel_log_user, start_str, end_str)
+            )
         conn.close()
         
         if df_logs.empty:
-            st.info("Nenhum log registrado.")
+            st.info("Nenhum log registrado para a seleção.")
         else:
             df_logs_disp = df_logs.copy()
             df_logs_disp.index = range(1, len(df_logs_disp) + 1)
@@ -2352,17 +2560,17 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
             col_l1, col_l2 = st.columns(2)
             with col_l1:
                 st.download_button(
-                    "⬇️ Baixar Logs (Excel .xlsx)",
+                    "⬇️ Baixar Logs Filtrados (Excel .xlsx)",
                     dl_log_xlsx,
-                    f"logs_sistema_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                    f"logs_{sel_log_user}_{now_br().strftime('%Y%m%d_%H%M')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     key="dl_logs_xlsx"
                 )
             with col_l2:
                 st.download_button(
-                    "⬇️ Baixar Logs (CSV)",
+                    "⬇️ Baixar Logs Filtrados (CSV)",
                     dl_log_csv,
-                    f"logs_sistema_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                    f"logs_{sel_log_user}_{now_br().strftime('%Y%m%d_%H%M')}.csv",
                     mime="text/csv",
                     key="dl_logs_csv"
                 )
@@ -2370,5 +2578,5 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
 # ─────────────────────── RODAPÉ ───────────────────────────────────────────────
 st.markdown("---")
 st.markdown(f"<center><small>AADP 2026 · Polícia Militar de Minas Gerais · "
-            f"Resolução 5458/2025 · {datetime.now().strftime('%d/%m/%Y')}</small></center>",
+            f"Resolução 5458/2025 · {now_br().strftime('%d/%m/%Y')}</small></center>",
             unsafe_allow_html=True)
