@@ -1876,52 +1876,75 @@ def _gerar_zip_bytes(df_full: pd.DataFrame, modo: str, units_sel: list) -> tuple
 
 # ── Interface da aba ──────────────────────────────────────────────────────────
 if active_page == "Gerar Relatório":
-    st.markdown("### 📥 Gerar Relatório Excel + ZIP")
-    st.markdown('<div class="info-box">'
-                '✅ Geração <b>100% em memória</b> — funciona tanto no servidor local '
-                'quanto no <b>Streamlit Community Cloud</b> (online). '
-                'O arquivo ZIP é baixado diretamente no seu navegador.</div>',
-                unsafe_allow_html=True)
-
-    modo_rel = st.radio("📋 Tipo de relatório:", [
-        "🌐 Completo — Geral + todas as Unidades RPM",
-        "📋 Somente Planilha Geral",
-        "🎯 Unidades RPM específicas",
-    ], horizontal=False)
-
-    units_sel = []
-    if "específicas" in modo_rel:
-        all_rpms_sorted = sorted(df_full["Unidade RPM (Avaliado)"].dropna().unique(),
-                                  key=rpm_sort_key)
-        units_sel = st.multiselect("Selecione as Unidades RPM:", all_rpms_sorted,
-                                    placeholder="Escolha uma ou mais unidades...")
-        if units_sel:
-            n_prev = sum((df_full["Unidade RPM (Avaliado)"]==u).sum() for u in units_sel)
-            st.markdown(f"<small>📊 {len(units_sel)} unidade(s) · {fmt_num(n_prev)} registros</small>",
-                        unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    if "específicas" in modo_rel and not units_sel:
-        st.warning("⚠️ Selecione ao menos uma Unidade RPM.")
-    else:
-        if st.button("🚀 Gerar e Baixar Relatório", type="primary", use_container_width=True):
-            modo_code = ("geral" if "Somente" in modo_rel
-                         else "units" if "específicas" in modo_rel else "all")
-            with st.spinner("⏳ Gerando planilhas Excel... aguarde."):
+    st.markdown("### 📥 Gerar Relatório Excel")
+    
+    if st.session_state.user_role == "P1/SADM":
+        st.markdown(f'<div class="info-box">📊 Relatório Excel completo disponível para a sua unidade: **{st.session_state.user_rpm}**</div>', unsafe_allow_html=True)
+        st.markdown("---")
+        
+        if st.button("🚀 Gerar e Baixar Relatório Excel", type="primary", use_container_width=True):
+            with st.spinner("⏳ Gerando planilha Excel da sua unidade... aguarde."):
                 try:
-                    zip_bytes, zip_name = _gerar_zip_bytes(df_full, modo_code, units_sel)
-                    st.success(f"✅ ZIP gerado com sucesso! ({len(zip_bytes)//1024:,} KB)")
-                    log_action(st.session_state.user_pm, "EXPORTAR_EXCEL", f"Modo: {modo_code}, Unidades: {units_sel}")
+                    excel_bytes = _build_workbook(df_full, st.session_state.user_rpm, df_full)
+                    st.success("✅ Relatório Excel gerado com sucesso!")
+                    log_action(st.session_state.user_pm, "EXPORTAR_EXCEL", f"Modo: SADM, Unidade: {st.session_state.user_rpm}")
+                    
+                    safe_name = re.sub(r'[^\w]', '_', str(st.session_state.user_rpm))
                     st.download_button(
-                        label=f"⬇️ Baixar {zip_name}",
-                        data=zip_bytes,
-                        file_name=zip_name,
-                        mime="application/zip",
+                        label=f"⬇️ Baixar Analise_Avaliacoes_{safe_name}.xlsx",
+                        data=excel_bytes,
+                        file_name=f"Analise_Avaliacoes_{safe_name}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         use_container_width=True,
                     )
                 except Exception as ex:
                     st.error(f"❌ Erro na geração: {ex}")
+    else:
+        st.markdown('<div class="info-box">'
+                    '✅ Geração <b>100% em memória</b> — funciona tanto no servidor local '
+                    'quanto no <b>Streamlit Community Cloud</b> (online). '
+                    'O arquivo ZIP é baixado diretamente no seu navegador.</div>',
+                    unsafe_allow_html=True)
+    
+        modo_rel = st.radio("📋 Tipo de relatório:", [
+            "🌐 Completo — Geral + todas as Unidades RPM",
+            "📋 Somente Planilha Geral",
+            "🎯 Unidades RPM específicas",
+        ], horizontal=False)
+    
+        units_sel = []
+        if "específicas" in modo_rel:
+            all_rpms_sorted = sorted(df_full["Unidade RPM (Avaliado)"].dropna().unique(),
+                                      key=rpm_sort_key)
+            units_sel = st.multiselect("Selecione as Unidades RPM:", all_rpms_sorted,
+                                        placeholder="Escolha uma ou mais unidades...")
+            if units_sel:
+                n_prev = sum((df_full["Unidade RPM (Avaliado)"]==u).sum() for u in units_sel)
+                st.markdown(f"<small>📊 {len(units_sel)} unidade(s) · {fmt_num(n_prev)} registros</small>",
+                            unsafe_allow_html=True)
+    
+        st.markdown("---")
+    
+        if "específicas" in modo_rel and not units_sel:
+            st.warning("⚠️ Selecione ao menos uma Unidade RPM.")
+        else:
+            if st.button("🚀 Gerar e Baixar Relatório", type="primary", use_container_width=True):
+                modo_code = ("geral" if "Somente" in modo_rel
+                             else "units" if "específicas" in modo_rel else "all")
+                with st.spinner("⏳ Gerando planilhas Excel... aguarde."):
+                    try:
+                        zip_bytes, zip_name = _gerar_zip_bytes(df_full, modo_code, units_sel)
+                        st.success(f"✅ ZIP gerado com sucesso! ({len(zip_bytes)//1024:,} KB)")
+                        log_action(st.session_state.user_pm, "EXPORTAR_EXCEL", f"Modo: {modo_code}, Unidades: {units_sel}")
+                        st.download_button(
+                            label=f"⬇️ Baixar {zip_name}",
+                            data=zip_bytes,
+                            file_name=zip_name,
+                            mime="application/zip",
+                            use_container_width=True,
+                        )
+                    except Exception as ex:
+                        st.error(f"❌ Erro na geração: {ex}")
 
     st.markdown("---")
     st.markdown("#### 🔄 Ciclo de Atualização")
@@ -2003,50 +2026,82 @@ if active_page == "Relatório Word":
                 
     if df_word is not None:
         st.markdown("---")
-        st.markdown("#### Configurações do Relatório")
         
-        # Opções solicitadas pelo negócio
-        rel_scope = st.radio("Escopo do Relatório:", [
-            "🏢 Geral RPM (Somente consolidados das unidades principais UDI/UDG)",
-            "🌐 Geral Subordinadas (Completo com UDI/UDG e unidades subordinadas)",
-            "🎯 Por RPM específica (Filtrar por unidades específicas)"
-        ])
-        
-        selected_rpms = []
-        if "específica" in rel_scope:
-            unique_rpms = sorted(df_word["Unidade RPM (Avaliado)"].dropna().unique().tolist(), key=rpm_sort_key)
-            selected_rpms = st.multiselect("Selecione as Unidades UDI/UDG para o relatório:", unique_rpms)
+        if st.session_state.user_role == "P1/SADM":
+            st.markdown(f'<div class="info-box">📊 Relatório Word executivo disponível para a sua unidade: **{st.session_state.user_rpm}**</div>', unsafe_allow_html=True)
+            st.markdown("---")
             
-        st.markdown("---")
-        
-        # Validação de botão de geração
-        if "específica" in rel_scope and not selected_rpms:
-            st.warning("⚠️ Selecione ao menos uma unidade para gerar o relatório.")
+            # Filtro de segurança: SADM só vê sua própria RPM na base carregada
+            df_word_sadm = df_word[df_word["Unidade RPM (Avaliado)"].apply(lambda x: matches_rpm(st.session_state.user_rpm, x))].copy()
+            
+            if df_word_sadm.empty:
+                st.warning("⚠️ Nenhum registro encontrado para a sua unidade na planilha carregada.")
+            else:
+                if st.button("🚀 Gerar e Baixar Relatório Word", key="btn_word_gen_sadm", use_container_width=True):
+                    with st.spinner("⏳ Gerando relatório executivo Word..."):
+                        try:
+                            from gerar_relatorio_word import generate_word_report
+                            doc_bytes = generate_word_report(df_word_sadm, "especifica", [st.session_state.user_rpm])
+                            
+                            st.success("✅ Relatório Word gerado com sucesso!")
+                            log_action(st.session_state.user_pm, "EXPORTAR_WORD", f"Modo: SADM, RPM: {st.session_state.user_rpm}")
+                            
+                            safe_rpm_name = re.sub(r'[^\w]', '_', str(st.session_state.user_rpm))
+                            doc_name = f"Relatorio_Executivo_{safe_rpm_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+                            st.download_button(
+                                label=f"⬇️ Baixar {doc_name}",
+                                data=doc_bytes,
+                                file_name=doc_name,
+                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                use_container_width=True
+                            )
+                        except Exception as ex:
+                            st.error(f"❌ Erro ao gerar o relatório: {ex}")
         else:
-            if st.button("🚀 Gerar e Baixar Relatório Word", key="btn_word_gen"):
-                with st.spinner("⏳ Gerando relatório executivo Word com gráficos... (Isso pode levar alguns instantes)"):
-                    try:
-                        from gerar_relatorio_word import generate_word_report
-                        
-                        # Mapear escopo para código
-                        mode_code = "geral_rpm" if "Geral RPM" in rel_scope else "geral_subordinadas" if "Geral Subordinadas" in rel_scope else "especifica"
-                        
-                        doc_bytes = generate_word_report(df_word, mode_code, selected_rpms)
-                        
-                        st.success("✅ Relatório Word gerado com sucesso!")
-                        log_action(st.session_state.user_pm, "EXPORTAR_WORD", f"Modo: {mode_code}, RPMs: {selected_rpms}")
-                        
-                        doc_name = f"Relatorio_Executivo_AADP2026_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
-                        
-                        st.download_button(
-                            label=f"⬇️ Baixar {doc_name}",
-                            data=doc_bytes,
-                            file_name=doc_name,
-                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                            use_container_width=True
-                        )
-                    except Exception as ex:
-                        st.error(f"❌ Erro ao gerar o relatório: {ex}")
+            st.markdown("#### Configurações do Relatório")
+            
+            # Opções solicitadas pelo negócio
+            rel_scope = st.radio("Escopo do Relatório:", [
+                "🏢 Geral RPM (Somente consolidados das unidades principais UDI/UDG)",
+                "🌐 Geral Subordinadas (Completo com UDI/UDG e unidades subordinadas)",
+                "🎯 Por RPM específica (Filtrar por unidades específicas)"
+            ])
+            
+            selected_rpms = []
+            if "específica" in rel_scope:
+                unique_rpms = sorted(df_word["Unidade RPM (Avaliado)"].dropna().unique().tolist(), key=rpm_sort_key)
+                selected_rpms = st.multiselect("Selecione as Unidades UDI/UDG para o relatório:", unique_rpms)
+                
+            st.markdown("---")
+            
+            # Validação de botão de geração
+            if "específica" in rel_scope and not selected_rpms:
+                st.warning("⚠️ Selecione ao menos uma unidade para gerar o relatório.")
+            else:
+                if st.button("🚀 Gerar e Baixar Relatório Word", key="btn_word_gen"):
+                    with st.spinner("⏳ Gerando relatório executivo Word com gráficos... (Isso pode levar alguns instantes)"):
+                        try:
+                            from gerar_relatorio_word import generate_word_report
+                            
+                            # Mapear escopo para código
+                            mode_code = "geral_rpm" if "Geral RPM" in rel_scope else "geral_subordinadas" if "Geral Subordinadas" in rel_scope else "especifica"
+                            
+                            doc_bytes = generate_word_report(df_word, mode_code, selected_rpms)
+                            
+                            st.success("✅ Relatório Word gerado com sucesso!")
+                            log_action(st.session_state.user_pm, "EXPORTAR_WORD", f"Modo: {mode_code}, RPMs: {selected_rpms}")
+                            
+                            doc_name = f"Relatorio_Executivo_AADP2026_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+                            
+                            st.download_button(
+                                label=f"⬇️ Baixar {doc_name}",
+                                data=doc_bytes,
+                                file_name=doc_name,
+                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                use_container_width=True
+                            )
+                        except Exception as ex:
+                            st.error(f"❌ Erro ao gerar o relatório: {ex}")
 
 # ─────────────────────── TAB 7 — PAINEL ADMINISTRADOR ─────────────────────────
 if active_page == "Painel Administrador" and st.session_state.user_role == "ADMINISTRADOR":
