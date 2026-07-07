@@ -2112,58 +2112,104 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
     with tab_users:
         st.markdown("#### ⏳ Solicitações de Cadastro Pendentes")
         conn = sqlite3.connect(DB_FILE)
-        df_pend = pd.read_sql_query("SELECT pm, name, rank, rpm, unit, function, created_at FROM users WHERE status = 'Pendente'", conn)
+        c = conn.cursor()
+        c.execute("SELECT pm, name, rank, rpm, unit, function, created_at FROM users WHERE status = 'Pendente'")
+        pend_list = c.fetchall()
         
-        if df_pend.empty:
+        if not pend_list:
             st.info("Não há solicitações pendentes no momento.")
         else:
-            for idx, r in df_pend.iterrows():
+            for pm, name, rank, rpm, unit, function, created_at in pend_list:
+                pm_str = str(pm)
                 with st.container():
-                    st.markdown(f"**{r['rank']} {r['name']}** (PM: `{r['pm']}`)")
-                    st.markdown(f"RPM: `{r['rpm']}` | Unidade: `{r['unit']}` | Função: `{r['function']}` | Data: `{r['created_at']}`")
+                    st.markdown(f"**{rank} {name}** (PM: `{pm_str}`)")
+                    st.markdown(f"RPM: `{rpm}` | Unidade: `{unit}` | Função: `{function}` | Data: `{created_at}`")
                     
-                    c_role = st.selectbox("Selecione o perfil de acesso:", ["P1/SADM", "DRH6", "ADMINISTRADOR"], key=f"role_{r['pm']}")
+                    c_role = st.selectbox("Selecione o perfil de acesso:", ["P1/SADM", "DRH6", "ADMINISTRADOR"], key=f"role_{pm_str}")
                     
                     col_ap, col_rec, _ = st.columns([1, 1, 4])
-                    if col_ap.button("✅ Autorizar Acesso", key=f"ap_{r['pm']}", type="primary"):
+                    if col_ap.button("✅ Autorizar Acesso", key=f"ap_{pm_str}", type="primary"):
                         c = conn.cursor()
-                        c.execute("UPDATE users SET status = 'Ativo', role = ? WHERE pm = ?", (c_role, r['pm']))
+                        c.execute("UPDATE users SET status = 'Ativo', role = ? WHERE pm = ?", (c_role, pm_str))
                         conn.commit()
-                        log_action("ADM", "AUTORIZAR_ACESSO", f"Usuario {r['pm']} ({r['name']}) aprovado como {c_role}")
-                        st.success(f"Acesso de {r['name']} autorizado com sucesso!")
+                        conn.close()
+                        log_action("ADM", "AUTORIZAR_ACESSO", f"Usuario {pm_str} ({name}) aprovado como {c_role}")
+                        st.success(f"Acesso de {name} autorizado com sucesso!")
                         st.rerun()
-                    if col_rec.button("❌ Recusar", key=f"rec_{r['pm']}", type="secondary"):
+                    if col_rec.button("❌ Recusar", key=f"rec_{pm_str}", type="secondary"):
                         c = conn.cursor()
-                        c.execute("UPDATE users SET status = 'Recusado' WHERE pm = ?", (r['pm'],))
+                        c.execute("UPDATE users SET status = 'Recusado' WHERE pm = ?", (pm_str,))
                         conn.commit()
-                        log_action("ADM", "RECUSAR_CADASTRO", f"Cadastro do usuario {r['pm']} ({r['name']}) recusado")
-                        st.warning(f"Cadastro de {r['name']} recusado!")
+                        conn.close()
+                        log_action("ADM", "RECUSAR_CADASTRO", f"Cadastro do usuario {pm_str} ({name}) recusado")
+                        st.warning(f"Cadastro de {name} recusado!")
                         st.rerun()
                     st.markdown("---")
                     
         st.markdown("#### 👥 Usuários Ativos e Controle de Acesso")
-        df_act = pd.read_sql_query("SELECT pm, name, rank, rpm, unit, role, created_at FROM users WHERE status = 'Ativo' AND pm != 'ADM'", conn)
+        c.execute("SELECT pm, name, rank, rpm, unit, role, created_at FROM users WHERE status = 'Ativo' AND pm != 'ADM'")
+        active_list = c.fetchall()
         conn.close()
         
-        if df_act.empty:
+        if not active_list:
             st.info("Nenhum outro usuário ativo cadastrado.")
         else:
+            df_act = pd.DataFrame(active_list, columns=["Nº PM", "Nome", "Posto", "RPM", "Unidade", "Perfil", "Data Cadastro"])
             df_act_disp = df_act.copy()
             df_act_disp.index = range(1, len(df_act_disp) + 1)
             st.dataframe(df_act_disp, use_container_width=True)
             
-            st.markdown("##### Revogar Acesso de Usuário:")
-            user_to_revoke = st.selectbox("Escolha o usuário para revogar acesso:", df_act["name"].tolist(), key="revoke_select")
-            if st.button("🚫 Revogar Acesso", type="primary", key="btn_revoke_exec"):
-                row = df_act[df_act["name"] == user_to_revoke].iloc[0]
-                conn = sqlite3.connect(DB_FILE)
-                c = conn.cursor()
-                c.execute("UPDATE users SET status = 'Bloqueado' WHERE pm = ?", (row['pm'],))
-                conn.commit()
-                conn.close()
-                log_action("ADM", "REVOGAR_ACESSO", f"Acesso do usuario {row['pm']} ({row['name']}) revogado")
-                st.warning(f"Acesso de {row['name']} revogado com sucesso!")
-                st.rerun()
+            st.markdown("##### ⚙️ Gerenciar / Alterar Cadastro de Usuário Ativo:")
+            
+            # Criamos uma lista formatada de opções: "NOME (PM: xxxxx)"
+            user_options = [f"{row['Posto']} {row['Nome']} (PM: {row['Nº PM']})" for idx, row in df_act.iterrows()]
+            selected_user_label = st.selectbox("Escolha o usuário para gerenciar:", user_options, key="manage_user_select")
+            
+            if selected_user_label:
+                m_pm = selected_user_label.split(" (PM: ")[1].rstrip(")")
+                row_sel = df_act[df_act["Nº PM"] == m_pm].iloc[0]
+                
+                st.write(f"**Dados Atuais:** Perfil: `{row_sel['Perfil']}` | RPM: `{row_sel['RPM']}`")
+                
+                col_role, col_rpm = st.columns(2)
+                with col_role:
+                    new_role = st.selectbox("Alterar Perfil de Acesso:", ["P1/SADM", "DRH6", "ADMINISTRADOR"], 
+                                            index=["P1/SADM", "DRH6", "ADMINISTRADOR"].index(row_sel["Perfil"]) if row_sel["Perfil"] in ["P1/SADM", "DRH6", "ADMINISTRADOR"] else 0,
+                                            key=f"edit_role_{m_pm}")
+                with col_rpm:
+                    rpm_choices = ["Gestor"] + [f"{i} RPM" for i in range(1, 20)] + [
+                        "AM-ALMG", "AM-TJMG", "APM", "AUD SET", "CME", "COMAVE", "CPE", 
+                        "CPM", "DAL", "DCO", "DEE", "DF", "DINT", "DOP", "DPS", "DRH", "DTS", 
+                        "EMPM/SCG", "GCG", "GMG"
+                    ]
+                    try:
+                        cur_index = rpm_choices.index(row_sel["RPM"])
+                    except ValueError:
+                        cur_index = 0
+                        
+                    new_rpm = st.selectbox("Alterar RPM / Diretoria / UDG:", rpm_choices, index=cur_index, key=f"edit_rpm_{m_pm}")
+                
+                col_save, col_rev = st.columns(2)
+                with col_save:
+                    if st.button("💾 Salvar Alterações", type="primary", use_container_width=True, key=f"save_edit_{m_pm}"):
+                        conn = sqlite3.connect(DB_FILE)
+                        c = conn.cursor()
+                        c.execute("UPDATE users SET role = ?, rpm = ? WHERE pm = ?", (new_role, new_rpm, m_pm))
+                        conn.commit()
+                        conn.close()
+                        log_action("ADM", "ALTERAR_CADASTRO", f"Usuario {m_pm} alterado para Perfil: {new_role}, RPM: {new_rpm}")
+                        st.success("✅ Alterações salvas com sucesso!")
+                        st.rerun()
+                with col_rev:
+                    if st.button("🚫 Revogar Acesso", type="secondary", use_container_width=True, key=f"revoke_edit_{m_pm}"):
+                        conn = sqlite3.connect(DB_FILE)
+                        c = conn.cursor()
+                        c.execute("UPDATE users SET status = 'Bloqueado' WHERE pm = ?", (m_pm,))
+                        conn.commit()
+                        conn.close()
+                        log_action("ADM", "REVOGAR_ACESSO", f"Acesso do usuario {m_pm} revogado")
+                        st.warning("🚫 Acesso revogado com sucesso!")
+                        st.rerun()
                 
     with tab_logs:
         st.markdown("#### 📜 Logs de Atividades")
