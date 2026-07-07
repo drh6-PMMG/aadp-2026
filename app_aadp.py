@@ -458,48 +458,57 @@ if not st.session_state.authenticated:
                         
         else:
             st.markdown("##### Preencha todos os dados abaixo para solicitar o seu acesso:")
-            reg_pm = st.text_input("Nº PM (Somente números):", key="reg_pm")
-            reg_posto = st.selectbox("Posto/Graduação:", 
-                                     ["Soldado", "Cabo", "3º Sargento", "2º Sargento", "1º Sargento", "Subtenente",
-                                      "2º Tenente", "1º Tenente", "Capitão", "Major", "Tenente-Coronel", "Coronel"], 
-                                     key="reg_posto")
-            reg_nome = st.text_input("Nome Completo:", key="reg_nome")
-            reg_rpm = st.selectbox("RPM / Diretoria / UDG da sua Unidade:", 
-                                    ["Gestor"] +
-                                    [f"{i} RPM" for i in range(1, 20)] + 
-                                    ["AM-ALMG", "AM-TJMG", "APM", "AUD SET", "CME", "COMAVE", "CPE", 
-                                     "CPM", "DAL", "DCO", "DEE", "DF", "DINT", "DOP", "DPS", "DRH", "DTS", 
-                                     "EMPM/SCG", "GCG", "GMG"], 
-                                    key="reg_rpm")
-            reg_unidade = st.text_input("Unidade (Ex: 1º BPM, 45ª Cia, etc.):", key="reg_unidade")
-            reg_funcao = st.text_input("Função Atual:", key="reg_funcao")
-            reg_pass = st.text_input("Escolha uma Senha:", type="password", key="reg_pass")
-            reg_pass_conf = st.text_input("Confirme a Senha:", type="password", key="reg_pass_conf")
-            
-            if st.button("Enviar Solicitação", use_container_width=True, type="primary"):
-                if not reg_pm or not reg_nome or not reg_unidade or not reg_funcao or not reg_pass:
+            with st.form("form_cadastro", clear_on_submit=False):
+                reg_pm = st.text_input("Nº PM (Somente números):", key="reg_pm")
+                reg_posto = st.selectbox("Posto/Graduação:", 
+                                         ["Soldado", "Cabo", "3º Sargento", "2º Sargento", "1º Sargento", "Subtenente",
+                                          "2º Tenente", "1º Tenente", "Capitão", "Major", "Tenente-Coronel", "Coronel"], 
+                                         key="reg_posto")
+                reg_nome = st.text_input("Nome Completo:", key="reg_nome")
+                reg_rpm = st.selectbox("RPM / Diretoria / UDG da sua Unidade:", 
+                                        ["Gestor"] +
+                                        [f"{i} RPM" for i in range(1, 20)] + 
+                                        ["AM-ALMG", "AM-TJMG", "APM", "AUD SET", "CME", "COMAVE", "CPE", 
+                                         "CPM", "DAL", "DCO", "DEE", "DF", "DINT", "DOP", "DPS", "DRH", "DTS", 
+                                         "EMPM/SCG", "GCG", "GMG"], 
+                                        key="reg_rpm")
+                reg_unidade = st.text_input("Unidade (Ex: 1º BPM, 45ª Cia, etc.):", key="reg_unidade")
+                reg_funcao = st.text_input("Função Atual:", key="reg_funcao")
+                reg_pass = st.text_input("Escolha uma Senha:", type="password", key="reg_pass")
+                reg_pass_conf = st.text_input("Confirme a Senha:", type="password", key="reg_pass_conf")
+                
+                submitted = st.form_submit_button("Enviar Solicitação", use_container_width=True, type="primary")
+                
+            if submitted:
+                spm = reg_pm.strip()
+                snome = reg_nome.strip()
+                sunid = reg_unidade.strip()
+                sfunc = reg_funcao.strip()
+                spass = reg_pass
+                
+                if not spm or not snome or not sunid or not sfunc or not spass:
                     st.error("Preencha todos os campos obrigatórios!")
-                elif reg_pass != reg_pass_conf:
+                elif spass != reg_pass_conf:
                     st.error("As senhas não coincidem!")
-                elif len(reg_pass) < 6:
+                elif len(spass) < 6:
                     st.error("A senha deve ter pelo menos 6 caracteres.")
                 else:
                     try:
                         conn = sqlite3.connect(DB_FILE)
                         c = conn.cursor()
-                        c.execute("SELECT * FROM users WHERE pm = ?", (reg_pm,))
+                        c.execute("SELECT * FROM users WHERE pm = ?", (spm,))
                         if c.fetchone():
                             st.error("❌ Este Nº PM já está cadastrado!")
                             conn.close()
                         else:
-                            h_pass = hashlib.sha256(reg_pass.encode()).hexdigest()
+                            h_pass = hashlib.sha256(spass.encode()).hexdigest()
                             c.execute("""
                                 INSERT INTO users (pm, name, rank, rpm, unit, function, role, status, password, created_at)
                                 VALUES (?, ?, ?, ?, ?, ?, 'PENDENTE', 'Pendente', ?, ?)
-                            """, (reg_pm, reg_nome, reg_posto, reg_rpm, reg_unidade, reg_funcao, h_pass, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                            """, (spm, snome, reg_posto, reg_rpm, sunid, sfunc, h_pass, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
                             conn.commit()
                             conn.close()
-                            log_action(reg_pm, "CADASTRO_SOLICITADO", f"Nome: {reg_nome}, Posto: {reg_posto}")
+                            log_action(spm, "CADASTRO_SOLICITADO", f"Nome: {snome}, Posto: {reg_posto}")
                             st.success("✅ Solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
                     except Exception as e:
                         st.error(f"Erro ao salvar cadastro: {str(e)}")
