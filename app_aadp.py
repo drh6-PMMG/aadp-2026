@@ -14,7 +14,7 @@ from datetime import datetime, timezone, timedelta
 def now_br():
     """Retorna datetime no fuso de Brasília (UTC-3)."""
     return datetime.now(timezone(timedelta(hours=-3)))
-
+@st.cache_data(ttl=600)
 def get_last_updated_time(av_f, drive_av_id=None):
     """Retorna a data e hora de consolidação dos dados em horário de Brasília."""
     import requests, email.utils, os
@@ -490,20 +490,37 @@ def db_get_users_df():
             })
     return pd.DataFrame(rows)
 
-def db_get_logs_pms():
+def refresh_logs_cache():
     if check_use_cloud():
         logs = run_sheet_api("get_logs")
-        if logs:
-            pms = set(str(l["pm"]) for l in logs)
-            return list(pms)
-        return []
+        if logs is None:
+            logs = []
     else:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT DISTINCT pm FROM logs")
-        pms = [r[0] for r in c.fetchall()]
-        conn.close()
-        return pms
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("SELECT timestamp, pm, action, details FROM logs ORDER BY id DESC")
+            rows = c.fetchall()
+            conn.close()
+            logs = []
+            for r in rows:
+                logs.append({
+                    "timestamp": r[0], "pm": r[1], "action": r[2], "details": r[3]
+                })
+        except Exception:
+            logs = []
+    st.session_state.db_logs = logs
+    return logs
+
+def get_cached_logs():
+    if "db_logs" not in st.session_state:
+        refresh_logs_cache()
+    return st.session_state.db_logs
+
+def db_get_logs_pms():
+    logs = get_cached_logs()
+    pms = set(str(l["pm"]) for l in logs)
+    return list(pms)
 
 def db_get_user_info(pm):
     users = get_cached_users()
@@ -513,40 +530,19 @@ def db_get_user_info(pm):
     return None
 
 def db_get_logs_df(sel_log_user, start_str, end_str):
-    if check_use_cloud():
-        logs = run_sheet_api("get_logs")
-        if logs:
-            rows = []
-            for l in logs:
-                t_date = l["timestamp"][:10]
-                if start_str <= t_date <= end_str:
-                    if sel_log_user == "Todos" or str(l["pm"]).strip() == str(sel_log_user).strip():
-                        rows.append({
-                            "timestamp": l["timestamp"],
-                            "pm": l["pm"],
-                            "action": l["action"],
-                            "details": l["details"]
-                        })
-            return pd.DataFrame(rows)
-        return pd.DataFrame(columns=["timestamp", "pm", "action", "details"])
-    else:
-        conn = sqlite3.connect(DB_FILE)
-        if sel_log_user == "Todos":
-            df = pd.read_sql_query(
-                "SELECT timestamp, pm, action, details FROM logs "
-                "WHERE date(timestamp) >= ? AND date(timestamp) <= ? "
-                "ORDER BY id DESC", 
-                conn, params=(start_str, end_str)
-            )
-        else:
-            df = pd.read_sql_query(
-                "SELECT timestamp, pm, action, details FROM logs "
-                "WHERE pm = ? AND date(timestamp) >= ? AND date(timestamp) <= ? "
-                "ORDER BY id DESC", 
-                conn, params=(sel_log_user, start_str, end_str)
-            )
-        conn.close()
-        return df
+    logs = get_cached_logs()
+    rows = []
+    for l in logs:
+        t_date = l["timestamp"][:10]
+        if start_str <= t_date <= end_str:
+            if sel_log_user == "Todos" or str(l["pm"]).strip() == str(sel_log_user).strip():
+                rows.append({
+                    "timestamp": l["timestamp"],
+                    "pm": l["pm"],
+                    "action": l["action"],
+                    "details": l["details"]
+                })
+    return pd.DataFrame(rows)
 
 def db_get_pending_count():
     users = get_cached_users()
@@ -1159,6 +1155,10 @@ with st.sidebar:
         st.markdown("---")
         if st.button("🔄 Recarregar Dados", use_container_width=True, type="primary", key="btn_reload"):
             st.cache_data.clear()
+            if "db_users" in st.session_state:
+                del st.session_state.db_users
+            if "db_logs" in st.session_state:
+                del st.session_state.db_logs
             st.success("Dados recarregados com sucesso!")
             st.rerun()
 
