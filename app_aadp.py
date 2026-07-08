@@ -205,7 +205,7 @@ def load_config():
 def save_config(cfg):
     CONFIG_FILE.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
 
-DB_FILE = "aadp_secure.db"
+DB_FILE = str(Path(__file__).parent / "aadp_secure.db")
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
@@ -244,19 +244,394 @@ def init_db():
     conn.close()
 
 def log_action(pm: str, action: str, details: str = ""):
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("INSERT INTO logs (timestamp, pm, action, details) VALUES (?, ?, ?, ?)",
-                  (now_br().strftime("%Y-%m-%d %H:%M:%S"), pm, action, details))
-        conn.commit()
-        conn.close()
-    except Exception:
-        pass
+    timestamp = now_br().strftime("%Y-%m-%d %H:%M:%S")
+    if check_use_cloud():
+        run_sheet_api("add_log", {"log": {"timestamp": timestamp, "pm": pm, "action": action, "details": details}})
+    else:
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("INSERT INTO logs (timestamp, pm, action, details) VALUES (?, ?, ?, ?)",
+                      (timestamp, pm, action, details))
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
 
 init_db()
 
 cfg = load_config()
+
+# ─────────────────────── DATABASE WRAPPERS (SQLite / Google Sheets Cloud) ───────
+def check_use_cloud():
+    return bool(cfg.get("sheet_api_url"))
+
+def run_sheet_api(action, payload=None):
+    url = cfg.get("sheet_api_url", "")
+    if not url:
+        return None
+    import requests
+    try:
+        body = {"action": action}
+        if payload:
+            body.update(payload)
+        r = requests.post(url, json=body, timeout=10)
+        if r.status_code == 200:
+            res = r.json()
+            if res.get("status") == "success":
+                return res.get("data")
+            else:
+                st.error(f"Erro na Planilha: {res.get('message')}")
+    except Exception as e:
+        st.error(f"Erro ao conectar com Google Sheets: {e}")
+    return None
+
+def db_get_user_for_login(pm, password_hash):
+    if check_use_cloud():
+        users = run_sheet_api("get_users")
+        if users:
+            for u in users:
+                if str(u["pm"]).strip() == str(pm).strip() and str(u["password"]).strip() == str(password_hash).strip():
+                    return (u["name"], u["role"], u["rpm"], u["unit"], u["status"])
+        return None
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT name, role, rpm, unit, status FROM users WHERE pm = ? AND password = ?", (pm, password_hash))
+        res = c.fetchone()
+        conn.close()
+        return res
+
+def db_register_user(pm, name, rank, rpm, unit, function, password_hash):
+    created_at = now_br().strftime("%Y-%m-%d %H:%M:%S")
+    if check_use_cloud():
+        user = {
+            "pm": pm, "name": name, "rank": rank, "rpm": rpm, "unit": unit,
+            "function": function, "role": "AGUARDANDO", "status": "Pendente",
+            "password": password_hash, "created_at": created_at
+        }
+        res = run_sheet_api("add_user", {"user": user})
+        return res is not None
+    else:
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("""
+                INSERT INTO users (pm, name, rank, rpm, unit, function, role, status, password, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, 'AGUARDANDO', 'Pendente', ?, ?)
+            """, (pm, name, rank, rpm, unit, function, password_hash, created_at))
+            conn.commit()
+            conn.close()
+            return True
+        except Exception:
+            return False
+
+def db_get_all_pms():
+    if check_use_cloud():
+        users = run_sheet_api("get_users")
+        if users:
+            return [str(u["pm"]) for u in users]
+        return []
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT pm FROM users")
+        pms = [r[0] for r in c.fetchall()]
+        conn.close()
+        return pms
+
+def db_update_user_info(pm, name, rank, rpm, unit, sector):
+    if check_use_cloud():
+        updates = {"name": name, "rank": rank, "rpm": rpm, "unit": unit, "function": sector}
+        run_sheet_api("update_user", {"pm": pm, "updates": updates})
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("""
+            UPDATE users
+            SET name = ?, rank = ?, rpm = ?, unit = ?, function = ?
+            WHERE pm = ?
+        """, (name, rank, rpm, unit, sector, pm))
+        conn.commit()
+        conn.close()
+
+def db_get_user_password(pm):
+    if check_use_cloud():
+        users = run_sheet_api("get_users")
+        if users:
+            for u in users:
+                if str(u["pm"]).strip() == str(pm).strip():
+                    return u["password"]
+        return None
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT password FROM users WHERE pm = ?", (pm,))
+        res = c.fetchone()
+        conn.close()
+        return res[0] if res else None
+
+def db_update_password(pm, password_hash):
+    if check_use_cloud():
+        run_sheet_api("update_user", {"pm": pm, "updates": {"password": password_hash}})
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("UPDATE users SET password = ? WHERE pm = ?", (password_hash, pm))
+        conn.commit()
+        conn.close()
+
+def db_get_simulator_users():
+    if check_use_cloud():
+        users = run_sheet_api("get_users")
+        if users:
+            sim_users = []
+            for u in users:
+                if u["status"] == "Ativo" and str(u["pm"]) != "ADM":
+                    sim_users.append((u["pm"], u["name"], u["rank"], u["role"], u["rpm"], u["unit"]))
+            sim_users.sort(key=lambda x: x[1])
+            return sim_users
+        return []
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT pm, name, rank, role, rpm, unit FROM users WHERE status = 'Ativo' AND pm != 'ADM' ORDER BY name ASC")
+        res = c.fetchall()
+        conn.close()
+        return res
+
+def db_get_pending_users():
+    if check_use_cloud():
+        users = run_sheet_api("get_users")
+        if users:
+            pend_users = []
+            for u in users:
+                if u["status"] == "Pendente":
+                    pend_users.append((u["pm"], u["name"], u["rank"], u["rpm"], u["unit"], u["function"], u["created_at"]))
+            return pend_users
+        return []
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT pm, name, rank, rpm, unit, function, created_at FROM users WHERE status = 'Pendente'")
+        res = c.fetchall()
+        conn.close()
+        return res
+
+def db_get_active_users():
+    if check_use_cloud():
+        users = run_sheet_api("get_users")
+        if users:
+            active = []
+            for u in users:
+                if u["status"] == "Ativo" and str(u["pm"]) != "ADM":
+                    active.append((u["pm"], u["name"], u["rank"], u["rpm"], u["unit"], u["role"], u["created_at"]))
+            return active
+        return []
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT pm, name, rank, rpm, unit, role, created_at FROM users WHERE status = 'Ativo' AND pm != 'ADM'")
+        res = c.fetchall()
+        conn.close()
+        return res
+
+def db_approve_user(pm, role, rpm):
+    if check_use_cloud():
+        run_sheet_api("update_user", {"pm": pm, "updates": {"status": "Ativo", "role": role, "rpm": rpm}})
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("UPDATE users SET status = 'Ativo', role = ?, rpm = ? WHERE pm = ?", (role, rpm, pm))
+        conn.commit()
+        conn.close()
+
+def db_reject_user(pm):
+    if check_use_cloud():
+        run_sheet_api("update_user", {"pm": pm, "updates": {"status": "Recusado"}})
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("UPDATE users SET status = 'Recusado' WHERE pm = ?", (pm,))
+        conn.commit()
+        conn.close()
+
+def db_update_user_role_rpm(pm, role, rpm):
+    if check_use_cloud():
+        run_sheet_api("update_user", {"pm": pm, "updates": {"role": role, "rpm": rpm}})
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("UPDATE users SET role = ?, rpm = ? WHERE pm = ?", (role, rpm, pm))
+        conn.commit()
+        conn.close()
+
+def db_revoke_user(pm):
+    if check_use_cloud():
+        run_sheet_api("update_user", {"pm": pm, "updates": {"status": "Bloqueado"}})
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("UPDATE users SET status = 'Bloqueado' WHERE pm = ?", (pm,))
+        conn.commit()
+        conn.close()
+
+def db_get_users_df():
+    if check_use_cloud():
+        users = run_sheet_api("get_users")
+        if users:
+            rows = []
+            for u in users:
+                if str(u["pm"]) != "ADM":
+                    rows.append({
+                        "pm": u["pm"], "rank": u["rank"], "name": u["name"],
+                        "role": u["role"], "rpm": u["rpm"], "unit": u["unit"],
+                        "status": u["status"]
+                    })
+            return pd.DataFrame(rows)
+        return pd.DataFrame(columns=["pm", "rank", "name", "role", "rpm", "unit", "status"])
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        df = pd.read_sql_query("SELECT pm, rank, name, role, rpm, unit, status FROM users WHERE pm != 'ADM'", conn)
+        conn.close()
+        return df
+
+def db_get_logs_pms():
+    if check_use_cloud():
+        logs = run_sheet_api("get_logs")
+        if logs:
+            pms = set(str(l["pm"]) for l in logs)
+            return list(pms)
+        return []
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT DISTINCT pm FROM logs")
+        pms = [r[0] for r in c.fetchall()]
+        conn.close()
+        return pms
+
+def db_get_user_info(pm):
+    if check_use_cloud():
+        users = run_sheet_api("get_users")
+        if users:
+            for u in users:
+                if str(u["pm"]).strip() == str(pm).strip():
+                    return (u["rank"], u["name"])
+        return None
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT rank, name FROM users WHERE pm = ?", (pm,))
+        res = c.fetchone()
+        conn.close()
+        return res
+
+def db_get_logs_df(sel_log_user, start_str, end_str):
+    if check_use_cloud():
+        logs = run_sheet_api("get_logs")
+        if logs:
+            rows = []
+            for l in logs:
+                t_date = l["timestamp"][:10]
+                if start_str <= t_date <= end_str:
+                    if sel_log_user == "Todos" or str(l["pm"]).strip() == str(sel_log_user).strip():
+                        rows.append({
+                            "timestamp": l["timestamp"],
+                            "pm": l["pm"],
+                            "action": l["action"],
+                            "details": l["details"]
+                        })
+            return pd.DataFrame(rows)
+        return pd.DataFrame(columns=["timestamp", "pm", "action", "details"])
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        if sel_log_user == "Todos":
+            df = pd.read_sql_query(
+                "SELECT timestamp, pm, action, details FROM logs "
+                "WHERE date(timestamp) >= ? AND date(timestamp) <= ? "
+                "ORDER BY id DESC", 
+                conn, params=(start_str, end_str)
+            )
+        else:
+            df = pd.read_sql_query(
+                "SELECT timestamp, pm, action, details FROM logs "
+                "WHERE pm = ? AND date(timestamp) >= ? AND date(timestamp) <= ? "
+                "ORDER BY id DESC", 
+                conn, params=(sel_log_user, start_str, end_str)
+            )
+        conn.close()
+        return df
+
+def db_get_pending_count():
+    if check_use_cloud():
+        users = run_sheet_api("get_users")
+        if users:
+            return sum(1 for u in users if u["status"] == "Pendente")
+        return 0
+    else:
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("SELECT COUNT(*) FROM users WHERE status = 'Pendente'")
+            count = c.fetchone()[0]
+            conn.close()
+            return count
+        except Exception:
+            return 0
+
+def db_check_user_status(pm):
+    if check_use_cloud():
+        users = run_sheet_api("get_users")
+        if users:
+            for u in users:
+                if str(u["pm"]).strip() == str(pm).strip():
+                    return u["status"]
+        return None
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT status FROM users WHERE pm = ?", (pm,))
+        res = c.fetchone()
+        conn.close()
+        return res[0] if res else None
+
+def db_re_request_access(pm, name, rank, rpm, unit, sector, password_hash):
+    created_at = now_br().strftime("%Y-%m-%d %H:%M:%S")
+    if check_use_cloud():
+        updates = {
+            "name": name, "rank": rank, "rpm": rpm, "unit": unit, "function": sector,
+            "role": "PENDENTE", "status": "Pendente", "password": password_hash, "created_at": created_at
+        }
+        run_sheet_api("update_user", {"pm": pm, "updates": updates})
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("""
+            UPDATE users 
+            SET name = ?, rank = ?, rpm = ?, unit = ?, function = ?, role = 'PENDENTE', status = 'Pendente', password = ?, created_at = ?
+            WHERE pm = ?
+        """, (name, rank, rpm, unit, sector, password_hash, created_at, pm))
+        conn.commit()
+        conn.close()
+
+def db_create_new_request(pm, name, rank, rpm, unit, sector, password_hash):
+    created_at = now_br().strftime("%Y-%m-%d %H:%M:%S")
+    if check_use_cloud():
+        user = {
+            "pm": pm, "name": name, "rank": rank, "rpm": rpm, "unit": unit, "function": sector,
+            "role": "PENDENTE", "status": "Pendente", "password": password_hash, "created_at": created_at
+        }
+        run_sheet_api("add_user", {"user": user})
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("""
+            INSERT INTO users (pm, name, rank, rpm, unit, function, role, status, password, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'PENDENTE', 'Pendente', ?, ?)
+        """, (pm, name, rank, rpm, unit, sector, password_hash, created_at))
+        conn.commit()
+        conn.close()
 
 # ─────────────────────── LÓGICA DADOS ─────────────────────────────────────────
 def normaliza(t):
@@ -329,25 +704,14 @@ def find_sigef_user(pm_number: str) -> dict:
 def sync_users_with_sigef():
     """Sincroniza os dados cadastrais de todos os usuários com o SIGEF.csv."""
     try:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT pm FROM users")
-        pms = [r[0] for r in c.fetchall()]
-        
+        pms = db_get_all_pms()
         for pm in pms:
             # Não sincronizamos o ADM fictício
             if pm == "ADM":
                 continue
             sigef_info = find_sigef_user(pm)
             if sigef_info:
-                # Atualiza os dados no banco
-                c.execute("""
-                    UPDATE users
-                    SET name = ?, rank = ?, rpm = ?, unit = ?, function = ?
-                    WHERE pm = ?
-                """, (sigef_info["name"], sigef_info["rank"], sigef_info["rpm"], sigef_info["unit"], sigef_info["sector"], pm))
-        conn.commit()
-        conn.close()
+                db_update_user_info(pm, sigef_info["name"], sigef_info["rank"], sigef_info["rpm"], sigef_info["unit"], sigef_info["sector"])
     except Exception:
         pass
 
@@ -549,11 +913,7 @@ if not st.session_state.authenticated:
                     st.error("Por favor, preencha todos os campos.")
                 else:
                     h_pass = hashlib.sha256(spass.encode()).hexdigest()
-                    conn = sqlite3.connect(DB_FILE)
-                    c = conn.cursor()
-                    c.execute("SELECT name, role, rpm, unit, status FROM users WHERE pm = ? AND password = ?", (spm, h_pass))
-                    res = c.fetchone()
-                    conn.close()
+                    res = db_get_user_for_login(spm, h_pass)
                     if res:
                         name, role, rpm, unit, status = res
                         if status == "Ativo":
@@ -667,42 +1027,25 @@ if not st.session_state.authenticated:
                             st.error("A senha deve ter pelo menos 6 caracteres.")
                         else:
                             try:
-                                conn = sqlite3.connect(DB_FILE)
-                                c = conn.cursor()
-                                c.execute("SELECT status FROM users WHERE pm = ?", (data["pm"],))
-                                row_user = c.fetchone()
-                                if row_user:
-                                    current_status = row_user[0]
+                                current_status = db_check_user_status(data["pm"])
+                                if current_status:
                                     if current_status in ("Pendente", "Ativo"):
                                         st.error("❌ Este Nº PM já possui solicitação de acesso ativa ou pendente no sistema!")
-                                        conn.close()
                                     else:
                                         # Usuário Bloqueado ou Recusado - pode solicitar novamente
                                         h_pass = hashlib.sha256(spass.encode()).hexdigest()
-                                        c.execute("""
-                                            UPDATE users 
-                                            SET name = ?, rank = ?, rpm = ?, unit = ?, function = ?, role = 'PENDENTE', status = 'Pendente', password = ?, created_at = ?
-                                            WHERE pm = ?
-                                        """, (data["name"], data["rank"], data["rpm"], data["unit"], data["sector"], h_pass, now_br().strftime("%Y-%m-%d %H:%M:%S"), data["pm"]))
-                                        conn.commit()
-                                        conn.close()
-                                        
+                                        db_re_request_access(data["pm"], data["name"], data["rank"], data["rpm"], data["unit"], data["sector"], h_pass)
                                         log_action(data["pm"], "RE_CADASTRO_SOLICITADO", f"Nome: {data['name']}, Posto: {data['rank']}")
                                         st.success("✅ Nova solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
                                         st.session_state.sigef_data = None
                                         st.session_state.sigef_verified = False
                                 else:
                                     h_pass = hashlib.sha256(spass.encode()).hexdigest()
-                                    c.execute("""
-                                        INSERT INTO users (pm, name, rank, rpm, unit, function, role, status, password, created_at)
-                                        VALUES (?, ?, ?, ?, ?, ?, 'PENDENTE', 'Pendente', ?, ?)
-                                    """, (data["pm"], data["name"], data["rank"], data["rpm"], data["unit"], data["sector"], h_pass, now_br().strftime("%Y-%m-%d %H:%M:%S")))
-                                    conn.commit()
-                                    conn.close()
-                                    
+                                    db_create_new_request(data["pm"], data["name"], data["rank"], data["rpm"], data["unit"], data["sector"], h_pass)
                                     log_action(data["pm"], "CADASTRO_SOLICITADO", f"Nome: {data['name']}, Posto: {data['rank']}, UDI/UDG: {data['rpm']}")
                                     st.success("✅ Solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
                                     st.session_state.sigef_data = None
+                                    st.session_state.sigef_verified = False
                                     st.session_state.sigef_verified = False
                             except Exception as e:
                                 st.error(f"Erro ao salvar cadastro: {str(e)}")
@@ -755,15 +1098,7 @@ with st.sidebar:
         
     # O administrador real sempre vê o painel administrador
     if st.session_state.user_role == "ADMINISTRADOR":
-        # Conta as solicitações de cadastro pendentes no banco
-        try:
-            conn = sqlite3.connect(DB_FILE)
-            c = conn.cursor()
-            c.execute("SELECT COUNT(*) FROM users WHERE status = 'Pendente'")
-            pending_count = c.fetchone()[0]
-            conn.close()
-        except Exception:
-            pending_count = 0
+        pending_count = db_get_pending_count()
             
         if pending_count > 0:
             pages.append((f"⚙️ Painel Administrador (🔴 :red[{pending_count}])", "Painel Administrador"))
@@ -972,18 +1307,12 @@ if st.session_state.get("show_change_password", False):
             st.error("❌ A nova senha e a confirmação não coincidem.")
         else:
             h_curr = hashlib.sha256(curr_pw.encode()).hexdigest()
-            conn = sqlite3.connect(DB_FILE)
-            c = conn.cursor()
-            c.execute("SELECT password FROM users WHERE pm = ?", (st.session_state.user_pm,))
-            row = c.fetchone()
-            if not row or row[0] != h_curr:
+            row_pw = db_get_user_password(st.session_state.user_pm)
+            if not row_pw or row_pw != h_curr:
                 st.error("❌ Senha atual incorreta.")
-                conn.close()
             else:
                 h_new = hashlib.sha256(new_pw.encode()).hexdigest()
-                c.execute("UPDATE users SET password = ? WHERE pm = ?", (h_new, st.session_state.user_pm))
-                conn.commit()
-                conn.close()
+                db_update_password(st.session_state.user_pm, h_new)
                 log_action(st.session_state.user_pm, "ALTERAR_SENHA", "Senha alterada com sucesso pelo proprio usuario")
                 st.success("✅ Senha alterada com sucesso!")
                 st.session_state.show_change_password = False
@@ -2418,14 +2747,7 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
     # --- SIMULADOR DE TELA ---
     with st.container():
         st.markdown("🕵️ **Simulador de Visão de Tela**")
-        try:
-            conn = sqlite3.connect(DB_FILE)
-            c = conn.cursor()
-            c.execute("SELECT pm, name, rank, role, rpm, unit FROM users WHERE status = 'Ativo' AND pm != 'ADM' ORDER BY name ASC")
-            sim_users = c.fetchall()
-            conn.close()
-        except Exception:
-            sim_users = []
+        sim_users = db_get_simulator_users()
             
         sim_options = ["Desativado"]
         for u in sim_users:
@@ -2473,14 +2795,11 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                 
     st.markdown("---")
     
-    tab_users, tab_logs = st.tabs(["👥 Gerenciamento de Usuários", "📜 Logs do Sistema"])
+    tab_users, tab_logs, tab_db_config = st.tabs(["👥 Gerenciamento de Usuários", "📜 Logs do Sistema", "🌐 Banco de Dados Nuvem"])
     
     with tab_users:
         st.markdown("#### ⏳ Solicitações de Cadastro Pendentes")
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT pm, name, rank, rpm, unit, function, created_at FROM users WHERE status = 'Pendente'")
-        pend_list = c.fetchall()
+        pend_list = db_get_pending_users()
         
         if not pend_list:
             st.info("Não há solicitações pendentes no momento.")
@@ -2495,28 +2814,20 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                     
                     col_ap, col_rec, _ = st.columns([1, 1, 4])
                     if col_ap.button("✅ Autorizar Acesso", key=f"ap_{pm_str}", type="primary"):
-                        c = conn.cursor()
                         target_rpm = "Gestor" if c_role in ("DRH6", "ADMINISTRADOR") else rpm
-                        c.execute("UPDATE users SET status = 'Ativo', role = ?, rpm = ? WHERE pm = ?", (c_role, target_rpm, pm_str))
-                        conn.commit()
-                        conn.close()
+                        db_approve_user(pm_str, c_role, target_rpm)
                         log_action("ADM", "AUTORIZAR_ACESSO", f"Usuario {pm_str} ({name}) aprovado como {c_role}")
                         st.success(f"Acesso de {name} autorizado com sucesso!")
                         st.rerun()
                     if col_rec.button("❌ Recusar", key=f"rec_{pm_str}", type="secondary"):
-                        c = conn.cursor()
-                        c.execute("UPDATE users SET status = 'Recusado' WHERE pm = ?", (pm_str,))
-                        conn.commit()
-                        conn.close()
+                        db_reject_user(pm_str)
                         log_action("ADM", "RECUSAR_CADASTRO", f"Cadastro do usuario {pm_str} ({name}) recusado")
                         st.warning(f"Cadastro de {name} recusado!")
                         st.rerun()
                     st.markdown("---")
                     
         st.markdown("#### 👥 Usuários Ativos e Controle de Acesso")
-        c.execute("SELECT pm, name, rank, rpm, unit, role, created_at FROM users WHERE status = 'Ativo' AND pm != 'ADM'")
-        active_list = c.fetchall()
-        conn.close()
+        active_list = db_get_active_users()
         
         if not active_list:
             st.info("Nenhum outro usuário ativo cadastrado.")
@@ -2559,21 +2870,13 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                 col_save, col_rev = st.columns(2)
                 with col_save:
                     if st.button("💾 Salvar Alterações", type="primary", use_container_width=True, key=f"save_edit_{m_pm}"):
-                        conn = sqlite3.connect(DB_FILE)
-                        c = conn.cursor()
-                        c.execute("UPDATE users SET role = ?, rpm = ? WHERE pm = ?", (new_role, new_rpm, m_pm))
-                        conn.commit()
-                        conn.close()
+                        db_update_user_role_rpm(m_pm, new_role, new_rpm)
                         log_action("ADM", "ALTERAR_CADASTRO", f"Usuario {m_pm} alterado para Perfil: {new_role}, RPM: {new_rpm}")
                         st.success("✅ Alterações salvas com sucesso!")
                         st.rerun()
                 with col_rev:
                     if st.button("🚫 Revogar Acesso", type="secondary", use_container_width=True, key=f"revoke_edit_{m_pm}"):
-                        conn = sqlite3.connect(DB_FILE)
-                        c = conn.cursor()
-                        c.execute("UPDATE users SET status = 'Bloqueado' WHERE pm = ?", (m_pm,))
-                        conn.commit()
-                        conn.close()
+                        db_revoke_user(m_pm)
                         log_action("ADM", "REVOGAR_ACESSO", f"Acesso do usuario {m_pm} revogado")
                         st.warning("🚫 Acesso revogado com sucesso!")
                         st.rerun()
@@ -2581,22 +2884,17 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
     with tab_logs:
         st.markdown("#### 📜 Auditoria de Atividades / Logs")
         
-        conn = sqlite3.connect(DB_FILE)
         # Buscar lista de usuários únicos que possuem ações nos logs
-        c = conn.cursor()
-        c.execute("SELECT DISTINCT pm FROM logs")
-        logged_pms = [r[0] for r in c.fetchall()]
+        logged_pms = db_get_logs_pms()
         
         # Mapear PM para Nome de forma amigável
         user_map = {"Todos": "Todos os Usuários"}
         for pm_id in logged_pms:
-            c.execute("SELECT rank, name FROM users WHERE pm = ?", (pm_id,))
-            u_row = c.fetchone()
+            u_row = db_get_user_info(pm_id)
             if u_row:
                 user_map[pm_id] = f"{u_row[0]} {u_row[1]} (PM: {pm_id})"
             else:
                 user_map[pm_id] = f"PM: {pm_id}"
-        conn.close()
         
         # Componente de filtro de militares
         sel_log_user = st.selectbox(
@@ -2616,22 +2914,7 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
         start_str = start_date.strftime("%Y-%m-%d")
         end_str = end_date.strftime("%Y-%m-%d")
         
-        conn = sqlite3.connect(DB_FILE)
-        if sel_log_user == "Todos":
-            df_logs = pd.read_sql_query(
-                "SELECT timestamp, pm, action, details FROM logs "
-                "WHERE date(timestamp) >= ? AND date(timestamp) <= ? "
-                "ORDER BY id DESC", 
-                conn, params=(start_str, end_str)
-            )
-        else:
-            df_logs = pd.read_sql_query(
-                "SELECT timestamp, pm, action, details FROM logs "
-                "WHERE pm = ? AND date(timestamp) >= ? AND date(timestamp) <= ? "
-                "ORDER BY id DESC", 
-                conn, params=(sel_log_user, start_str, end_str)
-            )
-        conn.close()
+        df_logs = db_get_logs_df(sel_log_user, start_str, end_str)
         
         if df_logs.empty:
             st.info("Nenhum log registrado para a seleção.")
@@ -2660,6 +2943,170 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                     mime="text/csv",
                     key="dl_logs_csv"
                 )
+
+    with tab_db_config:
+        st.markdown("#### 🌐 Configuração do Banco de Dados em Nuvem (Google Sheets)")
+        st.markdown("""
+        Esta configuração permite sincronizar as contas de usuários, permissões e logs de auditoria na nuvem.
+        Isso resolve o problema do banco de dados ser zerado caso o Streamlit Cloud reinicie.
+        """)
+        
+        sheet_api_url = st.text_input(
+            "Link do Web App (Google Apps Script API):", 
+            value=cfg.get("sheet_api_url", ""),
+            placeholder="Ex: https://script.google.com/macros/s/AKfycb.../exec",
+            help="Cole a URL gerada na publicação do Web App do Google Apps Script",
+            key="db_sheet_api_url_input"
+        )
+        
+        col_db_save, col_db_test = st.columns(2)
+        with col_db_save:
+            if st.button("💾 Salvar Configurações do Banco", type="primary", use_container_width=True, key="btn_save_db_config"):
+                cfg["sheet_api_url"] = sheet_api_url.strip()
+                save_config(cfg)
+                st.success("Configuração do banco de dados salva com sucesso!")
+                st.rerun()
+                
+        with col_db_test:
+            if st.button("🔌 Testar Conexão", type="secondary", use_container_width=True, key="btn_test_db_config"):
+                if not sheet_api_url.strip():
+                    st.warning("Insira uma URL de API primeiro.")
+                else:
+                    import requests
+                    try:
+                        r = requests.get(sheet_api_url.strip(), timeout=10)
+                        if r.status_code == 200:
+                            st.success("✅ Conexão estabelecida com sucesso com a API Google Sheets!")
+                        else:
+                            st.error(f"❌ Erro de status do servidor: {r.status_code}")
+                    except Exception as e:
+                        st.error(f"❌ Falha de conexão: {e}")
+                        
+        with st.expander("📄 Instruções de Configuração e Código do Google Apps Script"):
+            st.markdown("""
+            ### Passo a Passo para Configurar o Google Sheets:
+            
+            1. Acesse o **Google Drive** e crie uma nova planilha vazia. Nomeie-a como quiser (ex: `AADP 2026 — Banco de Dados`).
+            2. Na planilha, clique no menu superior em **Extensões (Extensions) > Apps Script**.
+            3. Apague todo o código existente na janela do editor e cole o código abaixo:
+            """)
+            st.code("""function doPost(e) {
+  var params = JSON.parse(e.postData.contents);
+  var action = params.action;
+  
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var usersSheet = ss.getSheetByName("users") || ss.insertSheet("users");
+  var logsSheet = ss.getSheetByName("logs") || ss.insertSheet("logs");
+  
+  if (usersSheet.getLastRow() == 0) {
+    usersSheet.appendRow(["pm", "name", "rank", "rpm", "unit", "function", "password", "role", "status", "created_at"]);
+  }
+  if (logsSheet.getLastRow() == 0) {
+    logsSheet.appendRow(["timestamp", "pm", "action", "details"]);
+  }
+  
+  if (action === "get_users") {
+    var data = usersSheet.getDataRange().getValues();
+    var headers = data[0];
+    var list = [];
+    for (var i = 1; i < data.length; i++) {
+      var obj = {};
+      for (var j = 0; j < headers.length; j++) {
+        obj[headers[j]] = data[i][j];
+      }
+      list.push(obj);
+    }
+    return ContentService.createTextOutput(JSON.stringify({status: "success", data: list}))
+                         .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  if (action === "add_user") {
+    var user = params.user;
+    var data = usersSheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]) === String(user.pm)) {
+        return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Usuário já cadastrado."}))
+                             .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+    usersSheet.appendRow([
+      String(user.pm), user.name, user.rank, user.rpm, user.unit, user.function,
+      user.password, user.role, user.status, user.created_at
+    ]);
+    return ContentService.createTextOutput(JSON.stringify({status: "success"}))
+                         .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  if (action === "update_user") {
+    var pm = String(params.pm);
+    var updates = params.updates;
+    var data = usersSheet.getDataRange().getValues();
+    var headers = data[0];
+    var foundRow = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]) === pm) {
+        foundRow = i + 1;
+        break;
+      }
+    }
+    if (foundRow === -1) {
+      return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Usuário não encontrado."}))
+                           .setMimeType(ContentService.MimeType.JSON);
+    }
+    for (var key in updates) {
+      var colIdx = headers.indexOf(key);
+      if (colIdx !== -1) {
+        usersSheet.getRange(foundRow, colIdx + 1).setValue(updates[key]);
+      }
+    }
+    return ContentService.createTextOutput(JSON.stringify({status: "success"}))
+                         .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  if (action === "get_logs") {
+    var data = logsSheet.getDataRange().getValues();
+    var headers = data[0];
+    var list = [];
+    for (var i = 1; i < data.length; i++) {
+      var obj = {};
+      for (var j = 0; j < headers.length; j++) {
+        obj[headers[j]] = data[i][j];
+      }
+      list.push(obj);
+    }
+    list.reverse();
+    return ContentService.createTextOutput(JSON.stringify({status: "success", data: list}))
+                         .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  if (action === "add_log") {
+    var log = params.log;
+    logsSheet.appendRow([log.timestamp, String(log.pm), log.action, log.details]);
+    return ContentService.createTextOutput(JSON.stringify({status: "success"}))
+                         .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Ação desconhecida."}))
+                       .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doGet(e) {
+  return ContentService.createTextOutput("API ativa! Use requisições POST para interagir.")
+                       .setMimeType(ContentService.MimeType.TEXT);
+}""", language="javascript")
+            st.markdown("""
+            4. Clique no ícone de disquete (**Salvar projeto**) no topo do editor do Apps Script.
+            5. Clique no botão azul **Implantar (Deploy) > Nova implantação (New deployment)** no canto superior direito.
+            6. Configurações da implantação:
+               - **Selecione o tipo**: clique na engrenagem e escolha **Configurar como Aplicativo da Web (Web App)**.
+               - **Descrição**: `AADP 2026 API`
+               - **Executar como**: **Eu (seu-email@gmail.com)**
+               - **Quem tem acesso**: **Qualquer pessoa (Anyone)**  *(Necessário para que o Streamlit consiga enviar as solicitações).*
+            7. Clique no botão **Implantar (Deploy)**.
+            8. O Google solicitará que você conceda autorizações. Clique em **Autorizar acesso (Authorize access)**, selecione sua conta e clique em **Avançado (Advanced) > Ir para Projeto Sem Título (unsafe)**, depois clique em **Permitir (Allow)**.
+            9. Após implantar, copie o **URL do Aplicativo da Web (Web App URL)**.
+            10. Cole este URL no campo de texto acima e clique em **Salvar Configurações do Banco**.
+            """)
 
 # ─────────────────────── RODAPÉ ───────────────────────────────────────────────
 st.markdown("---")
