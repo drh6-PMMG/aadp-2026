@@ -158,11 +158,25 @@ def parse_float(v):
         return None
 
 @st.cache_data(show_spinner=False)
-def run_grades_audit(xlsx_path, csv_path):
+def run_grades_audit(xlsx_path, csv_path, drive_geral_id=None, drive_master_xlsx_id=None):
     import pandas as pd
     import numpy as np
     import csv
+    import os
     
+    # Se estamos no modo Drive e temos os IDs configurados, baixar os arquivos primeiro
+    if drive_geral_id:
+        try:
+            _baixar_drive(drive_geral_id, csv_path)
+        except Exception as e:
+            return None, f"Falha ao baixar geral.csv do Google Drive (ID: {drive_geral_id}): {str(e)}"
+            
+    if drive_master_xlsx_id:
+        try:
+            _baixar_drive(drive_master_xlsx_id, xlsx_path)
+        except Exception as e:
+            return None, f"Falha ao baixar master Excel do Google Drive (ID: {drive_master_xlsx_id}): {str(e)}"
+
     CONCEITO_FAIXA = {
         "nivel superior de desempenho":       (9.00, 10.00),
         "nivel alto de desempenho":           (7.00,  8.99),
@@ -181,10 +195,10 @@ def run_grades_audit(xlsx_path, csv_path):
         df_master = pd.read_excel(xlsx_path)
         df_master['NR PM'] = df_master['NR PM'].apply(normalize_pm)
     except Exception as e:
-        return None, f"Erro ao ler excel master: {str(e)}"
+        return None, f"Erro ao ler excel master (caminho: {xlsx_path}): {str(e)}"
 
     if not os.path.exists(csv_path):
-        return None, f"Arquivo geral.csv nao encontrado."
+        return None, f"Arquivo geral.csv nao encontrado no caminho: {csv_path}."
 
     cols_to_keep = {
         'nrPM (Avaliado)': 1, 'Nome Completo (Avaliado)': 2, 'Conceito Geral': 46, 'Nota Geral': 47,
@@ -211,7 +225,7 @@ def run_grades_audit(xlsx_path, csv_path):
         df_geral = pd.DataFrame(rows)
         df_geral['nrPM (Avaliado)'] = df_geral['nrPM (Avaliado)'].apply(normalize_pm)
     except Exception as e:
-        return None, f"Erro ao ler geral.csv: {str(e)}"
+        return None, f"Erro ao ler geral.csv (caminho: {csv_path}): {str(e)}"
 
     discrepancies = []
 
@@ -278,6 +292,7 @@ def run_grades_audit(xlsx_path, csv_path):
                         })
 
     return pd.DataFrame(discrepancies), None
+
 
 # gdown: download do Google Drive (opcional — só necessário no modo Drive)
 
@@ -765,7 +780,7 @@ def load_config():
     # Carrega do st.secrets do Streamlit para evitar perda de IDs/links após reinicializações
 
 
-    for key in ["drive_av_id", "drive_si_id", "drive_geral_id", "sheet_api_url", "fonte_dados", "db_path"]:
+    for key in ["drive_av_id", "drive_si_id", "drive_geral_id", "drive_master_xlsx_id", "sheet_api_url", "fonte_dados", "db_path"]:
 
 
         try:
@@ -7705,6 +7720,122 @@ if active_page == "Relatório Word":
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 7 — PAINEL ADMINISTRADOR
 # ══════════════════════════════════════════════════════════════════════════════
+if active_page == "Auditoria de Notas" and st.session_state.user_role == "ADMINISTRADOR":
+    st.markdown("### 📊 Auditoria de Notas")
+    st.info("👉 Esta ferramenta cruza a planilha consolidada `Analise avaliacoes completa.xlsx` com o arquivo de metadados brutos `geral.csv` para apontar inconsistências de notas ou lançamentos.")
+    
+    # Obter caminhos dos arquivos locais e Drive
+    fonte = cfg.get("fonte_dados", "📁 Pasta local / Servidor")
+    drive_geral_id = cfg.get("drive_geral_id", "")
+    drive_master_xlsx_id = cfg.get("drive_master_xlsx_id", "")
+    
+    if fonte == "☁️ Google Drive":
+        master_xlsx_path = os.path.join(str(DADOS_DIR), "Analise avaliacoes completa.xlsx")
+        geral_csv_path = os.path.join(str(DADOS_DIR), "geral.csv")
+        
+        # Exibir configuração do Google Drive na página de Auditoria
+        st.markdown("##### ⚙️ Configuração do Google Drive para Auditoria")
+        st.info("Como você está utilizando a fonte **Google Drive**, informe abaixo os IDs dos arquivos do geral.csv e da planilha consolidada. O sistema fará o download deles automaticamente para realizar a auditoria.")
+        
+        col_g1, col_g2 = st.columns(2)
+        with col_g1:
+            inp_geral_id = st.text_input("ID do arquivo geral.csv no Google Drive:", value=drive_geral_id, key="drive_geral_id_input")
+        with col_g2:
+            inp_master_id = st.text_input("ID da planilha Analise avaliacoes completa.xlsx no Google Drive:", value=drive_master_xlsx_id, key="drive_master_xlsx_id_input")
+            
+        if st.button("💾 Salvar IDs de Auditoria", key="btn_save_audit_ids"):
+            cfg["drive_geral_id"] = inp_geral_id.strip()
+            cfg["drive_master_xlsx_id"] = inp_master_id.strip()
+            try:
+                CONFIG_FILE.write_text(json.dumps(cfg, indent=4, ensure_ascii=False), encoding="utf-8")
+                st.success("✅ IDs de auditoria salvos com sucesso!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Erro ao salvar arquivo de configuração: {e}")
+                
+        # Atualizar variáveis para download
+        drive_geral_id = cfg.get("drive_geral_id", "")
+        drive_master_xlsx_id = cfg.get("drive_master_xlsx_id", "")
+        
+        if not drive_geral_id or not drive_master_xlsx_id:
+            st.warning("⚠️ Insira os IDs do Google Drive acima para poder executar a auditoria online.")
+            st.stop()
+    else:
+        # Modo pasta local
+        master_xlsx_path = os.path.join(str(Path(DADOS_DIR).parent), "Analise avaliacoes completa.xlsx")
+        geral_csv_path = os.path.join(str(Path(DADOS_DIR).parent), "geral.csv")
+        
+        st.markdown("##### 📁 Verificação de Arquivos Locais")
+        st.info(f"O sistema irá procurar os arquivos na pasta raiz do seu computador:\n\n"
+                f"- **Geral CSV:** `{geral_csv_path}`\n"
+                f"- **Planilha Consolidada:** `{master_xlsx_path}`")
+        
+        if not os.path.exists(master_xlsx_path) or not os.path.exists(geral_csv_path):
+            st.error(f"⚠️ Arquivos não encontrados! Certifique-se de que os arquivos `geral.csv` e `Analise avaliacoes completa.xlsx` estão na pasta raiz do projeto: `{str(Path(DADOS_DIR).parent)}`")
+            st.stop()
+            
+    # Executar Auditoria
+    if st.button("📊 Executar Auditoria de Notas", type="primary", use_container_width=True, key="run_notes_audit_btn"):
+        with st.spinner("Processando arquivos de dados e conferindo notas (isso pode levar de 5 a 10 segundos na primeira execução)..."):
+            df_disc, err = run_grades_audit(master_xlsx_path, geral_csv_path, drive_geral_id, drive_master_xlsx_id)
+            
+        if err:
+            st.error(f"Erro ao processar auditoria: {err}")
+        else:
+            st.session_state.audit_df = df_disc
+            st.success("✅ Auditoria executada com sucesso!")
+            
+    # Se a auditoria já foi executada, exibir resultados
+    if st.session_state.get("audit_df") is not None:
+        df_audit = st.session_state.audit_df
+        
+        if df_audit.empty:
+            st.success("🎉 Nenhuma inconsistência de notas foi detectada nos arquivos locais!")
+        else:
+            # Métricas de destaque
+            t_cnt = len(df_audit)
+            c_cnt = len(df_audit[df_audit['Tipo'] == 'Divergência de Média de Competências'])
+            h_cnt = len(df_audit[df_audit['Tipo'] == 'Divergência de Nota de Homologação'])
+            q_cnt = len(df_audit[df_audit['Tipo'] == 'Divergência de Qtd de Avaliações'])
+            
+            m1, m2, m3, m4 = st.columns(4)
+            with m1:
+                st.metric("Total de Falhas", f"{t_cnt} ⚠️")
+            with m2:
+                st.metric("Média de Competências", f"{c_cnt}")
+            with m3:
+                st.metric("Nota Homologação", f"{h_cnt}")
+            with m4:
+                st.metric("Qtd Avaliações", f"{q_cnt}")
+            
+            st.markdown("##### Detalhamento das Divergências Encontradas (Primeiras 100)")
+            
+            # Filtro por tipo de divergência na exibição
+            audit_types = ["Todas"] + list(df_audit['Tipo'].unique())
+            sel_audit_type = st.selectbox("Filtrar visualização por tipo:", audit_types, key="filter_audit_type")
+            
+            df_disp = df_audit.copy()
+            if sel_audit_type != "Todas":
+                df_disp = df_disp[df_disp['Tipo'] == sel_audit_type]
+                
+            # Exibir DataFrame
+            st.dataframe(df_disp.head(100), use_container_width=True)
+            if len(df_disp) > 100:
+                st.info(f"💡 Mostrando as primeiras 100 linhas de um total de {len(df_disp)} registros para este tipo. Baixe a planilha completa abaixo para ver todas.")
+                
+            # Botão para baixar relatório Excel de auditoria
+            dl_audit_xlsx = df_to_xlsx(df_audit)
+            st.download_button(
+                "📥 Baixar Relatório Completo de Auditoria de Notas (Excel .xlsx)",
+                dl_audit_xlsx,
+                f"Relatorio_Auditoria_Notas_AADP2026_{now_br().strftime('%Y%m%d_%H%M')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="dl_audit_notes_xlsx",
+                use_container_width=True
+            )
+
+
+
 if active_page == "Painel Administrador" and st.session_state.user_role == "ADMINISTRADOR":
     st.markdown("### ⚙️ Painel Administrador")
     
@@ -7878,6 +8009,69 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                         st.stop()
                         
     # ── 3) Auditoria ─────────────────────────────────────────────────────────
+with tab_logs:
+    st.markdown("#### 📜 Auditoria de Atividades / Logs")
+    
+    # Buscar lista de usuários únicos que possuem ações nos logs
+    logged_pms = db_get_logs_pms()
+    
+    # Mapear PM para Nome de forma amigável
+    user_map = {"Todos": "Todos os Usuários"}
+    for pm_id in logged_pms:
+        u_row = db_get_user_info(pm_id)
+        if u_row:
+            user_map[pm_id] = f"{u_row[0]} {u_row[1]} (PM: {pm_id})"
+        else:
+            user_map[pm_id] = f"PM: {pm_id}"
+            
+    # Componente de filtro de militares
+    sel_log_user = st.selectbox(
+        "Filtrar logs por militar:",
+        list(user_map.keys()),
+        format_func=lambda x: user_map[x],
+        key="filter_log_user"
+    )
+    
+    # Filtro de período por data
+    col_d1, col_d2 = st.columns(2)
+    with col_d1:
+        start_date = st.date_input("Data de início:", value=now_br().date() - timedelta(days=7), key="log_start_date")
+    with col_d2:
+        end_date = st.date_input("Data de fim:", value=now_br().date(), key="log_end_date")
+        
+    start_str = start_date.strftime("%Y-%m-%d")
+    end_str = end_date.strftime("%Y-%m-%d")
+    
+    df_logs = db_get_logs_df(sel_log_user, start_str, end_str)
+    
+    if df_logs.empty:
+        st.info("Nenhum log registrado para a seleção.")
+    else:
+        df_logs_disp = df_logs.copy()
+        df_logs_disp.index = range(1, len(df_logs_disp) + 1)
+        st.dataframe(df_logs_disp, use_container_width=True)
+        
+    dl_log_xlsx = df_to_xlsx(df_logs)
+    dl_log_csv = df_logs.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+    
+    col_l1, col_l2 = st.columns(2)
+    with col_l1:
+        st.download_button(
+            "⬇️ Baixar Logs Filtrados (Excel .xlsx)",
+            dl_log_xlsx,
+            f"logs_{sel_log_user}_{now_br().strftime('%Y%m%d_%H%M')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="dl_logs_xlsx"
+        )
+    with col_l2:
+        st.download_button(
+            "⬇️ Baixar Logs Filtrados (CSV)",
+            dl_log_csv,
+            f"logs_{sel_log_user}_{now_br().strftime('%Y%m%d_%H%M')}.csv",
+            mime="text/csv",
+            key="dl_logs_csv"
+        )
+
 with tab_logs:
     sub_tab_activity, sub_tab_grades = st.tabs([
         "📜 Logs de Atividades",
