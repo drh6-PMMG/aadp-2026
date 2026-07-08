@@ -7733,32 +7733,23 @@ if active_page == "Auditoria de Notas" and st.session_state.user_role == "ADMINI
         master_xlsx_path = os.path.join(str(DADOS_DIR), "Analise avaliacoes completa.xlsx")
         geral_csv_path = os.path.join(str(DADOS_DIR), "geral.csv")
         
-        # Exibir configuração do Google Drive na página de Auditoria
-        st.markdown("##### ⚙️ Configuração do Google Drive para Auditoria")
-        st.info("Como você está utilizando a fonte **Google Drive**, informe abaixo os IDs dos arquivos do geral.csv e da planilha consolidada. O sistema fará o download deles automaticamente para realizar a auditoria.")
+        st.markdown("##### ☁️ Status da Conexão em Nuvem (Google Drive)")
         
-        col_g1, col_g2 = st.columns(2)
-        with col_g1:
-            inp_geral_id = st.text_input("ID do arquivo geral.csv no Google Drive:", value=drive_geral_id, key="drive_geral_id_input")
-        with col_g2:
-            inp_master_id = st.text_input("ID da planilha Analise avaliacoes completa.xlsx no Google Drive:", value=drive_master_xlsx_id, key="drive_master_xlsx_id_input")
-            
-        if st.button("💾 Salvar IDs de Auditoria", key="btn_save_audit_ids"):
-            cfg["drive_geral_id"] = inp_geral_id.strip()
-            cfg["drive_master_xlsx_id"] = inp_master_id.strip()
-            try:
-                CONFIG_FILE.write_text(json.dumps(cfg, indent=4, ensure_ascii=False), encoding="utf-8")
-                st.success("✅ IDs de auditoria salvos com sucesso!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Erro ao salvar arquivo de configuração: {e}")
+        # Mostrar o status de configuração dos IDs de forma amigável e limpa
+        col_st1, col_st2 = st.columns(2)
+        with col_st1:
+            if drive_geral_id:
+                st.success(f"✅ ID do geral.csv carregado")
+            else:
+                st.error("❌ ID do geral.csv não configurado")
+        with col_st2:
+            if drive_master_xlsx_id:
+                st.success(f"✅ ID da Planilha Mestre carregado")
+            else:
+                st.error("❌ ID da Planilha Mestre não configurado")
                 
-        # Atualizar variáveis para download
-        drive_geral_id = cfg.get("drive_geral_id", "")
-        drive_master_xlsx_id = cfg.get("drive_master_xlsx_id", "")
-        
         if not drive_geral_id or not drive_master_xlsx_id:
-            st.warning("⚠️ Insira os IDs do Google Drive acima para poder executar a auditoria online.")
+            st.warning("⚠️ Para utilizar a auditoria no modo online, certifique-se de configurar as chaves `drive_geral_id` e `drive_master_xlsx_id` nas configurações do Streamlit (st.secrets ou no arquivo config_aadp.json).")
             st.stop()
     else:
         # Modo pasta local
@@ -7833,7 +7824,6 @@ if active_page == "Auditoria de Notas" and st.session_state.user_role == "ADMINI
                 key="dl_audit_notes_xlsx",
                 use_container_width=True
             )
-
 
 
 if active_page == "Painel Administrador" and st.session_state.user_role == "ADMINISTRADOR":
