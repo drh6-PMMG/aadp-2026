@@ -3841,7 +3841,7 @@ logo_html = f'<img src="data:image/png;base64,{logo_base64}" style="width: 100%;
 
 
 
-st.markdown(f'<div class="main-title">{logo_html}<div style="margin-top: 10px;"><h1 style="font-size: 2.3rem; margin: 0; font-weight: 800; color: #bca374; text-transform: uppercase;">Painel de Controle AADP</h1><p style="font-size: 1.05rem; margin: 5px 0 0 0; color: #e5dccb; font-weight: 500;">Polýcia Militar de Minas Gerais · Resolução 5458/2025</p><p style="font-size: 0.9rem; margin-top: 8px; color: #a0a0a0; font-style: italic;">Dados consolidados em {last_mod_str}</p></div></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="main-title">{logo_html}<div style="margin-top: 10px;"><h1 style="font-size: 2.3rem; margin: 0; font-weight: 800; color: #bca374; text-transform: uppercase;">Painel de Controle AADP</h1><p style="font-size: 1.05rem; margin: 5px 0 0 0; color: #e5dccb; font-weight: 500;">Polícia Militar de Minas Gerais · Resolução 5458/2025</p><p style="font-size: 0.9rem; margin-top: 8px; color: #a0a0a0; font-style: italic;">Dados consolidados em {last_mod_str}</p></div></div>', unsafe_allow_html=True)
 
 
 
