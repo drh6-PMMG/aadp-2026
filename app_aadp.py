@@ -298,6 +298,35 @@ def run_sheet_api(action, payload=None):
         st.error(f"Erro ao conectar com Google Sheets: {e}")
     return None
 
+def refresh_db_cache():
+    if check_use_cloud():
+        users = run_sheet_api("get_users")
+        if users is None:
+            users = []
+    else:
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("SELECT pm, name, rank, rpm, unit, function, password, role, status, created_at FROM users")
+            rows = c.fetchall()
+            conn.close()
+            users = []
+            for r in rows:
+                users.append({
+                    "pm": r[0], "name": r[1], "rank": r[2], "rpm": r[3], "unit": r[4],
+                    "function": r[5], "password": r[6], "role": r[7], "status": r[8],
+                    "created_at": r[9]
+                })
+        except Exception:
+            users = []
+    st.session_state.db_users = users
+    return users
+
+def get_cached_users():
+    if "db_users" not in st.session_state:
+        refresh_db_cache()
+    return st.session_state.db_users
+
 def db_get_user_for_login(pm, password_hash):
     if check_use_cloud():
         users = run_sheet_api("get_users")
@@ -316,6 +345,7 @@ def db_get_user_for_login(pm, password_hash):
 
 def db_register_user(pm, name, rank, rpm, unit, function, password_hash):
     created_at = now_br().strftime("%Y-%m-%d %H:%M:%S")
+    success = False
     if check_use_cloud():
         user = {
             "pm": pm, "name": name, "rank": rank, "rpm": rpm, "unit": unit,
@@ -323,7 +353,7 @@ def db_register_user(pm, name, rank, rpm, unit, function, password_hash):
             "password": password_hash, "created_at": created_at
         }
         res = run_sheet_api("add_user", {"user": user})
-        return res is not None
+        success = res is not None
     else:
         try:
             conn = sqlite3.connect(DB_FILE)
@@ -334,23 +364,16 @@ def db_register_user(pm, name, rank, rpm, unit, function, password_hash):
             """, (pm, name, rank, rpm, unit, function, password_hash, created_at))
             conn.commit()
             conn.close()
-            return True
+            success = True
         except Exception:
-            return False
+            success = False
+    if success:
+        refresh_db_cache()
+    return success
 
 def db_get_all_pms():
-    if check_use_cloud():
-        users = run_sheet_api("get_users")
-        if users:
-            return [str(u["pm"]) for u in users]
-        return []
-    else:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT pm FROM users")
-        pms = [r[0] for r in c.fetchall()]
-        conn.close()
-        return pms
+    users = get_cached_users()
+    return [str(u["pm"]) for u in users]
 
 def db_update_user_info(pm, name, rank, rpm, unit, sector):
     if check_use_cloud():
@@ -366,22 +389,14 @@ def db_update_user_info(pm, name, rank, rpm, unit, sector):
         """, (name, rank, rpm, unit, sector, pm))
         conn.commit()
         conn.close()
+    refresh_db_cache()
 
 def db_get_user_password(pm):
-    if check_use_cloud():
-        users = run_sheet_api("get_users")
-        if users:
-            for u in users:
-                if str(u["pm"]).strip() == str(pm).strip():
-                    return u["password"]
-        return None
-    else:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT password FROM users WHERE pm = ?", (pm,))
-        res = c.fetchone()
-        conn.close()
-        return res[0] if res else None
+    users = get_cached_users()
+    for u in users:
+        if str(u["pm"]).strip() == str(pm).strip():
+            return u["password"]
+    return None
 
 def db_update_password(pm, password_hash):
     if check_use_cloud():
@@ -392,61 +407,32 @@ def db_update_password(pm, password_hash):
         c.execute("UPDATE users SET password = ? WHERE pm = ?", (password_hash, pm))
         conn.commit()
         conn.close()
+    refresh_db_cache()
 
 def db_get_simulator_users():
-    if check_use_cloud():
-        users = run_sheet_api("get_users")
-        if users:
-            sim_users = []
-            for u in users:
-                if u["status"] == "Ativo" and str(u["pm"]) != "ADM":
-                    sim_users.append((u["pm"], u["name"], u["rank"], u["role"], u["rpm"], u["unit"]))
-            sim_users.sort(key=lambda x: x[1])
-            return sim_users
-        return []
-    else:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT pm, name, rank, role, rpm, unit FROM users WHERE status = 'Ativo' AND pm != 'ADM' ORDER BY name ASC")
-        res = c.fetchall()
-        conn.close()
-        return res
+    users = get_cached_users()
+    sim_users = []
+    for u in users:
+        if u["status"] == "Ativo" and str(u["pm"]) != "ADM":
+            sim_users.append((u["pm"], u["name"], u["rank"], u["role"], u["rpm"], u["unit"]))
+    sim_users.sort(key=lambda x: x[1])
+    return sim_users
 
 def db_get_pending_users():
-    if check_use_cloud():
-        users = run_sheet_api("get_users")
-        if users:
-            pend_users = []
-            for u in users:
-                if u["status"] == "Pendente":
-                    pend_users.append((u["pm"], u["name"], u["rank"], u["rpm"], u["unit"], u["function"], u["created_at"]))
-            return pend_users
-        return []
-    else:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT pm, name, rank, rpm, unit, function, created_at FROM users WHERE status = 'Pendente'")
-        res = c.fetchall()
-        conn.close()
-        return res
+    users = get_cached_users()
+    pend_users = []
+    for u in users:
+        if u["status"] == "Pendente":
+            pend_users.append((u["pm"], u["name"], u["rank"], u["rpm"], u["unit"], u["function"], u["created_at"]))
+    return pend_users
 
 def db_get_active_users():
-    if check_use_cloud():
-        users = run_sheet_api("get_users")
-        if users:
-            active = []
-            for u in users:
-                if u["status"] == "Ativo" and str(u["pm"]) != "ADM":
-                    active.append((u["pm"], u["name"], u["rank"], u["rpm"], u["unit"], u["role"], u["created_at"]))
-            return active
-        return []
-    else:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT pm, name, rank, rpm, unit, role, created_at FROM users WHERE status = 'Ativo' AND pm != 'ADM'")
-        res = c.fetchall()
-        conn.close()
-        return res
+    users = get_cached_users()
+    active = []
+    for u in users:
+        if u["status"] == "Ativo" and str(u["pm"]) != "ADM":
+            active.append((u["pm"], u["name"], u["rank"], u["rpm"], u["unit"], u["role"], u["created_at"]))
+    return active
 
 def db_approve_user(pm, role, rpm):
     if check_use_cloud():
@@ -457,6 +443,7 @@ def db_approve_user(pm, role, rpm):
         c.execute("UPDATE users SET status = 'Ativo', role = ?, rpm = ? WHERE pm = ?", (role, rpm, pm))
         conn.commit()
         conn.close()
+    refresh_db_cache()
 
 def db_reject_user(pm):
     if check_use_cloud():
@@ -467,6 +454,7 @@ def db_reject_user(pm):
         c.execute("UPDATE users SET status = 'Recusado' WHERE pm = ?", (pm,))
         conn.commit()
         conn.close()
+    refresh_db_cache()
 
 def db_update_user_role_rpm(pm, role, rpm):
     if check_use_cloud():
@@ -477,6 +465,7 @@ def db_update_user_role_rpm(pm, role, rpm):
         c.execute("UPDATE users SET role = ?, rpm = ? WHERE pm = ?", (role, rpm, pm))
         conn.commit()
         conn.close()
+    refresh_db_cache()
 
 def db_revoke_user(pm):
     if check_use_cloud():
@@ -487,26 +476,19 @@ def db_revoke_user(pm):
         c.execute("UPDATE users SET status = 'Bloqueado' WHERE pm = ?", (pm,))
         conn.commit()
         conn.close()
+    refresh_db_cache()
 
 def db_get_users_df():
-    if check_use_cloud():
-        users = run_sheet_api("get_users")
-        if users:
-            rows = []
-            for u in users:
-                if str(u["pm"]) != "ADM":
-                    rows.append({
-                        "pm": u["pm"], "rank": u["rank"], "name": u["name"],
-                        "role": u["role"], "rpm": u["rpm"], "unit": u["unit"],
-                        "status": u["status"]
-                    })
-            return pd.DataFrame(rows)
-        return pd.DataFrame(columns=["pm", "rank", "name", "role", "rpm", "unit", "status"])
-    else:
-        conn = sqlite3.connect(DB_FILE)
-        df = pd.read_sql_query("SELECT pm, rank, name, role, rpm, unit, status FROM users WHERE pm != 'ADM'", conn)
-        conn.close()
-        return df
+    users = get_cached_users()
+    rows = []
+    for u in users:
+        if str(u["pm"]) != "ADM":
+            rows.append({
+                "pm": u["pm"], "rank": u["rank"], "name": u["name"],
+                "role": u["role"], "rpm": u["rpm"], "unit": u["unit"],
+                "status": u["status"]
+            })
+    return pd.DataFrame(rows)
 
 def db_get_logs_pms():
     if check_use_cloud():
@@ -524,20 +506,11 @@ def db_get_logs_pms():
         return pms
 
 def db_get_user_info(pm):
-    if check_use_cloud():
-        users = run_sheet_api("get_users")
-        if users:
-            for u in users:
-                if str(u["pm"]).strip() == str(pm).strip():
-                    return (u["rank"], u["name"])
-        return None
-    else:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT rank, name FROM users WHERE pm = ?", (pm,))
-        res = c.fetchone()
-        conn.close()
-        return res
+    users = get_cached_users()
+    for u in users:
+        if str(u["pm"]).strip() == str(pm).strip():
+            return (u["rank"], u["name"])
+    return None
 
 def db_get_logs_df(sel_log_user, start_str, end_str):
     if check_use_cloud():
@@ -576,74 +549,70 @@ def db_get_logs_df(sel_log_user, start_str, end_str):
         return df
 
 def db_get_pending_count():
-    if check_use_cloud():
-        users = run_sheet_api("get_users")
-        if users:
-            return sum(1 for u in users if u["status"] == "Pendente")
-        return 0
-    else:
-        try:
-            conn = sqlite3.connect(DB_FILE)
-            c = conn.cursor()
-            c.execute("SELECT COUNT(*) FROM users WHERE status = 'Pendente'")
-            count = c.fetchone()[0]
-            conn.close()
-            return count
-        except Exception:
-            return 0
+    users = get_cached_users()
+    return sum(1 for u in users if u["status"] == "Pendente")
 
 def db_check_user_status(pm):
-    if check_use_cloud():
-        users = run_sheet_api("get_users")
-        if users:
-            for u in users:
-                if str(u["pm"]).strip() == str(pm).strip():
-                    return u["status"]
-        return None
-    else:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT status FROM users WHERE pm = ?", (pm,))
-        res = c.fetchone()
-        conn.close()
-        return res[0] if res else None
+    users = get_cached_users()
+    for u in users:
+        if str(u["pm"]).strip() == str(pm).strip():
+            return u["status"]
+    return None
 
 def db_re_request_access(pm, name, rank, rpm, unit, sector, password_hash):
     created_at = now_br().strftime("%Y-%m-%d %H:%M:%S")
+    success = False
     if check_use_cloud():
         updates = {
             "name": name, "rank": rank, "rpm": rpm, "unit": unit, "function": sector,
             "role": "PENDENTE", "status": "Pendente", "password": password_hash, "created_at": created_at
         }
-        run_sheet_api("update_user", {"pm": pm, "updates": updates})
+        res = run_sheet_api("update_user", {"pm": pm, "updates": updates})
+        success = res is not None
     else:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("""
-            UPDATE users 
-            SET name = ?, rank = ?, rpm = ?, unit = ?, function = ?, role = 'PENDENTE', status = 'Pendente', password = ?, created_at = ?
-            WHERE pm = ?
-        """, (name, rank, rpm, unit, sector, password_hash, created_at, pm))
-        conn.commit()
-        conn.close()
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("""
+                UPDATE users 
+                SET name = ?, rank = ?, rpm = ?, unit = ?, function = ?, role = 'PENDENTE', status = 'Pendente', password = ?, created_at = ?
+                WHERE pm = ?
+            """, (name, rank, rpm, unit, sector, password_hash, created_at, pm))
+            conn.commit()
+            conn.close()
+            success = True
+        except Exception:
+            success = False
+    if success:
+        refresh_db_cache()
+    return success
 
 def db_create_new_request(pm, name, rank, rpm, unit, sector, password_hash):
     created_at = now_br().strftime("%Y-%m-%d %H:%M:%S")
+    success = False
     if check_use_cloud():
         user = {
             "pm": pm, "name": name, "rank": rank, "rpm": rpm, "unit": unit, "function": sector,
             "role": "PENDENTE", "status": "Pendente", "password": password_hash, "created_at": created_at
         }
-        run_sheet_api("add_user", {"user": user})
+        res = run_sheet_api("add_user", {"user": user})
+        success = res is not None
     else:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("""
-            INSERT INTO users (pm, name, rank, rpm, unit, function, role, status, password, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, 'PENDENTE', 'Pendente', ?, ?)
-        """, (pm, name, rank, rpm, unit, sector, password_hash, created_at))
-        conn.commit()
-        conn.close()
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("""
+                INSERT INTO users (pm, name, rank, rpm, unit, function, role, status, password, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, 'PENDENTE', 'Pendente', ?, ?)
+            """, (pm, name, rank, rpm, unit, sector, password_hash, created_at))
+            conn.commit()
+            conn.close()
+            success = True
+        except Exception:
+            success = False
+    if success:
+        refresh_db_cache()
+    return success
 
 # ─────────────────────── LÓGICA DADOS ─────────────────────────────────────────
 def normaliza(t):
@@ -952,6 +921,7 @@ if not st.session_state.authenticated:
                             st.session_state.user_role = role
                             st.session_state.user_rpm = rpm
                             st.session_state.user_unit = unit
+                            refresh_db_cache()
                             log_action(spm, "LOGIN", "Acesso realizado com sucesso")
                             st.success(f"Bem-vindo, {name}!")
                             st.rerun()
