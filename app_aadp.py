@@ -7664,7 +7664,7 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                     target_pm = pm_match.group(1)
                     if st.button("🎭 Simular visão deste usuário", type="primary", use_container_width=True, key="btn_start_sim"):
                         for u in sim_users:
-                            if u[0] == target_pm:
+                            if str(u[0]).strip() == str(target_pm).strip():
                                 st.session_state.simulation_active = True
                                 st.session_state.simulated_pm = u[0]
                                 st.session_state.simulated_name = f"{u[2]} {u[1]}"
