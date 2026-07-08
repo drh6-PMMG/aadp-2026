@@ -37,7 +37,9 @@ def normaliza(texto: str) -> str:
     return "".join(c for c in t if unicodedata.category(c) != "Mn")
 
 def is_empty(v) -> bool:
-    return not v or str(v).strip() in ("", "-")
+    if v == 0 or v == 0.0:
+        return False
+    return not v or str(v).strip() in ("", "-", "nan", "none")
 
 def concordam(conceito: str, nota_str: str):
     if is_empty(conceito) or is_empty(nota_str):
@@ -58,19 +60,16 @@ def calc_cert_hom(j: str, l: str) -> str:
     return "NÃO" if c is True else ("SIM" if c is False else "-")
 
 def calc_status(j: str, l: str, n: str) -> str:
-    has_j = not is_empty(j)
-    has_l = not is_empty(l)
-    has_n = not is_empty(n)
-    if not has_j:
+    if is_empty(j):
         return "Aberta"
-    if has_j and not has_l:
+    if is_empty(l):
         return "Parcialmente Encerrada"
     c = concordam(j, l)
     if c is True:
         return "Encerrada"
     elif c is False:
-        return "Encerrada" if has_n else "Homologação"
-    return "Encerrada"
+        return "Encerrada" if not is_empty(n) else "Homologação"
+    return "Parcialmente Encerrada"
 
 def rpm_sort_key(name):
     m = re.match(r'^(\d+)\s+RPM', str(name))
