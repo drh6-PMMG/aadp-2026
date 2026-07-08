@@ -1128,10 +1128,10 @@ with st.sidebar:
         ("📋 Dados Gerais", "Dados Gerais"),
         ("⏳ Avaliações Pendentes", "Avaliações Pendentes"),
         ("👥 Avaliadores Pendentes", "Avaliadores Pendentes"),
-        ("📥 Gerar Relatório", "Gerar Relatório"),
     ]
-    # O perfil SADM não possui a funcionalidade Relatório Word
-    if sidebar_active_role != "SADM":
+    # P1 e SADM não possuem acesso às opções de exportação/relatórios
+    if sidebar_active_role not in ("P1", "SADM"):
+        pages.append(("📥 Gerar Relatório", "Gerar Relatório"))
         pages.append(("📄 Relatório Word", "Relatório Word"))
         
     # O administrador real sempre vê o painel administrador
@@ -1149,7 +1149,7 @@ with st.sidebar:
     if st.session_state.active_page == "Painel Administrador" and st.session_state.user_role != "ADMINISTRADOR":
         st.session_state.active_page = "Análise Gráfica"
         
-    if st.session_state.active_page == "Relatório Word" and sidebar_active_role == "SADM":
+    if st.session_state.active_page in ("Gerar Relatório", "Relatório Word") and sidebar_active_role in ("P1", "SADM"):
         st.session_state.active_page = "Análise Gráfica"
 
     for label, page_name in pages:
