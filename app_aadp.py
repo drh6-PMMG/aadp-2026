@@ -2,6 +2,8 @@
 AADP 2026 — Dashboard de Análise de Avaliações
 Versão 3.0 — Google Drive + Streamlit Cloud + Geração em memória
 """
+import time
+_prof_start = time.time()
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -629,14 +631,20 @@ def concordam(j, l):
     return faixa[0] <= nota <= faixa[1]
 
 def matches_rpm(reg_rpm, csv_rpm):
-    import re
-    if str(reg_rpm).strip().lower() == "gestor":
+    s_reg = str(reg_rpm).strip()
+    s_csv = str(csv_rpm).strip()
+    if s_reg.lower() == "gestor":
         return True
-    m1 = re.search(r'\d+', str(reg_rpm))
-    m2 = re.search(r'\d+', str(csv_rpm))
-    if m1 and m2:
-        return int(m1.group()) == int(m2.group())
-    return str(reg_rpm).strip().lower() == str(csv_rpm).strip().lower()
+    if s_reg.lower() == s_csv.lower():
+        return True
+    
+    # Extrair dígitos de forma ultra rápida
+    reg_digits = "".join(c for c in s_reg if c.isdigit())
+    csv_digits = "".join(c for c in s_csv if c.isdigit())
+    
+    if reg_digits and csv_digits:
+        return int(reg_digits) == int(csv_digits)
+    return False
 
 def find_sigef_user(pm_number: str) -> dict:
     """Busca os dados do militar no SIGEF.csv pelo Nº PM (6 dígitos)."""
@@ -843,13 +851,20 @@ def load_data(db_path: str, drive_av_id: str = "", drive_si_id: str = ""):
         
     df = _parse_csv(av_f, si_f)
     
-    # Gera e substitui o Geral.xlsx na pasta local/servidor
+    # Gera e substitui o Geral.xlsx na pasta local/servidor apenas se necessário
     try:
-        xlsx_bytes = _build_workbook(df, "GERAL — AADP 2026", df)
         local_dir = db_path if db_path else str(DADOS_DIR)
         geral_out = os.path.join(local_dir, "Geral.xlsx")
-        with open(geral_out, "wb") as f_out:
-            f_out.write(xlsx_bytes)
+        
+        build_needed = True
+        if os.path.exists(geral_out) and os.path.exists(av_f):
+            if os.path.getmtime(geral_out) >= os.path.getmtime(av_f):
+                build_needed = False
+                
+        if build_needed:
+            xlsx_bytes = _build_workbook(df, "GERAL — AADP 2026", df)
+            with open(geral_out, "wb") as f_out:
+                f_out.write(xlsx_bytes)
     except Exception:
         pass
         
@@ -2925,3 +2940,6 @@ st.markdown("---")
 st.markdown(f"<center><small>AADP 2026 · Polícia Militar de Minas Gerais · "
             f"Resolução 5458/2025 · {now_br().strftime('%d/%m/%Y')}</small></center>",
             unsafe_allow_html=True)
+
+print(f"[AADP PROFILE] Script finished in {time.time() - _prof_start:.4f} seconds", flush=True)
+
