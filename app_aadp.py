@@ -683,16 +683,46 @@ def find_sigef_user(pm_number: str) -> dict:
     return None
 
 def sync_users_with_sigef():
-    """Sincroniza os dados cadastrais de todos os usuários com o SIGEF.csv."""
+    """Sincroniza os dados cadastrais de todos os usuários com o SIGEF.csv de forma otimizada."""
     try:
+        import os, csv
+        si_path = "SIGEF.csv"
+        if not os.path.exists(si_path):
+            si_path = os.path.join("dados", "SIGEF.csv")
+            if not os.path.exists(si_path):
+                # Tenta baixar
+                sigef_drive_id = "10Ld_4XEz9b4kI_T6TC9W19tQdtBJCz5F"
+                try:
+                    _baixar_drive(sigef_drive_id, "SIGEF.csv")
+                    si_path = "SIGEF.csv"
+                except Exception:
+                    return
+
+        # Carrega todo o SIGEF para um dicionário em memória (uma única leitura de disco)
+        sigef_dict = {}
+        with open(si_path, encoding="cp1252", errors="replace") as f:
+            reader = csv.reader(f, delimiter=";")
+            next(reader)  # pula cabeçalho
+            for row in reader:
+                if len(row) > 24:
+                    pm_clean = row[0].strip().lstrip("0")
+                    if pm_clean:
+                        sigef_dict[pm_clean] = {
+                            "name": row[1].strip(),
+                            "rank": row[2].strip(),
+                            "rpm": row[5].strip(),
+                            "unit": row[7].strip(),
+                            "sector": row[9].strip()
+                        }
+        
         pms = db_get_all_pms()
         for pm in pms:
-            # Não sincronizamos o ADM fictício
             if pm == "ADM":
                 continue
-            sigef_info = find_sigef_user(pm)
-            if sigef_info:
-                db_update_user_info(pm, sigef_info["name"], sigef_info["rank"], sigef_info["rpm"], sigef_info["unit"], sigef_info["sector"])
+            pm_clean = pm.strip().lstrip("0")
+            if pm_clean in sigef_dict:
+                info = sigef_dict[pm_clean]
+                db_update_user_info(pm, info["name"], info["rank"], info["rpm"], info["unit"], info["sector"])
     except Exception:
         pass
 
@@ -2639,8 +2669,12 @@ if active_page == "Relatório Word":
 if active_page == "Painel Administrador" and st.session_state.user_role == "ADMINISTRADOR":
     st.markdown("### ⚙️ Painel Administrador")
     
-    # Sincroniza dados com o SIGEF.csv para mantê-los sempre atualizados
-    sync_users_with_sigef()
+    # Sincronização manual com SIGEF para alta performance
+    if st.button("🔄 Sincronizar Cadastros com SIGEF (Atualiza Órgãos/Unidades)", use_container_width=True, key="btn_sync_sigef"):
+        with st.spinner("⏳ Sincronizando dados com a base SIGEF..."):
+            sync_users_with_sigef()
+        st.success("✅ Cadastros sincronizados com a base SIGEF com sucesso!")
+        st.rerun()
     
     # --- SIMULADOR DE TELA ---
     with st.container():
@@ -2743,7 +2777,12 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
             
             if selected_user_label:
                 m_pm = selected_user_label.split(" (PM: ")[1].rstrip(")")
-                row_sel = df_act[df_act["Nº PM"] == m_pm].iloc[0]
+                matching_rows = df_act[df_act["Nº PM"].astype(str).str.strip() == str(m_pm).strip()]
+                if not matching_rows.empty:
+                    row_sel = matching_rows.iloc[0]
+                else:
+                    st.error("Erro ao selecionar usuário. O cache pode estar desatualizado.")
+                    st.stop()
                 
                 st.write(f"**Dados Atuais:** Perfil: `{row_sel['Perfil']}` | RPM: `{row_sel['RPM']}`")
                 
