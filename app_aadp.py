@@ -3313,6 +3313,18 @@ with st.sidebar:
         st.markdown(f"<small>🕵️ <b>Simulado:</b> <span style='color:#ff9f43;'>{st.session_state.simulated_role}</span></small>", unsafe_allow_html=True)
 
 
+        if st.button("Voltar simulação", key="sidebar_stop_sim", type="primary", use_container_width=True):
+            st.session_state.simulation_active = False
+            st.session_state.simulated_pm = ""
+            st.session_state.simulated_name = ""
+            st.session_state.simulated_role = ""
+            st.session_state.simulated_rpm = ""
+            st.session_state.simulated_unit = ""
+            st.session_state.active_page = "Painel Administrador"
+            log_action("ADM", "ENCERRAR_SIMULACAO", "Simulacao desativada")
+            st.rerun()
+
+
     else:
 
 
