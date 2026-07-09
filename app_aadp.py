@@ -4906,23 +4906,20 @@ if active_page == "Análise Gráfica":
 
 
             fig_time.update_layout(
-
-
-                height=360, title_x=0.5, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-
-
+                height=380, title_x=0.5, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                 xaxis_title="", yaxis_title="Avaliações encerradas",
-
-
-                showlegend=False,
-
-
+                showlegend=True,
+                legend=dict(
+                    orientation="h",
+                    yanchor="top",
+                    y=-0.45,
+                    xanchor="center",
+                    x=0.5,
+                    font=dict(color="#e5dccb"),
+                    bgcolor="rgba(0,0,0,0)"
+                ),
                 hovermode="x unified",
-
-
                 title_font=dict(color="#bca374")
-
-
             )
 
 
