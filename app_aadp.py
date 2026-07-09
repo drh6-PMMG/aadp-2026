@@ -157,7 +157,7 @@ def parse_float(v):
     except ValueError:
         return None
 
-@st.cache_data(show_spinner=False)
+@st.cache_resource(show_spinner=False)
 def run_grades_audit(xlsx_path, csv_path, drive_geral_id=None, drive_master_xlsx_id=None):
     import pandas as pd
     import numpy as np
@@ -167,13 +167,15 @@ def run_grades_audit(xlsx_path, csv_path, drive_geral_id=None, drive_master_xlsx
     # Se estamos no modo Drive e temos os IDs configurados, baixar os arquivos primeiro
     if drive_geral_id:
         try:
-            _baixar_drive(drive_geral_id, csv_path)
+            if not os.path.exists(csv_path) or os.path.getsize(csv_path) == 0:
+                _baixar_drive(drive_geral_id, csv_path)
         except Exception as e:
             return None, f"Falha ao baixar geral.csv do Google Drive (ID: {drive_geral_id}): {str(e)}"
             
     if drive_master_xlsx_id:
         try:
-            _baixar_drive(drive_master_xlsx_id, xlsx_path)
+            if not os.path.exists(xlsx_path) or os.path.getsize(xlsx_path) == 0:
+                _baixar_drive(drive_master_xlsx_id, xlsx_path)
         except Exception as e:
             return None, f"Falha ao baixar master Excel do Google Drive (ID: {drive_master_xlsx_id}): {str(e)}"
 
@@ -296,14 +298,15 @@ def run_grades_audit(xlsx_path, csv_path, drive_geral_id=None, drive_master_xlsx
 
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_resource(show_spinner=False)
 def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
     import pandas as pd
     import os
     
     if drive_master_xlsx_id:
         try:
-            _baixar_drive(drive_master_xlsx_id, xlsx_path)
+            if not os.path.exists(xlsx_path) or os.path.getsize(xlsx_path) == 0:
+                _baixar_drive(drive_master_xlsx_id, xlsx_path)
         except Exception as e:
             return None, f"Falha ao baixar master Excel do Google Drive (ID: {drive_master_xlsx_id}): {str(e)}"
             
@@ -2621,34 +2624,20 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
 
 
 
-@st.cache_data(show_spinner="⏳ Carregando e processando dados...")
-
-
+@st.cache_resource(show_spinner="⏳ Carregando e processando dados...")
 def load_data(db_path: str, drive_av_id: str = "", drive_si_id: str = ""):
-
-
     """Carrega dados de pasta local ou Google Drive e gera o Geral.xlsx automaticamente."""
-
-
     if drive_av_id and drive_si_id:
-
-
         # ── Modo Google Drive ──────────────────────────────────────────────
-
-
-        tmp = tempfile.mkdtemp(prefix="aadp_")
-
-
-        av_f = os.path.join(tmp, "avaliacoes.csv")
-
-
-        si_f = os.path.join(tmp, "SIGEF.csv")
-
-
-        _baixar_drive(drive_av_id, av_f)
-
-
-        _baixar_drive(drive_si_id, si_f)
+        cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
+        os.makedirs(cache_dir, exist_ok=True)
+        av_f = os.path.join(cache_dir, "avaliacoes.csv")
+        si_f = os.path.join(cache_dir, "SIGEF.csv")
+        
+        if not os.path.exists(av_f) or os.path.getsize(av_f) == 0:
+            _baixar_drive(drive_av_id, av_f)
+        if not os.path.exists(si_f) or os.path.getsize(si_f) == 0:
+            _baixar_drive(drive_si_id, si_f)
 
 
     else:
@@ -3726,26 +3715,34 @@ with st.sidebar:
 
 
         if st.button("🔄 Recarregar Dados", use_container_width=True, type="primary", key="btn_reload"):
-
-
             st.cache_data.clear()
-
+            st.cache_resource.clear()
+            
+            # Limpar arquivos baixados para forçar download novo
+            import tempfile
+            cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
+            for f in ["avaliacoes.csv", "SIGEF.csv"]:
+                p = os.path.join(cache_dir, f)
+                if os.path.exists(p):
+                    try: os.remove(p)
+                    except: pass
+            
+            # Limpar planilha mestre
+            local_master = os.path.join(str(DADOS_DIR), "Analise avaliacoes completa.xlsx")
+            if os.path.exists(local_master):
+                try: os.remove(local_master)
+                except: pass
+                
+            local_master_parent = os.path.join(str(Path(DADOS_DIR).parent), "Analise avaliacoes completa.xlsx")
+            if os.path.exists(local_master_parent):
+                try: os.remove(local_master_parent)
+                except: pass
 
             if "db_users" in st.session_state:
-
-
                 del st.session_state.db_users
-
-
             if "db_logs" in st.session_state:
-
-
                 del st.session_state.db_logs
-
-
             st.success("Dados recarregados com sucesso!")
-
-
             st.rerun()
 
 
