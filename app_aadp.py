@@ -2827,106 +2827,81 @@ MAX_STYLE = 4_000_000
 
 
 
+
 def safe_df(styled_or_df, height=520, key_prefix=None):
-    """Exibe um DataFrame com filtros interativos por coluna e busca livre.
-    - Ordenacao crescente/decrescente: clique no cabecalho de qualquer coluna na tabela.
-    - Filtros por coluna: selecione valores nas caixas acima da tabela.
-    - Busca livre: campo de texto que filtra qualquer coluna ao mesmo tempo.
+    """Exibe um DataFrame com filtros por coluna estilo Excel e ordenacao por clique no cabecalho.
+    Usa st-aggrid se disponivel, fallback para st.dataframe padrao.
     """
     import pandas as pd
 
-    # Extrair o DataFrame subjacente (pode ser Styler ou DataFrame)
+    # Extrair DataFrame subjacente
     if hasattr(styled_or_df, "data"):
         raw_df = styled_or_df.data.copy()
-        is_styled = True
-        is_large = raw_df.size > MAX_STYLE
+    elif isinstance(styled_or_df, pd.DataFrame):
+        raw_df = styled_or_df.copy()
     else:
-        raw_df = styled_or_df.copy() if isinstance(styled_or_df, pd.DataFrame) else styled_or_df
-        is_styled = False
-        is_large = False
+        raw_df = styled_or_df
 
     if not isinstance(raw_df, pd.DataFrame) or raw_df.empty:
-        st.info("\u2139\ufe0f Nenhum dado dispon\u00edvel para exibir.")
+        st.info("\u2139\ufe0f Nenhum dado disponivel para exibir.")
         return
 
-    # Gerar chave unica para os widgets para nao colidir entre telas
-    if key_prefix is None:
-        import hashlib
-        key_prefix = "sdf_" + hashlib.md5(
-            "".join(str(c) for c in raw_df.columns).encode()
-        ).hexdigest()[:8]
+    try:
+        from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode, JsCode
 
-    # Área de filtros colapsavel
-    with st.expander("\U0001f50d Filtros e Busca por Coluna", expanded=False):
-        # Busca livre (qualquer coluna)
-        busca = st.text_input(
-            "\U0001f50e Busca geral (qualquer coluna)",
-            key=f"{key_prefix}_busca",
-            placeholder="Digite qualquer termo para filtrar todas as colunas\u2026",
+        # Construir opcoes do grid
+        gb = GridOptionsBuilder.from_dataframe(raw_df)
+        gb.configure_default_column(
+            filterable=True,
+            sortable=True,
+            resizable=True,
+            wrapText=False,
+            autoHeight=False,
+            filter="agTextColumnFilter",
+            floatingFilter=True,       # filtro flutuante logo abaixo do cabecalho, como Excel
+            suppressMenu=False,
         )
 
-        # Filtros por coluna — somente colunas de texto ou baixa cardinalidade
-        filterable_cols = [
-            c for c in raw_df.columns
-            if raw_df[c].dtype == object or (
-                raw_df[c].nunique() <= 200 and raw_df[c].nunique() > 1
-            )
-        ]
+        # Colunas numericas com filtro numerico
+        for col in raw_df.columns:
+            if pd.api.types.is_numeric_dtype(raw_df[col]):
+                gb.configure_column(col, filter="agNumberColumnFilter")
+            elif "data" in col.lower() or "date" in col.lower():
+                gb.configure_column(col, filter="agDateColumnFilter")
 
-        col_filters = {}
-        if filterable_cols:
-            batch_size = 3
-            for i in range(0, len(filterable_cols), batch_size):
-                batch = filterable_cols[i: i + batch_size]
-                cols_ui = st.columns(len(batch))
-                for col_ui, col_name in zip(cols_ui, batch):
-                    with col_ui:
-                        unique_vals = sorted(
-                            raw_df[col_name].dropna().astype(str).unique().tolist()
-                        )
-                        selected = st.multiselect(
-                            col_name,
-                            options=unique_vals,
-                            default=[],
-                            key=f"{key_prefix}_col_{col_name}",
-                            placeholder="Todos",
-                        )
-                        if selected:
-                            col_filters[col_name] = selected
+        gb.configure_grid_options(
+            domLayout="normal",
+            enableRangeSelection=True,
+            rowMultiSelectWithClick=True,
+        )
+        gb.configure_pagination(paginationAutoPageSize=False, paginationPageSize=50)
 
-    # Aplicar filtros
-    df_filtered = raw_df.copy()
+        grid_options = gb.build()
 
-    # Filtro de busca livre
-    if busca and busca.strip():
-        termo = busca.strip().lower()
-        mask = df_filtered.apply(
-            lambda col: col.astype(str).str.lower().str.contains(termo, na=False)
-        ).any(axis=1)
-        df_filtered = df_filtered[mask]
+        grid_response = AgGrid(
+            raw_df,
+            gridOptions=grid_options,
+            height=height,
+            update_mode=GridUpdateMode.FILTERING_CHANGED | GridUpdateMode.SORTING_CHANGED,
+            data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+            fit_columns_on_grid_load=False,
+            allow_unsafe_jscode=False,
+            theme="alpine",
+            key=key_prefix,
+        )
 
-    # Filtros por coluna
-    for col_name, selected_vals in col_filters.items():
-        if col_name in df_filtered.columns:
-            df_filtered = df_filtered[
-                df_filtered[col_name].astype(str).isin(selected_vals)
-            ]
-
-    # Exibir tabela
-    total = len(raw_df)
-    shown = len(df_filtered)
-    if shown < total:
-        st.caption(f"\U0001f4ca Exibindo **{shown:,}** de **{total:,}** registros (filtro ativo)")
-    else:
-        st.caption(f"\U0001f4ca {total:,} registros \u00b7 Clique no cabe\u00e7alho de uma coluna para ordenar \u2191\u2193")
-
-    if is_styled and not is_large:
-        try:
-            st.dataframe(styled_or_df.data.loc[df_filtered.index], use_container_width=True, height=height)
-        except Exception:
-            st.dataframe(df_filtered, use_container_width=True, height=height)
-    else:
-        st.dataframe(df_filtered, use_container_width=True, height=height)
+    except ImportError:
+        # Fallback: st.dataframe padrao (com ordenacao nativa por clique no cabecalho)
+        st.caption("\U0001f4ca Clique no cabe\u00e7alho de uma coluna para ordenar \u2191\u2193")
+        if hasattr(styled_or_df, "data"):
+            is_large = styled_or_df.data.size > MAX_STYLE
+            if not is_large:
+                st.dataframe(styled_or_df, use_container_width=True, height=height)
+            else:
+                st.info("\u2139\ufe0f Tabela grande \u2014 exibida sem cores para melhor desempenho.")
+                st.dataframe(styled_or_df.data, use_container_width=True, height=height)
+        else:
+            st.dataframe(raw_df, use_container_width=True, height=height)
 
 
 def color_status(val):
