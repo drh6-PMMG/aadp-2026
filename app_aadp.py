@@ -4586,14 +4586,8 @@ if active_page == "Análise Gráfica":
     st.markdown("---")
 
 
-    col_s1, col_s2 = st.columns([1.2, 1])
+    col_s1, col_s2 = st.columns([1, 1])
     with col_s1:
-        selected_status_view = st.selectbox(
-            "Visualizar Status no Gráfico:",
-            ["Todos os Status", "Encerrada", "Aberta", "Parcialmente Encerrada", "Homologação"],
-            key="dist_chart_visible_status"
-        )
-    with col_s2:
         sort_option = st.selectbox(
             "Ordenação das Unidades (RPM):",
             [
@@ -4604,19 +4598,40 @@ if active_page == "Análise Gráfica":
             ],
             key="dist_chart_sort_opt"
         )
+    with col_s2:
+        st.write("") # spacing
+
+    # Legenda Interativa - Checkboxes para selecionar os status
+    st.markdown("<p style='font-size: 0.95rem; font-weight: bold; margin-bottom: 2px; color: #bca374;'>Legenda Interativa — Selecione os Status para Exibição e Ordenação:</p>", unsafe_allow_html=True)
+    l1, l2, l3, l4 = st.columns(4)
+    with l1:
+        show_enc = st.checkbox("🟢 Encerrada", value=True, key="dist_legend_enc")
+    with l2:
+        show_abe = st.checkbox("🔴 Aberta", value=True, key="dist_legend_abe")
+    with l3:
+        show_par = st.checkbox("🟠 Parcialmente Encerrada", value=True, key="dist_legend_par")
+    with l4:
+        show_hom = st.checkbox("🟡 Homologação", value=True, key="dist_legend_hom")
+
+    # Mapear status selecionados
+    active_statuses = []
+    if show_enc: active_statuses.append("Encerrada")
+    if show_abe: active_statuses.append("Aberta")
+    if show_par: active_statuses.append("Parcialmente Encerrada")
+    if show_hom: active_statuses.append("Homologação")
+
+    if not active_statuses:
+        active_statuses = ["Encerrada", "Aberta", "Parcialmente Encerrada", "Homologação"]
 
     # Filtrar o DataFrame pelos status selecionados
-    if selected_status_view == "Todos os Status":
-        df_filtered = df
-    else:
-        df_filtered = df[df["Status Avaliação"] == selected_status_view]
+    df_filtered = df[df["Status Avaliação"].isin(active_statuses)]
 
     # Obter lista de unidades presentes
     all_units = df_filtered["Unidade RPM (Avaliado)"].dropna().unique()
     if len(all_units) == 0:
         all_units = df["Unidade RPM (Avaliado)"].dropna().unique()
 
-    # Ordenar as unidades com base na opção selecionada
+    # Ordenar as unidades com base na opção selecionada e nos status ativos
     if sort_option == "Crescente por Unidade":
         all_units_sorted = sorted(all_units, key=rpm_sort_key)
     elif sort_option == "Decrescente por Unidade":
@@ -4657,16 +4672,7 @@ if active_page == "Análise Gráfica":
         height=480, title_font_size=15, title_x=0.5,
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         xaxis_title="", yaxis_title="Avaliações",
-        showlegend=True,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.05,
-            xanchor="center",
-            x=0.5,
-            font=dict(color="#e5dccb"),
-            bgcolor="rgba(0,0,0,0)"
-        ),
+        showlegend=False,
         title_font=dict(color="#bca374")
     )
     
