@@ -556,129 +556,95 @@ div[data-testid="metric-container"]{background:#1c1c1c;border-radius:10px;
   padding:12px;box-shadow:0 2px 8px rgba(0,0,0,.3);}
 
 
-.stButton button{background:linear-gradient(135deg,#000000,#242424);
-
-
-  color:#bca374;border:1px solid #bca374;font-weight:600;border-radius:8px;
-
-
-  transition:all .2s;box-shadow:0 2px 8px rgba(188,163,116,.2);}
-
-
-.stButton button:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(188,163,116,.4);
-
-
-  background:#bca374;color:#000;}
-
-
-
-
-
-/* Botões do Sidebar - Efeito Cristal Líquido Secundário (Inativo) */
-
-
-div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"] {
-
-
-  background: linear-gradient(135deg, #242424 0%, #000000 100%) !important;
-
-
-  color: #bca374 !important;
-
-
-  border: 1px solid #8c6e42 !important;
-
-
-  border-radius: 8px !important;
-
-
-  box-shadow: inset 0 1px 2px rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.5) !important;
-
-
+/* Botões Gerais - Efeito Cristal Líquido (Glassmorphism Premium) */
+.stButton button {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #e5dccb !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 20px !important;
+  padding: 8px 24px !important;
   font-weight: 600 !important;
-
-
-  transition: all 0.3s ease !important;
-
-
+  font-size: 0.9rem !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  letter-spacing: 0.02em !important;
 }
 
+.stButton button:hover {
+  background: rgba(188, 163, 116, 0.2) !important;
+  color: #ffffff !important;
+  border-color: rgba(188, 163, 116, 0.5) !important;
+  border-top-color: rgba(188, 163, 116, 0.7) !important;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2), 0 0 15px rgba(188, 163, 116, 0.4) !important;
+  transform: translateY(-2px) !important;
+}
+
+.stButton button:active {
+  transform: translateY(1px) !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Botões Primários - Efeito Cristal Ouro (Ativo) */
+.stButton button[data-testid="baseButton-primary"] {
+  background: linear-gradient(135deg, rgba(188, 163, 116, 0.25) 0%, rgba(0, 0, 0, 0.6) 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(188, 163, 116, 0.4) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25), 0 4px 15px rgba(188, 163, 116, 0.25) !important;
+}
+
+.stButton button[data-testid="baseButton-primary"]:hover {
+  background: linear-gradient(135deg, rgba(188, 163, 116, 0.45) 0%, rgba(255, 255, 255, 0.1) 100%) !important;
+  border-color: rgba(188, 163, 116, 0.7) !important;
+  box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.4), 0 0 25px rgba(188, 163, 116, 0.6) !important;
+  color: #ffffff !important;
+}
+
+/* Sidebar Botões Secundários */
+div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"] {
+  background: rgba(255, 255, 255, 0.03) !important;
+  color: #e5dccb !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 20px !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 10px rgba(0,0,0,0.5) !important;
+  font-weight: 500 !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
 
 div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"]:hover {
-
-
-  background: linear-gradient(135deg, #bca374 0%, #1a1a1a 100%) !important;
-
-
+  background: rgba(188, 163, 116, 0.15) !important;
   color: #ffffff !important;
-
-
-  border: 1px solid #bca374 !important;
-
-
-  box-shadow: inset 0 1px 2px rgba(255,255,255,0.2), 0 4px 12px rgba(188,163,116,0.4) !important;
-
-
-  transform: translateY(-1px) !important;
-
-
+  border-color: rgba(188, 163, 116, 0.4) !important;
+  border-top-color: rgba(188, 163, 116, 0.6) !important;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.15), 0 0 15px rgba(188, 163, 116, 0.3) !important;
+  transform: translateY(-2px) !important;
 }
 
-
-
-
-
-/* Botões do Sidebar - Efeito Cristal Líquido Primário (Ativo) */
-
-
+/* Sidebar Botões Primários */
 div[data-testid="stSidebar"] button[data-testid="baseButton-primary"] {
-
-
-  background: linear-gradient(135deg, #bca374 0%, #000000 100%) !important;
-
-
+  background: linear-gradient(135deg, rgba(188, 163, 116, 0.3) 0%, rgba(0, 0, 0, 0.7) 100%) !important;
   color: #ffffff !important;
-
-
-  border: 1px solid #ffffff !important;
-
-
-  border-radius: 8px !important;
-
-
-  box-shadow: inset 0 1px 3px rgba(255,255,255,0.3), 0 4px 15px rgba(188,163,116,0.5) !important;
-
-
+  border: 1px solid rgba(188, 163, 116, 0.5) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.4) !important;
+  border-radius: 20px !important;
+  box-shadow: inset 0 1px 3px rgba(255,255,255,0.3), 0 4px 15px rgba(188,163,116,0.3) !important;
   font-weight: 700 !important;
-
-
-  transition: all 0.3s ease !important;
-
-
   text-shadow: 0 1px 2px rgba(0,0,0,0.8) !important;
-
-
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
-
 
 div[data-testid="stSidebar"] button[data-testid="baseButton-primary"]:hover {
-
-
-  background: linear-gradient(135deg, #ffffff 0%, #bca374 100%) !important;
-
-
-  color: #000000 !important;
-
-
-  border: 1px solid #ffffff !important;
-
-
-  box-shadow: inset 0 1px 3px rgba(255,255,255,0.4), 0 6px 20px rgba(188,163,116,0.7) !important;
-
-
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(188, 163, 116, 0.45) 100%) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.7) !important;
+  box-shadow: inset 0 1px 3px rgba(255,255,255,0.4), 0 0 25px rgba(188,163,116,0.5) !important;
   transform: translateY(-2px) !important;
-
-
 }
 
 
@@ -3363,8 +3329,7 @@ if not st.session_state.authenticated:
 
 
                     with st.form("form_cadastro_final", clear_on_submit=False):
-
-
+                        st.warning("⚠️ **Segurança:** Por motivos de segurança, a senha de acesso cadastrada **NÃO** deve ser igual à sua senha da **IntranetPM** ou do **SIRH**.")
                         reg_pass = st.text_input("Escolha uma Senha:", type="password", key="reg_pass")
 
 
