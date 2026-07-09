@@ -3568,6 +3568,8 @@ with st.sidebar:
 
 
         pages.append(("📄 Relatório Word", "Relatório Word"))
+    if st.session_state.user_role == "ADMINISTRADOR":
+        pages.append(("📊 Auditoria de Notas", "Auditoria de Notas"))
 
 
         
