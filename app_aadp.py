@@ -312,6 +312,21 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
         
     try:
         df = pd.read_excel(xlsx_path)
+        
+        # Arredondamento da coluna de média aritmética para 2 casas decimais (5 para cima)
+        col_media = next((c for c in df.columns if "Aritm" in str(c)), None)
+        if col_media:
+            import math
+            def round_half_up_2(x):
+                try:
+                    if pd.isna(x) or x is None:
+                        return x
+                    val = float(str(x).replace(",", "."))
+                    return math.floor(val * 100 + 0.5) / 100.0
+                except Exception:
+                    return x
+            df[col_media] = df[col_media].apply(round_half_up_2)
+            
         return df, None
     except Exception as e:
         return None, f"Erro ao ler planilha consolidada: {str(e)}"
@@ -2814,7 +2829,10 @@ def style_audit_dataframe(df):
     def get_column_styles(row):
         return [styles.get(col, "") for col in row.index]
 
-    return df.style.apply(get_column_styles, axis=1)
+    styler = df.style.apply(get_column_styles, axis=1)
+    if col_media:
+        styler = styler.format(formatter={col_media: "{:.2f}"}, na_rep="-")
+    return styler
 
 
 def safe_df(styled_or_df, height=520, key_prefix=None):
