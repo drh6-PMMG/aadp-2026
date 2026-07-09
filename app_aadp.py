@@ -4542,61 +4542,38 @@ if active_page == "Análise Gráfica":
 
         st.plotly_chart(fig_sit, use_container_width=True)
 
-
-
-
-
     with c2:
-
-
+        excluir_encerradas = st.checkbox(
+            "Ocultar 'Encerrada' (Ampliar pendentes)",
+            value=False,
+            key="hide_encerrada_status_comissao"
+        )
+        
         cross = df.groupby(["Status Avaliação","Situação Comissão"]).size().reset_index(name="Qtd")
-
-
+        
+        if excluir_encerradas:
+            cross = cross[cross["Status Avaliação"] != "Encerrada"]
+            
+        current_labels = [l for l in ordered_labels if l != "Encerrada"] if excluir_encerradas else ordered_labels
         cross["Status Avaliação"] = pd.Categorical(cross["Status Avaliação"],
-
-
-                                                    categories=ordered_labels, ordered=True)
-
-
+                                                    categories=current_labels, ordered=True)
         cross = cross.sort_values("Status Avaliação")
-
-
+        
         fig_bar = px.bar(cross, x="Status Avaliação", y="Qtd", color="Situação Comissão",
-
-
                          color_discrete_map=SIT_COLORS, barmode="group", text="Qtd",
-
-
                          template="plotly_dark",
-
-
                          title="<b>Status × Situação Comissão</b>")
-
-
+        
         fig_bar.update_traces(textposition="outside", textfont_size=11)
-
-
+        
         fig_bar.update_layout(height=380, title_font_size=15, title_x=0.5,
-
-
                                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-
-
                                xaxis_title="", yaxis_title="Qtd",
-
-
                                showlegend=False,
-
-
                                title_font=dict(color="#bca374"))
-
-
+        
         fig_bar.update_xaxes(showgrid=False)
-
-
         fig_bar.update_yaxes(showgrid=True, gridcolor="#2a2a2a")
-
-
         st.plotly_chart(fig_bar, use_container_width=True)
 
 
