@@ -298,11 +298,267 @@ def run_grades_audit(xlsx_path, csv_path, drive_geral_id=None, drive_master_xlsx
 
 
 
+def build_audit_data_from_geral(csv_path):
+    import csv
+    import os
+    import pandas as pd
+    import numpy as np
+    import math
+    import unicodedata
+
+    SITUACOES_ALVO = {
+        "ATIV. DIRECAO GERAL", "ATIV. FIM DESTACADO", "ATIV. FIM NA SEDE",
+        "ATIV. MEIO", "ATIVIDADE MEIO", "DISP MED DEFINITIVA",
+        "GESTANTE/LAC/ADOTANT", "QUADRO ESPECIALISTA",
+    }
+
+    CONCEITO_FAIXA = {
+        "nivel superior de desempenho":       (9.00, 10.00),
+        "nivel alto de desempenho":           (7.00,  8.99),
+        "nivel intermediario de desempenho":  (6.00,  6.99),
+        "nivel baixo de desempenho":          (3.00,  5.99),
+        "nivel inferior de desempenho":       (0.00,  2.99),
+    }
+
+    def normaliza(texto: str) -> str:
+        if not isinstance(texto, str): return ""
+        t = unicodedata.normalize("NFD", texto.lower())
+        return "".join(c for c in t if unicodedata.category(c) != "Mn")
+
+    def is_empty(v) -> bool:
+        if v == 0 or v == 0.0:
+            return False
+        return not v or str(v).strip() in ("", "-", "nan", "none", "None", "<NA>")
+
+    def parse_float(s):
+        try:
+            if is_empty(s): return None
+            return float(str(s).replace(",", "."))
+        except ValueError:
+            return None
+
+    def concordam(conceito: str, nota_str: str):
+        if is_empty(conceito) or is_empty(nota_str):
+            return None
+        nota = parse_float(nota_str)
+        if nota is None:
+            return None
+        faixa = CONCEITO_FAIXA.get(normaliza(conceito.strip()))
+        if faixa is None:
+            return None
+        return faixa[0] <= nota <= faixa[1]
+
+    def calc_status(j: str, l: str, n: str) -> str:
+        if is_empty(j):
+            return "Aberta"
+        if is_empty(l):
+            return "Parcialmente Encerrada"
+        c = concordam(j, l)
+        if c is True:
+            return "Encerrada"
+        elif c is False:
+            return "Encerrada" if not is_empty(n) else "Homologação"
+        return "Parcialmente Encerrada"
+
+    def normalize_pm(pm):
+        try:
+            if is_empty(pm): return ""
+            return str(int(float(str(pm).strip())))
+        except Exception:
+            return str(pm).strip()
+
+    def find_col(header, pattern):
+        pattern_norm = normaliza(pattern)
+        for idx, col in enumerate(header):
+            if pattern_norm in normaliza(col):
+                return idx
+        raise ValueError(f"Coluna contendo '{pattern}' não encontrada no geral.csv.")
+
+    pm_evals = {}
+    
+    with open(csv_path, "r", encoding="cp1252", errors="ignore") as f:
+        reader = csv.reader(f, delimiter=";")
+        header = next(reader)
+        
+        c_pm = find_col(header, "nrPM (Avaliado)")
+        c_name = find_col(header, "Nome Completo (Avaliado)")
+        c_rank = find_col(header, "Posto/Grad")
+        c_rpm = find_col(header, "Unidade RPM (Avaliado)")
+        c_unit = find_col(header, "Unidade Principal (Avaliado)")
+        c_quadro = find_col(header, "Quadro Atual (Avaliado)")
+        c_sit = find_col(header, "Situação Funcional")
+        c_dt_av1 = find_col(header, "Data da Avaliação 1")
+        c_dt_av2 = find_col(header, "Data da Avaliação 2")
+        c_concept = find_col(header, "Conceito Geral")
+        c_grade = find_col(header, "Nota Geral")
+        c_n_hom = find_col(header, "Nota da Homologação")
+        c_dt_hom = find_col(header, "Data da Homologação")
+        
+        c_n_f1 = find_col(header, "Nota (Fase 1)")
+        c_n_f2 = find_col(header, "Nota (Fase 2)")
+        c_n_f3 = find_col(header, "Nota (Fase 3)")
+        c_n_f4 = find_col(header, "Nota (Fase 4)")
+        
+        for row in reader:
+            if len(row) < len(header):
+                continue
+            sit = row[c_sit].strip()
+            if sit not in SITUACOES_ALVO:
+                continue
+                
+            pm = normalize_pm(row[c_pm])
+            if not pm:
+                continue
+                
+            j = row[c_concept].strip()
+            l = row[c_grade].strip()
+            n = row[c_n_hom].strip()
+            status = calc_status(j, l, n)
+            
+            n_f4 = parse_float(row[c_n_f4])
+            n_f3 = parse_float(row[c_n_f3])
+            n_f2 = parse_float(row[c_n_f2])
+            n_f1 = parse_float(row[c_n_f1])
+            
+            final_grade = None
+            houve_recurso = "-"
+            fase_recurso = "-"
+            nota_recurso = "-"
+            
+            if n_f4 is not None:
+                final_grade = n_f4
+                houve_recurso = "SIM"
+                fase_recurso = "FASE 4"
+                nota_recurso = n_f4
+            elif n_f3 is not None:
+                final_grade = n_f3
+                houve_recurso = "SIM"
+                fase_recurso = "FASE 3"
+                nota_recurso = n_f3
+            elif n_f2 is not None:
+                final_grade = n_f2
+                houve_recurso = "SIM"
+                fase_recurso = "FASE 2"
+                nota_recurso = n_f2
+            elif n_f1 is not None:
+                final_grade = n_f1
+                houve_recurso = "SIM"
+                fase_recurso = "FASE 1"
+                nota_recurso = n_f1
+            elif not is_empty(n):
+                final_grade = parse_float(n)
+            else:
+                final_grade = parse_float(l)
+                
+            dt_av = row[c_dt_av2].strip() or row[c_dt_av1].strip() or row[c_dt_hom].strip() or "-"
+            
+            eval_data = {
+                "date": dt_av,
+                "status": status.upper(),
+                "grade": parse_float(l) if not is_empty(l) else "-",
+                "houve_recurso": houve_recurso,
+                "fase_recurso": fase_recurso,
+                "nota_recurso": nota_recurso,
+                "final_grade": final_grade
+            }
+            
+            if pm not in pm_evals:
+                pm_evals[pm] = {
+                    "NR PM": pm,
+                    "Posto/Graduação": row[c_rank].strip(),
+                    "Nome Completo": row[c_name].strip(),
+                    "Nome RPM": row[c_rpm].strip(),
+                    "Nome Unidade Principal": row[c_unit].strip(),
+                    "Quadro": row[c_quadro].strip(),
+                    "Sit. Funcional": sit,
+                    "evals": []
+                }
+            pm_evals[pm]["evals"].append(eval_data)
+            
+    rows_audit = []
+    for pm, data in pm_evals.items():
+        evals = data["evals"]
+        qtd = len(evals)
+        todas_encerradas = "SIM" if all(e["status"] == "ENCERRADA" for e in evals) else "NAO"
+        
+        if todas_encerradas == "SIM":
+            grades = [e["final_grade"] for e in evals if e["final_grade"] is not None]
+            if len(grades) == qtd:
+                final_avg = sum(grades) / float(qtd)
+                final_avg_rounded = math.floor(final_avg * 100 + 0.5) / 100.0
+            else:
+                final_avg_rounded = "-"
+        else:
+            final_avg_rounded = "-"
+            
+        r_audit = {
+            "NR PM": data["NR PM"],
+            "Posto/Graduação": data["Posto/Graduação"],
+            "Nome Completo": data["Nome Completo"],
+            "Nome RPM": data["Nome RPM"],
+            "Nome Unidade Principal": data["Nome Unidade Principal"],
+            "Quadro": data["Quadro"],
+            "Sit. Funcional": data["Sit. Funcional"],
+            "Qtd Avaliações": qtd,
+            "Todas Avaliações Foram Encerradas?": todas_encerradas,
+            "Nota Final - Média Aritmética": final_avg_rounded,
+        }
+        
+        for i in range(1, 5):
+            if i <= qtd:
+                ev = evals[i-1]
+                r_audit[f"Data Avaliação {i}"] = ev["date"]
+                r_audit[f"Fase Avaliação {i}"] = ev["status"]
+                r_audit[f"Nota Avaliação {i}"] = ev["grade"]
+                r_audit[f"Houve Recurso? {i}"] = ev["houve_recurso"]
+                r_audit[f"Fase Recurso {i}"] = ev["fase_recurso"]
+                r_audit[f"Nota Fase 2 ou 3 {i}"] = ev["nota_recurso"]
+            else:
+                r_audit[f"Data Avaliação {i}"] = np.nan
+                r_audit[f"Fase Avaliação {i}"] = np.nan
+                r_audit[f"Nota Avaliação {i}"] = np.nan
+                r_audit[f"Houve Recurso? {i}"] = np.nan
+                r_audit[f"Fase Recurso {i}"] = np.nan
+                r_audit[f"Nota Fase 2 ou 3 {i}"] = np.nan
+        rows_audit.append(r_audit)
+        
+    return pd.DataFrame(rows_audit)
+
+
 @st.cache_resource(show_spinner=False)
 def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
     import pandas as pd
     import os
+    import tempfile
+    from pathlib import Path
     
+    cfg_to_use = load_config()
+    drive_geral_id = cfg_to_use.get("drive_geral_id", "")
+    cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
+    drive_geral_path = os.path.join(cache_dir, "geral.csv")
+    local_geral_path = os.path.join(str(Path(xlsx_path).parent), "geral.csv")
+    
+    csv_to_use = None
+    if drive_geral_id:
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+            if not os.path.exists(drive_geral_path) or os.path.getsize(drive_geral_path) == 0:
+                _baixar_drive(drive_geral_id, drive_geral_path)
+            csv_to_use = drive_geral_path
+        except Exception:
+            pass
+            
+    if not csv_to_use and os.path.exists(local_geral_path) and os.path.getsize(local_geral_path) > 0:
+        csv_to_use = local_geral_path
+        
+    if csv_to_use:
+        try:
+            df = build_audit_data_from_geral(csv_to_use)
+            return df, None
+        except Exception:
+            pass
+
+    # Fallback to master excel
     if drive_master_xlsx_id:
         try:
             if not os.path.exists(xlsx_path) or os.path.getsize(xlsx_path) == 0:
@@ -311,12 +567,11 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
             return None, f"Falha ao baixar master Excel do Google Drive (ID: {drive_master_xlsx_id}): {str(e)}"
             
     if not os.path.exists(xlsx_path):
-        return None, f"Arquivo Excel consolidado não encontrado no caminho: {xlsx_path}"
+        return None, f"Arquivo Excel consolidado ou geral.csv não encontrado."
         
     try:
         df = pd.read_excel(xlsx_path)
         
-        # Arredondamento da coluna de média aritmética para 2 casas decimais (5 para cima)
         col_media = next((c for c in df.columns if "Aritm" in str(c)), None)
         if col_media:
             import math
