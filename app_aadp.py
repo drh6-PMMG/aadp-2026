@@ -2416,57 +2416,35 @@ def rpm_sort_key(name):
 
 
 def _baixar_drive(file_id: str, destino: str):
-
-
     """Baixa um arquivo do Google Drive para destino local.
-
-
     Compatível com todas as versões do gdown (com e sem parâmetro fuzzy).
-
-
     """
-
-
     if not GDOWN_OK:
-
-
         raise ImportError("Biblioteca 'gdown' não instalada. Execute: pip install gdown")
-
-
     import inspect
-
-
     url = f"https://drive.google.com/uc?id={file_id}&export=download"
-
-
+    
     # gdown >= 4.6 suporta fuzzy; versões mais antigas não suportam
-
-
     sig = inspect.signature(gdown.download)
-
-
     if "fuzzy" in sig.parameters:
-
-
         gdown.download(url, destino, quiet=True, fuzzy=True)
-
-
     else:
-
-
         gdown.download(url, destino, quiet=True)
-
-
+        
     if not os.path.exists(destino) or os.path.getsize(destino) == 0:
-
-
         raise FileNotFoundError(f"Falha ao baixar arquivo do Drive (ID: {file_id})")
-
-
-
-
-
-
+        
+    try:
+        with open(destino, "rb") as f:
+            head = f.read(200)
+        if b"<!DOCTYPE" in head.upper() or b"<HTML" in head.upper():
+            raise ValueError("O Google Drive retornou uma página HTML em vez do arquivo binário. Isso ocorre se o arquivo não estiver compartilhado como público ('Qualquer pessoa com o link pode ler'), se o ID estiver incorreto, ou se você estiver tentando baixar uma Planilha Google (Google Sheets) em vez de um arquivo Excel (.xlsx) carregado no Drive.")
+    except ValueError as ve:
+        if os.path.exists(destino):
+            os.remove(destino)
+        raise ve
+    except Exception:
+        pass
 
 
 def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
@@ -8001,81 +7979,12 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                         st.stop()
                         
     # ── 3) Auditoria ─────────────────────────────────────────────────────────
-with tab_logs:
-    st.markdown("#### 📜 Auditoria de Atividades / Logs")
-    
-    # Buscar lista de usuários únicos que possuem ações nos logs
-    logged_pms = db_get_logs_pms()
-    
-    # Mapear PM para Nome de forma amigável
-    user_map = {"Todos": "Todos os Usuários"}
-    for pm_id in logged_pms:
-        u_row = db_get_user_info(pm_id)
-        if u_row:
-            user_map[pm_id] = f"{u_row[0]} {u_row[1]} (PM: {pm_id})"
-        else:
-            user_map[pm_id] = f"PM: {pm_id}"
-            
-    # Componente de filtro de militares
-    sel_log_user = st.selectbox(
-        "Filtrar logs por militar:",
-        list(user_map.keys()),
-        format_func=lambda x: user_map[x],
-        key="filter_log_user"
-    )
-    
-    # Filtro de período por data
-    col_d1, col_d2 = st.columns(2)
-    with col_d1:
-        start_date = st.date_input("Data de início:", value=now_br().date() - timedelta(days=7), key="log_start_date")
-    with col_d2:
-        end_date = st.date_input("Data de fim:", value=now_br().date(), key="log_end_date")
-        
-    start_str = start_date.strftime("%Y-%m-%d")
-    end_str = end_date.strftime("%Y-%m-%d")
-    
-    df_logs = db_get_logs_df(sel_log_user, start_str, end_str)
-    
-    if df_logs.empty:
-        st.info("Nenhum log registrado para a seleção.")
-    else:
-        df_logs_disp = df_logs.copy()
-        df_logs_disp.index = range(1, len(df_logs_disp) + 1)
-        st.dataframe(df_logs_disp, use_container_width=True)
-        
-    dl_log_xlsx = df_to_xlsx(df_logs)
-    dl_log_csv = df_logs.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-    
-    col_l1, col_l2 = st.columns(2)
-    with col_l1:
-        st.download_button(
-            "⬇️ Baixar Logs Filtrados (Excel .xlsx)",
-            dl_log_xlsx,
-            f"logs_{sel_log_user}_{now_br().strftime('%Y%m%d_%H%M')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="dl_logs_xlsx"
-        )
-    with col_l2:
-        st.download_button(
-            "⬇️ Baixar Logs Filtrados (CSV)",
-            dl_log_csv,
-            f"logs_{sel_log_user}_{now_br().strftime('%Y%m%d_%H%M')}.csv",
-            mime="text/csv",
-            key="dl_logs_csv"
-        )
-
-with tab_logs:
-    sub_tab_activity, sub_tab_grades = st.tabs([
-        "📜 Logs de Atividades",
-        "📊 Auditoria de Notas"
-    ])
-    
-    with sub_tab_activity:
+    with tab_logs:
         st.markdown("#### 📜 Auditoria de Atividades / Logs")
-        
+    
         # Buscar lista de usuários únicos que possuem ações nos logs
         logged_pms = db_get_logs_pms()
-        
+    
         # Mapear PM para Nome de forma amigável
         user_map = {"Todos": "Todos os Usuários"}
         for pm_id in logged_pms:
@@ -8084,7 +7993,7 @@ with tab_logs:
                 user_map[pm_id] = f"{u_row[0]} {u_row[1]} (PM: {pm_id})"
             else:
                 user_map[pm_id] = f"PM: {pm_id}"
-        
+            
         # Componente de filtro de militares
         sel_log_user = st.selectbox(
             "Filtrar logs por militar:",
@@ -8092,7 +8001,7 @@ with tab_logs:
             format_func=lambda x: user_map[x],
             key="filter_log_user"
         )
-        
+    
         # Filtro de período por data
         col_d1, col_d2 = st.columns(2)
         with col_d1:
@@ -8102,9 +8011,9 @@ with tab_logs:
         
         start_str = start_date.strftime("%Y-%m-%d")
         end_str = end_date.strftime("%Y-%m-%d")
-        
+    
         df_logs = db_get_logs_df(sel_log_user, start_str, end_str)
-        
+    
         if df_logs.empty:
             st.info("Nenhum log registrado para a seleção.")
         else:
@@ -8114,7 +8023,7 @@ with tab_logs:
         
         dl_log_xlsx = df_to_xlsx(df_logs)
         dl_log_csv = df_logs.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-        
+    
         col_l1, col_l2 = st.columns(2)
         with col_l1:
             st.download_button(
@@ -8133,80 +8042,7 @@ with tab_logs:
                 key="dl_logs_csv"
             )
 
-    with sub_tab_grades:
-        st.markdown("#### 📊 Auditoria de Notas")
-        st.info("👉 Esta ferramenta cruza a planilha consolidada `Analise avaliacoes completa.xlsx` com o arquivo de metadados brutos `geral.csv` para apontar inconsistências de notas ou lançamentos.")
-        
-        # Obter caminhos dos arquivos locais
-        master_xlsx_path = os.path.join(str(DADOS_DIR).replace("/dados", ""), "Analise avaliacoes completa.xlsx")
-        geral_csv_path = os.path.join(str(DADOS_DIR).replace("/dados", ""), "geral.csv")
-        
-        # Verificar se os arquivos existem
-        if not os.path.exists(master_xlsx_path):
-            st.error(f"⚠️ Planilha consolidada não encontrada no caminho: `{master_xlsx_path}`")
-        elif not os.path.exists(geral_csv_path):
-            st.error(f"⚠️ Arquivo bruto `geral.csv` não encontrado no caminho: `{geral_csv_path}`")
-        else:
-            # Botão de rodar auditoria
-            if st.button("📊 Executar Auditoria de Notas", type="primary", use_container_width=True, key="run_notes_audit_btn"):
-                with st.spinner("Processando arquivos de dados e conferindo notas (isso pode levar de 5 a 10 segundos na primeira execução)..."):
-                    df_disc, err = run_grades_audit(master_xlsx_path, geral_csv_path)
-                    
-                if err:
-                    st.error(f"Erro ao processar auditoria: {err}")
-                else:
-                    st.session_state.audit_df = df_disc
-                    st.success("✅ Auditoria executada com sucesso!")
-            
-            # Se a auditoria já foi executada, exibir resultados
-            if st.session_state.get("audit_df") is not None:
-                df_audit = st.session_state.audit_df
-                
-                if df_audit.empty:
-                    st.success("🎉 Nenhuma inconsistência de notas foi detectada nos arquivos locais!")
-                else:
-                    # Métricas de destaque
-                    t_cnt = len(df_audit)
-                    c_cnt = len(df_audit[df_audit['Tipo'] == 'Divergência de Média de Competências'])
-                    h_cnt = len(df_audit[df_audit['Tipo'] == 'Divergência de Nota de Homologação'])
-                    q_cnt = len(df_audit[df_audit['Tipo'] == 'Divergência de Qtd de Avaliações'])
-                    
-                    m1, m2, m3, m4 = st.columns(4)
-                    with m1:
-                        st.metric("Total de Falhas", f"{t_cnt} ⚠️")
-                    with m2:
-                        st.metric("Média de Competências", f"{c_cnt}")
-                    with m3:
-                        st.metric("Nota Homologação", f"{h_cnt}")
-                    with m4:
-                        st.metric("Qtd Avaliações", f"{q_cnt}")
-                    
-                    st.markdown("##### Detalhamento das Divergências Encontradas (Primeiras 100)")
-                    
-                    # Filtro por tipo de divergência na exibição
-                    audit_types = ["Todas"] + list(df_audit['Tipo'].unique())
-                    sel_audit_type = st.selectbox("Filtrar visualização por tipo:", audit_types, key="filter_audit_type")
-                    
-                    df_disp = df_audit.copy()
-                    if sel_audit_type != "Todas":
-                        df_disp = df_disp[df_disp['Tipo'] == sel_audit_type]
-                        
-                    # Paginação visual simples (mostrando até 100 linhas)
-                    st.dataframe(df_disp.head(100), use_container_width=True)
-                    if len(df_disp) > 100:
-                        st.info(f"💡 Mostrando as primeiras 100 linhas de um total de {len(df_disp)} registros para este tipo. Baixe a planilha completa abaixo para ver todas.")
-                        
-                    # Botão para baixar relatório Excel de auditoria
-                    dl_audit_xlsx = df_to_xlsx(df_audit)
-                    st.download_button(
-                        "📥 Baixar Relatório Completo de Auditoria de Notas (Excel .xlsx)",
-                        dl_audit_xlsx,
-                        f"Relatorio_Auditoria_Notas_AADP2026_{now_br().strftime('%Y%m%d_%H%M')}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        key="dl_audit_notes_xlsx",
-                        use_container_width=True
-                    )
-
+st.markdown("---")
 st.markdown(f"<center><small>AADP 2026 · Polícia Militar de Minas Gerais · "
             f"Resolução 5458/2025 · {now_br().strftime('%d/%m/%Y')}</small></center>",
             unsafe_allow_html=True)
