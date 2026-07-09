@@ -4665,47 +4665,79 @@ if active_page == "Análise Gráfica":
     st.markdown("---")
 
 
-    col_s1, col_s2 = st.columns([1.5, 1])
+    col_s1, col_s2 = st.columns([1, 1])
     with col_s1:
-        selected_statuses = st.multiselect(
-            "Filtrar Status exibidos no gráfico:",
-            options=["Encerrada", "Aberta", "Parcialmente Encerrada", "Homologação"],
-            default=["Encerrada", "Aberta", "Parcialmente Encerrada", "Homologação"],
-            key="dist_chart_status_filter"
-        )
+        st.markdown("<p style='font-size:0.9rem; color:#a0a0a0; margin-top:28px;'>💡 <i>Dica: Clique nos itens da legenda do gráfico para ligar/desligar séries (ex: ocultar Encerradas).</i></p>", unsafe_allow_html=True)
     with col_s2:
         sort_option = st.selectbox(
             "Ordenação das Unidades (RPM):",
             [
                 "Crescente por Unidade",
                 "Decrescente por Unidade",
-                "Crescente por Quantidade",
-                "Decrescente por Quantidade"
+                "Decrescente por Qtd. Total",
+                "Decrescente por Qtd. Encerradas",
+                "Decrescente por Qtd. Abertas",
+                "Decrescente por Qtd. Parciais",
+                "Decrescente por Qtd. Homologação",
+                "Crescente por Qtd. Total",
+                "Crescente por Qtd. Encerradas",
+                "Crescente por Qtd. Abertas",
+                "Crescente por Qtd. Parciais",
+                "Crescente por Qtd. Homologação"
             ],
             key="dist_chart_sort_opt"
         )
 
-    # Filtrar o DataFrame pelos status selecionados pelo usuário
-    if not selected_statuses:
-        selected_statuses = ["Encerrada", "Aberta", "Parcialmente Encerrada", "Homologação"]
-        
-    df_filtered = df[df["Status Avaliação"].isin(selected_statuses)]
+    # Computar os totais para ordenação por quantidade de acordo com a opção selecionada
+    all_units = df["Unidade RPM (Avaliado)"].dropna().unique()
+    
+    df_totals = df.groupby(["Unidade RPM (Avaliado)", "Status Avaliação"]).size().unstack(fill_value=0)
+    for status_col in ["Encerrada", "Aberta", "Parcialmente Encerrada", "Homologação"]:
+        if status_col not in df_totals.columns:
+            df_totals[status_col] = 0
+            
+    df_totals["Total"] = df_totals["Encerrada"] + df_totals["Aberta"] + df_totals["Parcialmente Encerrada"] + df_totals["Homologação"]
+    df_totals = df_totals.reset_index()
 
     # Ordenar unidades com base na opção selecionada
     if sort_option == "Crescente por Unidade":
-        all_units_sorted = sorted(df_filtered["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key)
+        all_units_sorted = sorted(all_units, key=rpm_sort_key)
     elif sort_option == "Decrescente por Unidade":
-        all_units_sorted = sorted(df_filtered["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key, reverse=True)
-    elif sort_option == "Crescente por Quantidade":
-        unit_totals = df_filtered.groupby("Unidade RPM (Avaliado)").size().reset_index(name="Total")
-        unit_totals_sorted = unit_totals.sort_values("Total", ascending=True)
-        all_units_sorted = list(unit_totals_sorted["Unidade RPM (Avaliado)"])
-    else: # Decrescente por Quantidade
-        unit_totals = df_filtered.groupby("Unidade RPM (Avaliado)").size().reset_index(name="Total")
-        unit_totals_sorted = unit_totals.sort_values("Total", ascending=False)
-        all_units_sorted = list(unit_totals_sorted["Unidade RPM (Avaliado)"])
+        all_units_sorted = sorted(all_units, key=rpm_sort_key, reverse=True)
+    elif sort_option == "Decrescente por Qtd. Total":
+        df_totals_sorted = df_totals.sort_values("Total", ascending=False)
+        all_units_sorted = list(df_totals_sorted["Unidade RPM (Avaliado)"])
+    elif sort_option == "Decrescente por Qtd. Encerradas":
+        df_totals_sorted = df_totals.sort_values("Encerrada", ascending=False)
+        all_units_sorted = list(df_totals_sorted["Unidade RPM (Avaliado)"])
+    elif sort_option == "Decrescente por Qtd. Abertas":
+        df_totals_sorted = df_totals.sort_values("Aberta", ascending=False)
+        all_units_sorted = list(df_totals_sorted["Unidade RPM (Avaliado)"])
+    elif sort_option == "Decrescente por Qtd. Parciais":
+        df_totals_sorted = df_totals.sort_values("Parcialmente Encerrada", ascending=False)
+        all_units_sorted = list(df_totals_sorted["Unidade RPM (Avaliado)"])
+    elif sort_option == "Decrescente por Qtd. Homologação":
+        df_totals_sorted = df_totals.sort_values("Homologação", ascending=False)
+        all_units_sorted = list(df_totals_sorted["Unidade RPM (Avaliado)"])
+    elif sort_option == "Crescente por Qtd. Total":
+        df_totals_sorted = df_totals.sort_values("Total", ascending=True)
+        all_units_sorted = list(df_totals_sorted["Unidade RPM (Avaliado)"])
+    elif sort_option == "Crescente por Qtd. Encerradas":
+        df_totals_sorted = df_totals.sort_values("Encerrada", ascending=True)
+        all_units_sorted = list(df_totals_sorted["Unidade RPM (Avaliado)"])
+    elif sort_option == "Crescente por Qtd. Abertas":
+        df_totals_sorted = df_totals.sort_values("Aberta", ascending=True)
+        all_units_sorted = list(df_totals_sorted["Unidade RPM (Avaliado)"])
+    elif sort_option == "Crescente por Qtd. Parciais":
+        df_totals_sorted = df_totals.sort_values("Parcialmente Encerrada", ascending=True)
+        all_units_sorted = list(df_totals_sorted["Unidade RPM (Avaliado)"])
+    elif sort_option == "Crescente por Qtd. Homologação":
+        df_totals_sorted = df_totals.sort_values("Homologação", ascending=True)
+        all_units_sorted = list(df_totals_sorted["Unidade RPM (Avaliado)"])
+    else:
+        all_units_sorted = sorted(all_units, key=rpm_sort_key)
 
-    rpm_cross = df_filtered.groupby(["Unidade RPM (Avaliado)","Status Avaliação"]).size().reset_index(name="Qtd")
+    rpm_cross = df.groupby(["Unidade RPM (Avaliado)","Status Avaliação"]).size().reset_index(name="Qtd")
     
     fig_rpm = px.bar(
         rpm_cross, x="Unidade RPM (Avaliado)", y="Qtd",
