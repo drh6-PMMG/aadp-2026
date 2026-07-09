@@ -4665,72 +4665,76 @@ if active_page == "Análise Gráfica":
     st.markdown("---")
 
 
-    all_units_sorted = sorted(df["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key)
+    col_s1, col_s2 = st.columns([1.5, 1])
+    with col_s1:
+        scale_option = st.radio(
+            "Escala do Eixo Y:",
+            ["Linear (Normal)", "Logarítmica (Melhor para ver pendências pequenas)"],
+            horizontal=True,
+            key="dist_chart_scale_opt"
+        )
+    with col_s2:
+        sort_option = st.selectbox(
+            "Ordenação das Unidades (RPM):",
+            [
+                "Crescente por Unidade",
+                "Decrescente por Unidade",
+                "Crescente por Quantidade",
+                "Decrescente por Quantidade"
+            ],
+            key="dist_chart_sort_opt"
+        )
 
+    # Ordenar unidades com base na opção selecionada
+    if sort_option == "Crescente por Unidade":
+        all_units_sorted = sorted(df["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key)
+    elif sort_option == "Decrescente por Unidade":
+        all_units_sorted = sorted(df["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key, reverse=True)
+    elif sort_option == "Crescente por Quantidade":
+        unit_totals = df.groupby("Unidade RPM (Avaliado)").size().reset_index(name="Total")
+        unit_totals_sorted = unit_totals.sort_values("Total", ascending=True)
+        all_units_sorted = list(unit_totals_sorted["Unidade RPM (Avaliado)"])
+    else: # Decrescente por Quantidade
+        unit_totals = df.groupby("Unidade RPM (Avaliado)").size().reset_index(name="Total")
+        unit_totals_sorted = unit_totals.sort_values("Total", ascending=False)
+        all_units_sorted = list(unit_totals_sorted["Unidade RPM (Avaliado)"])
 
     rpm_cross = df.groupby(["Unidade RPM (Avaliado)","Status Avaliação"]).size().reset_index(name="Qtd")
-
-
+    
     fig_rpm = px.bar(
-
-
         rpm_cross, x="Unidade RPM (Avaliado)", y="Qtd",
-
-
         color="Status Avaliação", color_discrete_map=STATUS_COLORS,
-
-
         barmode="stack", text_auto=False,
-
-
         template="plotly_dark",
-
-
         title="<b>Distribuição por Unidade RPM e Status</b>",
-
-
         category_orders={
-
-
             "Unidade RPM (Avaliado)": all_units_sorted,
-
-
             "Status Avaliação": STACK_ORDER,
-
-
         },
-
-
     )
-
-
+    
     fig_rpm.update_layout(
-
-
-        height=440, title_font_size=15, title_x=0.5,
-
-
+        height=480, title_font_size=15, title_x=0.5,
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-
-
         xaxis_title="", yaxis_title="Avaliações",
-
-
-        showlegend=False,
-
-
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.05,
+            xanchor="center",
+            x=0.5,
+            font=dict(color="#e5dccb"),
+            bgcolor="rgba(0,0,0,0)"
+        ),
         title_font=dict(color="#bca374")
-
-
     )
-
-
+    
+    if "Logar" in scale_option:
+        fig_rpm.update_layout(yaxis_type="log")
+        
     fig_rpm.update_xaxes(tickangle=45, showgrid=False)
-
-
     fig_rpm.update_yaxes(showgrid=True, gridcolor="#2a2a2a")
-
-
     st.plotly_chart(fig_rpm, use_container_width=True)
 
 
