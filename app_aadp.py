@@ -2824,6 +2824,33 @@ def clean_none_values(df):
     return df
 
 
+def style_audit_dataframe(df):
+    if df is None or not hasattr(df, "columns") or df.empty:
+        return df
+    col_media = next((c for c in df.columns if "Aritm" in str(c)), None)
+    cols_av1 = [c for c in df.columns if str(c).endswith(" 1")]
+    cols_av2 = [c for c in df.columns if str(c).endswith(" 2")]
+    cols_av3 = [c for c in df.columns if str(c).endswith(" 3")]
+    cols_av4 = [c for c in df.columns if str(c).endswith(" 4")]
+    
+    styles = {}
+    if col_media:
+        styles[col_media] = "background-color: #ffe599; color: black; font-weight: 500;" # Soft yellow
+    for c in cols_av1:
+        styles[c] = "background-color: #e2f0d9; color: #2d6a0f; font-weight: 500;" # Soft green
+    for c in cols_av2:
+        styles[c] = "background-color: #fce4d6; color: #7a3d00; font-weight: 500;" # Soft orange/peach
+    for c in cols_av3:
+        styles[c] = "background-color: #ebd9eb; color: #4a148c; font-weight: 500;" # Soft purple
+    for c in cols_av4:
+        styles[c] = "background-color: #e8f0fe; color: #1a0dab; font-weight: 500;" # Soft blue
+
+    def get_column_styles(row):
+        return [styles.get(col, "") for col in row.index]
+
+    return df.style.apply(get_column_styles, axis=1)
+
+
 def safe_df(styled_or_df, height=520, key_prefix=None):
     """Exibe um DataFrame com st.dataframe nativo.
     - Ordenacao crescente/decrescente: clique no cabecalho de qualquer coluna.
@@ -2881,7 +2908,15 @@ def safe_df(styled_or_df, height=520, key_prefix=None):
         st.caption(f"\U0001f4ca {total:,} registros \u00b7 Clique no cabe\u00e7alho para ordenar \u2191\u2193")
 
     # Exibir com estilo quando possivel
-    if is_styled and not is_large:
+    is_audit_df = any("Aritm" in str(c) for c in df_filtered.columns) and any(str(c).endswith(" 1") for c in df_filtered.columns)
+    
+    if is_audit_df:
+        try:
+            styled_df = style_audit_dataframe(df_filtered)
+            st.dataframe(styled_df, use_container_width=True, height=height)
+        except Exception:
+            st.dataframe(df_filtered, use_container_width=True, height=height)
+    elif is_styled and not is_large:
         try:
             st.dataframe(styled_or_df.data.loc[df_filtered.index], use_container_width=True, height=height)
         except Exception:
