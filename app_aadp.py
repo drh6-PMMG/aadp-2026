@@ -2811,7 +2811,17 @@ def df_to_xlsx(df: pd.DataFrame) -> bytes:
 MAX_STYLE = 4_000_000
 
 
-
+def clean_none_values(df):
+    if df is None or not hasattr(df, "columns"):
+        return df
+    import pandas as pd
+    df = df.copy()
+    df = df.fillna("-")
+    for col in df.columns:
+        if df[col].dtype == object or str(df[col].dtype) == "string":
+            df[col] = df[col].apply(lambda x: "-" if str(x).strip().lower() in ("none", "nan", "<na>", "nat") else x)
+            df[col] = df[col].replace({None: "-", "None": "-"})
+    return df
 
 
 def safe_df(styled_or_df, height=520, key_prefix=None):
@@ -2823,15 +2833,16 @@ def safe_df(styled_or_df, height=520, key_prefix=None):
 
     # Extrair DataFrame subjacente
     if hasattr(styled_or_df, "data"):
+        styled_or_df.data = clean_none_values(styled_or_df.data)
         raw_df = styled_or_df.data.copy()
         is_styled = True
         is_large = raw_df.size > MAX_STYLE
     elif isinstance(styled_or_df, pd.DataFrame):
-        raw_df = styled_or_df.copy()
+        raw_df = clean_none_values(styled_or_df)
         is_styled = False
         is_large = False
     else:
-        raw_df = styled_or_df
+        raw_df = clean_none_values(styled_or_df)
         is_styled = False
         is_large = False
 
@@ -5361,9 +5372,8 @@ if active_page == "Avaliadores Pendentes":
 
 
         tb1_disp = tb1.reset_index(drop=True)
-
-
         tb1_disp.index = range(1, len(tb1_disp) + 1)
+        tb1_disp = clean_none_values(tb1_disp)
 
 
         
@@ -5595,9 +5605,8 @@ if active_page == "Avaliadores Pendentes":
 
 
         tb2_disp = tb2.reset_index(drop=True)
-
-
         tb2_disp.index = range(1, len(tb2_disp) + 1)
+        tb2_disp = clean_none_values(tb2_disp)
 
 
         
@@ -5895,9 +5904,8 @@ if active_page == "Avaliadores Pendentes":
 
 
         tb3_disp = tb3.reset_index(drop=True)
-
-
         tb3_disp.index = range(1, len(tb3_disp) + 1)
+        tb3_disp = clean_none_values(tb3_disp)
 
 
         
@@ -7952,7 +7960,7 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
             if df_act.empty:
                 st.info("Nenhum usuário cadastrado encontrado com o Nº PM informado.")
             else:
-                st.dataframe(df_act, use_container_width=True, hide_index=True)
+                st.dataframe(clean_none_values(df_act), use_container_width=True, hide_index=True)
                 
                 st.markdown("##### ⚙️ Gerenciar / Alterar Cadastro:")
                 
@@ -8043,7 +8051,7 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
         else:
             df_logs_disp = df_logs.copy()
             df_logs_disp.index = range(1, len(df_logs_disp) + 1)
-            st.dataframe(df_logs_disp, use_container_width=True)
+            st.dataframe(clean_none_values(df_logs_disp), use_container_width=True)
         
         dl_log_xlsx = df_to_xlsx(df_logs)
         dl_log_csv = df_logs.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
