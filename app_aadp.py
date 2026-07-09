@@ -2826,34 +2826,107 @@ def df_to_xlsx(df: pd.DataFrame) -> bytes:
 MAX_STYLE = 4_000_000
 
 
-def safe_df(styled_or_df, height=520):
 
+def safe_df(styled_or_df, height=520, key_prefix=None):
+    """Exibe um DataFrame com filtros interativos por coluna e busca livre.
+    - Ordenacao crescente/decrescente: clique no cabecalho de qualquer coluna na tabela.
+    - Filtros por coluna: selecione valores nas caixas acima da tabela.
+    - Busca livre: campo de texto que filtra qualquer coluna ao mesmo tempo.
+    """
+    import pandas as pd
 
+    # Extrair o DataFrame subjacente (pode ser Styler ou DataFrame)
     if hasattr(styled_or_df, "data"):
-
-
-        if styled_or_df.data.size <= MAX_STYLE:
-
-
-            st.dataframe(styled_or_df, use_container_width=True, height=height)
-
-
-        else:
-
-
-            st.info("ℹ️ Tabela grande — exibida sem cores para melhor desempenho.")
-
-
-            st.dataframe(styled_or_df.data, use_container_width=True, height=height)
-
-
+        raw_df = styled_or_df.data.copy()
+        is_styled = True
+        is_large = raw_df.size > MAX_STYLE
     else:
+        raw_df = styled_or_df.copy() if isinstance(styled_or_df, pd.DataFrame) else styled_or_df
+        is_styled = False
+        is_large = False
 
+    if not isinstance(raw_df, pd.DataFrame) or raw_df.empty:
+        st.info("\u2139\ufe0f Nenhum dado dispon\u00edvel para exibir.")
+        return
 
-        st.dataframe(styled_or_df, use_container_width=True, height=height)
+    # Gerar chave unica para os widgets para nao colidir entre telas
+    if key_prefix is None:
+        import hashlib
+        key_prefix = "sdf_" + hashlib.md5(
+            "".join(str(c) for c in raw_df.columns).encode()
+        ).hexdigest()[:8]
 
+    # Área de filtros colapsavel
+    with st.expander("\U0001f50d Filtros e Busca por Coluna", expanded=False):
+        # Busca livre (qualquer coluna)
+        busca = st.text_input(
+            "\U0001f50e Busca geral (qualquer coluna)",
+            key=f"{key_prefix}_busca",
+            placeholder="Digite qualquer termo para filtrar todas as colunas\u2026",
+        )
 
+        # Filtros por coluna — somente colunas de texto ou baixa cardinalidade
+        filterable_cols = [
+            c for c in raw_df.columns
+            if raw_df[c].dtype == object or (
+                raw_df[c].nunique() <= 200 and raw_df[c].nunique() > 1
+            )
+        ]
 
+        col_filters = {}
+        if filterable_cols:
+            batch_size = 3
+            for i in range(0, len(filterable_cols), batch_size):
+                batch = filterable_cols[i: i + batch_size]
+                cols_ui = st.columns(len(batch))
+                for col_ui, col_name in zip(cols_ui, batch):
+                    with col_ui:
+                        unique_vals = sorted(
+                            raw_df[col_name].dropna().astype(str).unique().tolist()
+                        )
+                        selected = st.multiselect(
+                            col_name,
+                            options=unique_vals,
+                            default=[],
+                            key=f"{key_prefix}_col_{col_name}",
+                            placeholder="Todos",
+                        )
+                        if selected:
+                            col_filters[col_name] = selected
+
+    # Aplicar filtros
+    df_filtered = raw_df.copy()
+
+    # Filtro de busca livre
+    if busca and busca.strip():
+        termo = busca.strip().lower()
+        mask = df_filtered.apply(
+            lambda col: col.astype(str).str.lower().str.contains(termo, na=False)
+        ).any(axis=1)
+        df_filtered = df_filtered[mask]
+
+    # Filtros por coluna
+    for col_name, selected_vals in col_filters.items():
+        if col_name in df_filtered.columns:
+            df_filtered = df_filtered[
+                df_filtered[col_name].astype(str).isin(selected_vals)
+            ]
+
+    # Exibir tabela
+    total = len(raw_df)
+    shown = len(df_filtered)
+    if shown < total:
+        st.caption(f"\U0001f4ca Exibindo **{shown:,}** de **{total:,}** registros (filtro ativo)")
+    else:
+        st.caption(f"\U0001f4ca {total:,} registros \u00b7 Clique no cabe\u00e7alho de uma coluna para ordenar \u2191\u2193")
+
+    if is_styled and not is_large:
+        try:
+            st.dataframe(styled_or_df.data.loc[df_filtered.index], use_container_width=True, height=height)
+        except Exception:
+            st.dataframe(df_filtered, use_container_width=True, height=height)
+    else:
+        st.dataframe(df_filtered, use_container_width=True, height=height)
 
 
 def color_status(val):
