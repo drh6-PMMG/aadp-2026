@@ -787,35 +787,6 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 .kpi-active-parc   { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 140, 0, 0.45) !important; border: 1.5px solid #FF8C00 !important; border-left: 5px solid #FF8C00 !important; }
 .kpi-active-hom    { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 217, 102, 0.45) !important; border: 1.5px solid #FFD966 !important; border-left: 5px solid #FFD966 !important; }
 
-/* Styles for overlaying transparent buttons over KPI cards */
-div[data-testid="column"]:has(.kpi-card) {
-    position: relative !important;
-}
-div[data-testid="column"]:has(.kpi-card) .stButton {
-    position: absolute !important;
-    top: 0;
-    left: 0;
-    width: 100% !important;
-    height: 100% !important;
-    max-height: 120px !important;
-    z-index: 9999 !important;
-}
-div[data-testid="column"]:has(.kpi-card) .stButton button {
-    width: 100% !important;
-    height: 100% !important;
-    background: transparent !important;
-    border: none !important;
-    color: transparent !important;
-    opacity: 0 !important;
-    cursor: pointer !important;
-}
-div[data-testid="column"]:has(.kpi-card):hover .kpi-card {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
-}
-
-
-
 
 
 
@@ -3974,6 +3945,7 @@ with st.sidebar:
             st.session_state.active_page = page_name
             st.session_state.kpi_filter_source = "TOTAL"
             st.session_state.kpi_filter_status = None
+            st.query_params.clear()
             st.rerun()
 
 
@@ -4385,10 +4357,13 @@ if not data_ok:
     st.stop()
 
 
-if "kpi_filter_source" not in st.session_state:
-    st.session_state.kpi_filter_source = "TOTAL"
-if "kpi_filter_status" not in st.session_state:
-    st.session_state.kpi_filter_status = None
+# Synchronize query parameters with session state
+q_source = st.query_params.get("kpi_source", "TOTAL")
+q_status = st.query_params.get("kpi_status", None)
+
+st.session_state.kpi_filter_source = q_source if q_source in ["TOTAL", "COMISSAO", "PROVISORIA"] else "TOTAL"
+st.session_state.kpi_filter_status = q_status if q_status in ["ENCERRADA", "ABERTAS", "PARC_ENCERRADA", "HOMOLOGACAO"] else None
+
 
 df_base = df.copy()
 
@@ -4449,7 +4424,27 @@ else:
 
 st.markdown(f'<div class="info-box">📌 Exibindo {fmt_num(n_total)} avaliações {ft}</div>', unsafe_allow_html=True)
 
-# CSS/JS click triggers
+def make_kpi_href(source, status):
+    parts = []
+    if source and source != "TOTAL":
+        parts.append(f"kpi_source={source}")
+    if status:
+        parts.append(f"kpi_status={status}")
+    if parts:
+        return "?" + "&".join(parts)
+    return "?"
+
+curr_src = st.session_state.kpi_filter_source
+curr_st = st.session_state.kpi_filter_status
+
+href_total  = make_kpi_href("TOTAL", None)
+href_ca     = make_kpi_href("TOTAL" if curr_src == "COMISSAO" else "COMISSAO", curr_st)
+href_np     = make_kpi_href("TOTAL" if curr_src == "PROVISORIA" else "PROVISORIA", curr_st)
+href_enc    = make_kpi_href(curr_src, None if curr_st == "ENCERRADA" else "ENCERRADA")
+href_aberta = make_kpi_href(curr_src, None if curr_st == "ABERTAS" else "ABERTAS")
+href_parc   = make_kpi_href(curr_src, None if curr_st == "PARC_ENCERRADA" else "PARC_ENCERRADA")
+href_hom    = make_kpi_href(curr_src, None if curr_st == "HOMOLOGACAO" else "HOMOLOGACAO")
+
 class_total  = " kpi-active-total" if st.session_state.kpi_filter_source == "TOTAL" else ""
 class_ca     = " kpi-active-ca" if st.session_state.kpi_filter_source == "COMISSAO" else ""
 class_np     = " kpi-active-np" if st.session_state.kpi_filter_source == "PROVISORIA" else ""
@@ -4461,95 +4456,63 @@ class_hom    = " kpi-active-hom" if st.session_state.kpi_filter_status == "HOMOL
 col_block1, col_block2 = st.columns([1, 1.25], gap="large")
 
 with col_block1:
-    st.markdown(f'<div class="kpi-card kpi-total{class_total}">'
+    st.markdown(f'<a href="{href_total}" target="_self" style="text-decoration: none; color: inherit;">'
+                f'<div class="kpi-card kpi-total{class_total}">'
                 '<div class="label">TOTAL AVALIAÇÕES</div>'
                 f'<div class="value">{fmt_num(n_total_card)}</div>'
                 '<div class="sub">avaliações</div>'
-                '</div>', unsafe_allow_html=True)
-    if st.button("", key="btn_kpi_total"):
-        st.session_state.kpi_filter_source = "TOTAL"
-        st.rerun()
+                '</div></a>', unsafe_allow_html=True)
 
     st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
     cb1_1, cb1_2 = st.columns(2)
     with cb1_1:
-        st.markdown(f'<div class="kpi-card kpi-ca{class_ca}">'
+        st.markdown(f'<a href="{href_ca}" target="_self" style="text-decoration: none; color: inherit;">'
+                    f'<div class="kpi-card kpi-ca{class_ca}">'
                     '<div class="label">COMISSÃO ATUAL</div>'
                     f'<div class="value">{fmt_num(n_ca_card)}</div>'
                     f'<div class="sub">{n_ca_card/max(n_total_card,1)*100:.1f}%</div>'
-                    '</div>', unsafe_allow_html=True)
-        if st.button("", key="btn_kpi_ca"):
-            if st.session_state.kpi_filter_source == "COMISSAO":
-                st.session_state.kpi_filter_source = "TOTAL"
-            else:
-                st.session_state.kpi_filter_source = "COMISSAO"
-            st.rerun()
+                    '</div></a>', unsafe_allow_html=True)
     with cb1_2:
-        st.markdown(f'<div class="kpi-card kpi-np{class_np}">'
+        st.markdown(f'<a href="{href_np}" target="_self" style="text-decoration: none; color: inherit;">'
+                    f'<div class="kpi-card kpi-np{class_np}">'
                     '<div class="label">NOTA PROVISÓRIA</div>'
                     f'<div class="value">{fmt_num(n_np_card)}</div>'
                     f'<div class="sub">{n_np_card/max(n_total_card,1)*100:.1f}%</div>'
-                    '</div>', unsafe_allow_html=True)
-        if st.button("", key="btn_kpi_np"):
-            if st.session_state.kpi_filter_source == "PROVISORIA":
-                st.session_state.kpi_filter_source = "TOTAL"
-            else:
-                st.session_state.kpi_filter_source = "PROVISORIA"
-            st.rerun()
+                    '</div></a>', unsafe_allow_html=True)
 
 with col_block2:
-    st.markdown(f'<div class="kpi-card kpi-enc{class_enc}">'
+    st.markdown(f'<a href="{href_enc}" target="_self" style="text-decoration: none; color: inherit;">'
+                f'<div class="kpi-card kpi-enc{class_enc}">'
                 '<div class="label">ENCERRADAS</div>'
                 f'<div class="value">{fmt_num(n_enc_card)}</div>'
                 f'<div class="sub">{n_enc_card/max(n_total_card,1)*100:.1f}%</div>'
-                '</div>', unsafe_allow_html=True)
-    if st.button("", key="btn_kpi_enc"):
-        if st.session_state.kpi_filter_status == "ENCERRADA":
-            st.session_state.kpi_filter_status = None
-        else:
-            st.session_state.kpi_filter_status = "ENCERRADA"
-        st.rerun()
+                '</div></a>', unsafe_allow_html=True)
 
     st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
     cb2_1, cb2_2, cb2_3 = st.columns(3)
     with cb2_1:
-        st.markdown(f'<div class="kpi-card kpi-aberta{class_aberta}">'
+        st.markdown(f'<a href="{href_aberta}" target="_self" style="text-decoration: none; color: inherit;">'
+                    f'<div class="kpi-card kpi-aberta{class_aberta}">'
                     '<div class="label">ABERTAS</div>'
                     f'<div class="value">{fmt_num(n_aberta_card)}</div>'
                     '<div class="sub">AV1 pendente</div>'
-                    '</div>', unsafe_allow_html=True)
-        if st.button("", key="btn_kpi_aberta"):
-            if st.session_state.kpi_filter_status == "ABERTAS":
-                st.session_state.kpi_filter_status = None
-            else:
-                st.session_state.kpi_filter_status = "ABERTAS"
-            st.rerun()
+                    '</div></a>', unsafe_allow_html=True)
     with cb2_2:
-        st.markdown(f'<div class="kpi-card kpi-parc{class_parc}">'
+        st.markdown(f'<a href="{href_parc}" target="_self" style="text-decoration: none; color: inherit;">'
+                    f'<div class="kpi-card kpi-parc{class_parc}">'
                     '<div class="label">PARC. ENCERRADA</div>'
                     f'<div class="value">{fmt_num(n_parc_card)}</div>'
                     '<div class="sub">AV2 pendente</div>'
-                    '</div>', unsafe_allow_html=True)
-        if st.button("", key="btn_kpi_parc"):
-            if st.session_state.kpi_filter_status == "PARC_ENCERRADA":
-                st.session_state.kpi_filter_status = None
-            else:
-                st.session_state.kpi_filter_status = "PARC_ENCERRADA"
-            st.rerun()
+                    '</div></a>', unsafe_allow_html=True)
     with cb2_3:
-        st.markdown(f'<div class="kpi-card kpi-hom{class_hom}">'
+        st.markdown(f'<a href="{href_hom}" target="_self" style="text-decoration: none; color: inherit;">'
+                    f'<div class="kpi-card kpi-hom{class_hom}">'
                     '<div class="label">HOMOLOGAÇÃO</div>'
                     f'<div class="value">{fmt_num(n_hom_card)}</div>'
                     '<div class="sub">HOM pendente</div>'
-                    '</div>', unsafe_allow_html=True)
-        if st.button("", key="btn_kpi_hom"):
-            if st.session_state.kpi_filter_status == "HOMOLOGACAO":
-                st.session_state.kpi_filter_status = None
-            else:
-                st.session_state.kpi_filter_status = "HOMOLOGACAO"
-            st.rerun()
+                    '</div></a>', unsafe_allow_html=True)
 
 
 
@@ -4584,6 +4547,8 @@ if st.session_state.last_page != active_page:
     st.session_state.kpi_filter_source = "TOTAL"
     st.session_state.kpi_filter_status = None
     st.session_state.last_page = active_page
+    st.query_params.clear()
+
 
 
 
