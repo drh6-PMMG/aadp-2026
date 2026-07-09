@@ -4667,11 +4667,11 @@ if active_page == "Análise Gráfica":
 
     col_s1, col_s2 = st.columns([1.5, 1])
     with col_s1:
-        scale_option = st.radio(
-            "Escala do Eixo Y:",
-            ["Linear (Normal)", "Logarítmica (Melhor para ver pendências pequenas)"],
-            horizontal=True,
-            key="dist_chart_scale_opt"
+        selected_statuses = st.multiselect(
+            "Filtrar Status exibidos no gráfico:",
+            options=["Encerrada", "Aberta", "Parcialmente Encerrada", "Homologação"],
+            default=["Encerrada", "Aberta", "Parcialmente Encerrada", "Homologação"],
+            key="dist_chart_status_filter"
         )
     with col_s2:
         sort_option = st.selectbox(
@@ -4685,21 +4685,27 @@ if active_page == "Análise Gráfica":
             key="dist_chart_sort_opt"
         )
 
+    # Filtrar o DataFrame pelos status selecionados pelo usuário
+    if not selected_statuses:
+        selected_statuses = ["Encerrada", "Aberta", "Parcialmente Encerrada", "Homologação"]
+        
+    df_filtered = df[df["Status Avaliação"].isin(selected_statuses)]
+
     # Ordenar unidades com base na opção selecionada
     if sort_option == "Crescente por Unidade":
-        all_units_sorted = sorted(df["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key)
+        all_units_sorted = sorted(df_filtered["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key)
     elif sort_option == "Decrescente por Unidade":
-        all_units_sorted = sorted(df["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key, reverse=True)
+        all_units_sorted = sorted(df_filtered["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key, reverse=True)
     elif sort_option == "Crescente por Quantidade":
-        unit_totals = df.groupby("Unidade RPM (Avaliado)").size().reset_index(name="Total")
+        unit_totals = df_filtered.groupby("Unidade RPM (Avaliado)").size().reset_index(name="Total")
         unit_totals_sorted = unit_totals.sort_values("Total", ascending=True)
         all_units_sorted = list(unit_totals_sorted["Unidade RPM (Avaliado)"])
     else: # Decrescente por Quantidade
-        unit_totals = df.groupby("Unidade RPM (Avaliado)").size().reset_index(name="Total")
+        unit_totals = df_filtered.groupby("Unidade RPM (Avaliado)").size().reset_index(name="Total")
         unit_totals_sorted = unit_totals.sort_values("Total", ascending=False)
         all_units_sorted = list(unit_totals_sorted["Unidade RPM (Avaliado)"])
 
-    rpm_cross = df.groupby(["Unidade RPM (Avaliado)","Status Avaliação"]).size().reset_index(name="Qtd")
+    rpm_cross = df_filtered.groupby(["Unidade RPM (Avaliado)","Status Avaliação"]).size().reset_index(name="Qtd")
     
     fig_rpm = px.bar(
         rpm_cross, x="Unidade RPM (Avaliado)", y="Qtd",
@@ -4730,9 +4736,6 @@ if active_page == "Análise Gráfica":
         title_font=dict(color="#bca374")
     )
     
-    if "Logar" in scale_option:
-        fig_rpm.update_layout(yaxis_type="log")
-        
     fig_rpm.update_xaxes(tickangle=45, showgrid=False)
     fig_rpm.update_yaxes(showgrid=True, gridcolor="#2a2a2a")
     st.plotly_chart(fig_rpm, use_container_width=True)
