@@ -2312,23 +2312,11 @@ def sync_users_with_sigef():
 
 
                         sigef_dict[pm_clean] = {
-
-
-                            "name": row[1].strip(),
-
-
+                            "name": row[3].strip(),
                             "rank": row[2].strip(),
-
-
                             "rpm": row[5].strip(),
-
-
                             "unit": row[7].strip(),
-
-
                             "sector": row[9].strip()
-
-
                         }
 
 
@@ -3601,7 +3589,7 @@ with st.sidebar:
         pages.append(("📄 Relatório Word", "Relatório Word"))
 
     # Auditoria de Notas: visível para ADMINISTRADOR, GESTOR, P1 e SADM
-    if st.session_state.user_role in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
+    if sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
         pages.append(("📊 Auditoria de Notas", "Auditoria de Notas"))
 
 
@@ -7755,13 +7743,13 @@ if active_page == "Relatório Word":
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 7 — PAINEL ADMINISTRADOR
 # ══════════════════════════════════════════════════════════════════════════════
-if active_page == "Auditoria de Notas" and st.session_state.user_role in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
+if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
     st.markdown("### 📊 Auditoria de Notas")
     st.info("👉 Esta tela apresenta o conteúdo consolidado da planilha mestre `Analise avaliacoes completa.xlsx` contendo as regras de negócio de avaliações, recursos e notas médias finais.")
     
-    _role_audit = st.session_state.user_role
-    _user_rpm   = st.session_state.get("user_rpm", "")
-    _user_unit  = st.session_state.get("user_unit", "")
+    _role_audit = sidebar_active_role
+    _user_rpm   = st.session_state.get("simulated_rpm", st.session_state.get("user_rpm", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_rpm", "")
+    _user_unit  = st.session_state.get("simulated_unit", st.session_state.get("user_unit", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_unit", "")
 
     # Obter caminhos dos arquivos locais e Drive
     fonte = cfg.get("fonte_dados", "📁 Pasta local / Servidor")
