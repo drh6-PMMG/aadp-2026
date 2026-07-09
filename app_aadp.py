@@ -4254,9 +4254,7 @@ with col_block1:
                     f'<div class="value">{fmt_num(n_np)}</div>'
 
 
-                    f'<div class="sub">Hom.SIM: {fmt_num(n_sim)}</div>'
-
-
+                    f'<div class="sub">{n_np/max(n_total,1)*100:.1f}%</div>'
                     '</div>', unsafe_allow_html=True)
 
 
@@ -4266,88 +4264,34 @@ with col_block1:
 with col_block2:
 
 
-    # Bloco 2: Abertas, Parc, Homologação em cima, Encerradas embaixo
-
-
-    cb2_1, cb2_2, cb2_3 = st.columns(3)
-
-
-    with cb2_1:
-
-
-        st.markdown('<div class="kpi-card kpi-aberta">'
-
-
-                    '<div class="label">ABERTAS</div>'
-
-
-                    f'<div class="value">{fmt_num(n_aberta)}</div>'
-
-
-                    '<div class="sub">AV1 pendente</div>'
-
-
-                    '</div>', unsafe_allow_html=True)
-
-
-    with cb2_2:
-
-
-        st.markdown('<div class="kpi-card kpi-parc">'
-
-
-                    '<div class="label">PARC. ENCERRADA</div>'
-
-
-                    f'<div class="value">{fmt_num(n_parc)}</div>'
-
-
-                    '<div class="sub">AV2 pendente</div>'
-
-
-                    '</div>', unsafe_allow_html=True)
-
-
-    with cb2_3:
-
-
-        st.markdown('<div class="kpi-card kpi-hom">'
-
-
-                    '<div class="label">HOMOLOGAÇÃO</div>'
-
-
-                    f'<div class="value">{fmt_num(n_hom)}</div>'
-
-
-                    '<div class="sub">HOM pendente</div>'
-
-
-                    '</div>', unsafe_allow_html=True)
-
-
-                    
-
+    # Bloco 2: Encerradas em cima, Abertas, Parc, Homologação embaixo
+    st.markdown('<div class="kpi-card kpi-enc">'
+                '<div class="label">ENCERRADAS</div>'
+                f'<div class="value">{fmt_num(n_enc)}</div>'
+                f'<div class="sub">{n_enc/max(n_total,1)*100:.1f}%</div>'
+                '</div>', unsafe_allow_html=True)
 
     st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
-
-    
-
-
-    st.markdown('<div class="kpi-card kpi-enc">'
-
-
-                '<div class="label">ENCERRADAS</div>'
-
-
-                f'<div class="value">{fmt_num(n_enc)}</div>'
-
-
-                f'<div class="sub">{n_enc/max(n_total,1)*100:.1f}%</div>'
-
-
-                '</div>', unsafe_allow_html=True)
+    cb2_1, cb2_2, cb2_3 = st.columns(3)
+    with cb2_1:
+        st.markdown('<div class="kpi-card kpi-aberta">'
+                    '<div class="label">ABERTAS</div>'
+                    f'<div class="value">{fmt_num(n_aberta)}</div>'
+                    '<div class="sub">AV1 pendente</div>'
+                    '</div>', unsafe_allow_html=True)
+    with cb2_2:
+        st.markdown('<div class="kpi-card kpi-parc">'
+                    '<div class="label">PARC. ENCERRADA</div>'
+                    f'<div class="value">{fmt_num(n_parc)}</div>'
+                    '<div class="sub">AV2 pendente</div>'
+                    '</div>', unsafe_allow_html=True)
+    with cb2_3:
+        st.markdown('<div class="kpi-card kpi-hom">'
+                    '<div class="label">HOMOLOGAÇÃO</div>'
+                    f'<div class="value">{fmt_num(n_hom)}</div>'
+                    '<div class="sub">HOM pendente</div>'
+                    '</div>', unsafe_allow_html=True)
 
 
 
@@ -8080,7 +8024,8 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
 
 st.markdown("---")
 st.markdown(f"<center><small>AADP 2026 · Polícia Militar de Minas Gerais · "
-            f"Resolução 5458/2025 · {now_br().strftime('%d/%m/%Y')}</small></center>",
+            f"Resolução 5458/2025 · {now_br().strftime('%d/%m/%Y')}<br>"
+            f"DIRETORIA DE RECURSO HUMANOS - DRH6</small></center>",
             unsafe_allow_html=True)
 
 print(f"[AADP PROFILE] Script finished in {time.time() - _prof_start:.4f} seconds", flush=True)
