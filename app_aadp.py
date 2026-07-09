@@ -2886,27 +2886,31 @@ def safe_df(styled_or_df, height=520, key_prefix=None):
 
     total = len(raw_df)
     shown = len(df_filtered)
-    if shown < total:
-        st.caption(f"\U0001f4ca Exibindo **{shown:,}** de **{total:,}** registros \u00b7 Clique no cabe\u00e7alho para ordenar \u2191\u2193")
+    limit = 500
+    
+    if shown > limit:
+        st.caption(f"📊 Exibindo as primeiras **{limit}** de **{shown:,}** linhas encontradas (Total: {total:,} registros). Use o campo **Busca rápida** acima para filtrar.")
+        df_to_show = df_filtered.head(limit)
     else:
-        st.caption(f"\U0001f4ca {total:,} registros \u00b7 Clique no cabe\u00e7alho para ordenar \u2191\u2193")
+        st.caption(f"📊 Exibindo **{shown:,}** de **{total:,}** registros.")
+        df_to_show = df_filtered
 
     # Exibir com estilo quando possivel
-    is_audit_df = any("Aritm" in str(c) for c in df_filtered.columns) and any(str(c).endswith(" 1") for c in df_filtered.columns)
+    is_audit_df = any("Aritm" in str(c) for c in df_to_show.columns) and any(str(c).endswith(" 1") for c in df_to_show.columns)
     
     if is_audit_df:
         try:
-            styled_df = style_audit_dataframe(df_filtered)
+            styled_df = style_audit_dataframe(df_to_show)
             st.dataframe(styled_df, use_container_width=True, height=height)
         except Exception:
-            st.dataframe(df_filtered, use_container_width=True, height=height)
+            st.dataframe(df_to_show, use_container_width=True, height=height)
     elif is_styled and not is_large:
         try:
-            st.dataframe(styled_or_df.data.loc[df_filtered.index], use_container_width=True, height=height)
+            st.dataframe(styled_or_df.data.loc[df_to_show.index], use_container_width=True, height=height)
         except Exception:
-            st.dataframe(df_filtered, use_container_width=True, height=height)
+            st.dataframe(df_to_show, use_container_width=True, height=height)
     else:
-        st.dataframe(df_filtered, use_container_width=True, height=height)
+        st.dataframe(df_to_show, use_container_width=True, height=height)
 
 
 def color_status(val):
@@ -7775,6 +7779,66 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
             df_audit_disp = df_audit_disp[df_audit_disp["Nome RPM"].isin(rpm_filter)]
         if unid_filter:
             df_audit_disp = df_audit_disp[df_audit_disp["Nome Unidade Principal"].isin(unid_filter)]
+
+    # ── CARDS DE RESUMO DA AUDITORIA ──────────────────────────────────────────
+    # 1. Total militares com avaliações abertas e sem nota final encerrada
+    c1_mask = (df_audit_disp['Todas Avaliações Foram Encerradas?'].astype(str).str.upper() == 'NAO')
+    card1_count = len(df_audit_disp[c1_mask])
+    
+    # 2. Total militares com todas avaliações encerradas e com nota final
+    def is_numeric_grade(val):
+        try:
+            if val is None or str(val).strip() in ("", "-", "None", "nan"):
+                return False
+            float(str(val).replace(",", "."))
+            return True
+        except ValueError:
+            return False
+
+    c2_mask = (df_audit_disp['Todas Avaliações Foram Encerradas?'].astype(str).str.upper() == 'SIM') & \
+               (df_audit_disp['Nota Final - Média Aritmética'].apply(is_numeric_grade))
+    card2_count = len(df_audit_disp[c2_mask])
+    
+    # 3. Média da Nota da Unidade (média aritmética de todas as notas finais já encerradas)
+    def get_numeric_value(val):
+        try:
+            if val is None or str(val).strip() in ("", "-", "None", "nan"):
+                return None
+            return float(str(val).replace(",", "."))
+        except ValueError:
+            return None
+
+    grades = df_audit_disp['Nota Final - Média Aritmética'].apply(get_numeric_value).dropna()
+    if len(grades) > 0:
+        card3_avg = grades.mean()
+        import math
+        card3_avg_rounded = math.floor(card3_avg * 100 + 0.5) / 100.0
+        card3_val = f"{card3_avg_rounded:.2f}".replace(".", ",")
+    else:
+        card3_val = "0,00"
+
+    # Renderizar os 3 cards lado a lado usando CSS kpi-card
+    col_k1, col_k2, col_k3 = st.columns(3)
+    with col_k1:
+        st.markdown('<div class="kpi-card kpi-aberta">'
+                    '<div class="label">AVALIAÇÕES ABERTAS / SEM NOTA FINAL</div>'
+                    f'<div class="value">{fmt_num(card1_count)}</div>'
+                    '<div class="sub">Militares com pendências de encerramento</div>'
+                    '</div>', unsafe_allow_html=True)
+    with col_k2:
+        st.markdown('<div class="kpi-card kpi-enc">'
+                    '<div class="label">AVALIAÇÕES ENCERRADAS COM NOTA</div>'
+                    f'<div class="value">{fmt_num(card2_count)}</div>'
+                    '<div class="sub">Militares com nota final encerrada</div>'
+                    '</div>', unsafe_allow_html=True)
+    with col_k3:
+        st.markdown('<div class="kpi-card kpi-ca">'
+                    '<div class="label">MÉDIA DAS NOTAS FINAIS</div>'
+                    f'<div class="value">{card3_val}</div>'
+                    '<div class="sub">Média aritmética das notas encerradas</div>'
+                    '</div>', unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
 
     st.markdown(f"##### Conteúdo da Planilha Mestre Consolidada ({fmt_num(len(df_audit_disp))} registros)")
     
