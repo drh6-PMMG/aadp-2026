@@ -4493,6 +4493,15 @@ with col_block2:
                     '</div>', unsafe_allow_html=True)
 
 # Hidden streamlit buttons used as bridge callbacks
+st.markdown("""
+<style>
+div.element-container:has(#hidden-buttons-marker),
+div.element-container:has(#hidden-buttons-marker) + div.element-container {
+    display: none !important;
+}
+</style>
+<div id="hidden-buttons-marker"></div>
+""", unsafe_allow_html=True)
 btn_cols = st.columns(7)
 with btn_cols[0]:
     if st.button("Click Total", key="btn_kpi_total"):
