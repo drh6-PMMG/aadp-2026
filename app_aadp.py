@@ -294,6 +294,28 @@ def run_grades_audit(xlsx_path, csv_path, drive_geral_id=None, drive_master_xlsx
     return pd.DataFrame(discrepancies), None
 
 
+
+
+@st.cache_data(show_spinner=False)
+def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
+    import pandas as pd
+    import os
+    
+    if drive_master_xlsx_id:
+        try:
+            _baixar_drive(drive_master_xlsx_id, xlsx_path)
+        except Exception as e:
+            return None, f"Falha ao baixar master Excel do Google Drive (ID: {drive_master_xlsx_id}): {str(e)}"
+            
+    if not os.path.exists(xlsx_path):
+        return None, f"Arquivo Excel consolidado não encontrado no caminho: {xlsx_path}"
+        
+    try:
+        df = pd.read_excel(xlsx_path)
+        return df, None
+    except Exception as e:
+        return None, f"Erro ao ler planilha consolidada: {str(e)}"
+
 # gdown: download do Google Drive (opcional — só necessário no modo Drive)
 
 
@@ -7702,82 +7724,55 @@ if active_page == "Relatório Word":
 # ══════════════════════════════════════════════════════════════════════════════
 if active_page == "Auditoria de Notas" and st.session_state.user_role == "ADMINISTRADOR":
     st.markdown("### 📊 Auditoria de Notas")
-    st.info("👉 Esta ferramenta cruza a planilha consolidada `Analise avaliacoes completa.xlsx` com o arquivo de metadados brutos `geral.csv` para apontar inconsistências de notas ou lançamentos.")
+    st.info("👉 Esta tela apresenta o conteúdo consolidado da planilha mestre `Analise avaliacoes completa.xlsx` contendo as regras de negócio de avaliações, recursos e notas médias finais.")
     
     # Obter caminhos dos arquivos locais e Drive
     fonte = cfg.get("fonte_dados", "📁 Pasta local / Servidor")
-    drive_geral_id = cfg.get("drive_geral_id", "")
     drive_master_xlsx_id = cfg.get("drive_master_xlsx_id", "")
     
     if fonte == "☁️ Google Drive":
         master_xlsx_path = os.path.join(str(DADOS_DIR), "Analise avaliacoes completa.xlsx")
-        geral_csv_path = os.path.join(str(DADOS_DIR), "geral.csv")
-        
-        if not drive_geral_id or not drive_master_xlsx_id:
-            st.error("❌ IDs do Google Drive não configurados!")
-            st.warning("⚠️ Configure as chaves `drive_geral_id` e `drive_master_xlsx_id` nas configurações (st.secrets ou config_aadp.json) para habilitar o download automático dos arquivos da auditoria.")
+        if not drive_master_xlsx_id:
+            st.error("❌ ID da Planilha Mestre no Google Drive não configurado!")
+            st.warning("⚠️ Configure a chave `drive_master_xlsx_id` nas configurações (st.secrets ou config_aadp.json) para habilitar o download automático da auditoria online.")
             st.stop()
     else:
         # Modo pasta local
         master_xlsx_path = os.path.join(str(Path(DADOS_DIR).parent), "Analise avaliacoes completa.xlsx")
-        geral_csv_path = os.path.join(str(Path(DADOS_DIR).parent), "geral.csv")
-        
-        if not os.path.exists(master_xlsx_path) or not os.path.exists(geral_csv_path):
-            st.error("❌ Arquivos de auditoria não encontrados localmente!")
-            st.warning(f"Certifique-se de que os arquivos `geral.csv` e `Analise avaliacoes completa.xlsx` estão na pasta raiz do projeto: `{str(Path(DADOS_DIR).parent)}`")
+        if not os.path.exists(master_xlsx_path):
+            st.error("❌ Arquivo consolidado não encontrado localmente!")
+            st.warning(f"Certifique-se de que o arquivo `Analise avaliacoes completa.xlsx` está na pasta raiz do projeto: `{str(Path(DADOS_DIR).parent)}`")
             st.stop()
             
-    # Executar Auditoria Automaticamente
-    with st.spinner("Processando arquivos de dados e conferindo notas (isso pode levar de 5 a 10 segundos na primeira execução)..."):
-        df_disc, err = run_grades_audit(master_xlsx_path, geral_csv_path, drive_geral_id, drive_master_xlsx_id)
+    with st.spinner("Carregando dados da Planilha Mestre de Auditoria..."):
+        df_audit, err = load_audit_excel(master_xlsx_path, drive_master_xlsx_id)
         
     if err:
-        st.error(f"Erro ao processar auditoria: {err}")
-    else:
-        if df_disc.empty:
-            st.success("🎉 Nenhuma inconsistência de notas foi detectada nos arquivos consolidados!")
-        else:
-            # Métricas de destaque
-            t_cnt = len(df_disc)
-            c_cnt = len(df_disc[df_disc['Tipo'] == 'Divergência de Média de Competências'])
-            h_cnt = len(df_disc[df_disc['Tipo'] == 'Divergência de Nota de Homologação'])
-            q_cnt = len(df_disc[df_disc['Tipo'] == 'Divergência de Qtd de Avaliações'])
-            
-            m1, m2, m3, m4 = st.columns(4)
-            with m1:
-                st.metric("Total de Falhas", f"{t_cnt} ⚠️")
-            with m2:
-                st.metric("Média de Competências", f"{c_cnt}")
-            with m3:
-                st.metric("Nota Homologação", f"{h_cnt}")
-            with m4:
-                st.metric("Qtd Avaliações", f"{q_cnt}")
-            
-            st.markdown("##### Detalhamento das Divergências Encontradas (Primeiras 100)")
-            
-            # Filtro por tipo de divergência na exibição
-            audit_types = ["Todas"] + list(df_disc['Tipo'].unique())
-            sel_audit_type = st.selectbox("Filtrar visualização por tipo:", audit_types, key="filter_audit_type")
-            
-            df_disp = df_disc.copy()
-            if sel_audit_type != "Todas":
-                df_disp = df_disp[df_disp['Tipo'] == sel_audit_type]
-                
-            # Exibir DataFrame
-            st.dataframe(df_disp.head(100), use_container_width=True)
-            if len(df_disp) > 100:
-                st.info(f"💡 Mostrando as primeiras 100 linhas de um total de {len(df_disp)} registros para este tipo. Baixe a planilha completa abaixo para ver todas.")
-                
-            # Botão para baixar relatório Excel de auditoria
-            dl_audit_xlsx = df_to_xlsx(df_disc)
-            st.download_button(
-                "📥 Baixar Relatório Completo de Auditoria de Notas (Excel .xlsx)",
-                dl_audit_xlsx,
-                f"Relatorio_Auditoria_Notas_AADP2026_{now_br().strftime('%Y%m%d_%H%M')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="dl_audit_notes_xlsx",
-                use_container_width=True
-            )
+        st.error(f"Erro ao carregar auditoria: {err}")
+        st.stop()
+        
+    # Aplicar filtros da barra lateral (RPM e Unidade/Subunidade)
+    df_audit_disp = df_audit.copy()
+    if rpm_filter:
+        df_audit_disp = df_audit_disp[df_audit_disp["Nome RPM"].isin(rpm_filter)]
+    if unid_filter:
+        df_audit_disp = df_audit_disp[df_audit_disp["Nome Unidade Principal"].isin(unid_filter)]
+        
+    st.markdown(f"##### Conteúdo da Planilha Mestre Consolidada ({fmt_num(len(df_audit_disp))} registros)")
+    
+    # Exibir a planilha de auditoria diretamente!
+    safe_df(df_audit_disp, height=540)
+    
+    # Baixar relatório Excel
+    dl_xlsx = df_to_xlsx(df_audit_disp)
+    st.download_button(
+        "📥 Baixar Resultados Filtrados (Excel .xlsx)",
+        dl_xlsx,
+        f"Auditoria_Notas_Consolidado_{now_br().strftime('%Y%m%d_%H%M')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key="dl_audit_notes_xlsx",
+        use_container_width=True
+    )
 
 
 if active_page == "Painel Administrador" and st.session_state.user_role == "ADMINISTRADOR":
