@@ -4732,6 +4732,7 @@ if active_page == "Análise Gráfica":
     fig_rpm.update_traces(textposition="auto")
     
     fig_rpm.update_layout(
+        uirevision="constant_value",
         height=480, title_font_size=15, title_x=0.5,
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         xaxis_title="", yaxis_title="Avaliações",
