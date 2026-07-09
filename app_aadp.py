@@ -3031,117 +3031,104 @@ if not st.session_state.authenticated:
 
 
         if auth_mode == "🔑 Acessar Conta":
-
-
-            with st.form("form_login", clear_on_submit=False):
-
-
-                login_pm = st.text_input("Nº PM:", key="login_pm_val", placeholder="Ex: 123456 ou ADM")
-
-
-                login_pass = st.text_input("Senha:", type="password", key="login_pass_val")
-
-
-                submitted_login = st.form_submit_button("Entrar", use_container_width=True, type="primary")
-
-
+            if st.session_state.get("forgot_password_mode", False):
+                st.markdown("##### ❓ Recuperar Acesso (Esqueci minha senha)")
                 
-
-
-            if submitted_login:
-
-
-                spm = login_pm.strip()
-
-
-                spass = login_pass
-
-
-                
-
-
-                if not spm or not spass:
-
-
-                    st.error("Por favor, preencha todos os campos.")
-
-
-                else:
-
-
-                    h_pass = hashlib.sha256(spass.encode()).hexdigest()
-
-
-                    res = db_get_user_for_login(spm, h_pass)
-
-
-                    if res:
-
-
-                        name, role, rpm, unit, status = res
-
-
-                        if status == "Ativo":
-
-
-                            st.session_state.authenticated = True
-
-
-                            st.session_state.user_pm = spm
-
-
-                            st.session_state.user_name = name
-
-
-                            if role in ("P1/SADM", "P1"):
-
-
-                                role = "P1"
-
-
-                            elif role in ("DRH6", "Gestor"):
-
-
-                                role = "Gestor"
-
-
-                            st.session_state.user_role = role
-
-
-                            st.session_state.user_rpm = rpm
-
-
-                            st.session_state.user_unit = unit
-
-
-                            refresh_db_cache()
-
-
-                            log_action(spm, "LOGIN", "Acesso realizado com sucesso")
-
-
-                            st.success(f"Bem-vindo, {name}!")
-
-
+                if st.session_state.get("forgot_step2", False) and st.session_state.get("forgot_target_pm"):
+                    target_pm = st.session_state.forgot_target_pm
+                    
+                    st.warning(
+                        f"⚠️ **Atenção (PM: {target_pm})**:\n\n"
+                        "Para recuperar seu acesso você precisa revogar o acesso e criar novo acesso.\n\n"
+                        "Deseja prosseguir com a revogação do seu cadastro atual?"
+                    )
+                    
+                    col_c1, col_c2 = st.columns(2)
+                    with col_c1:
+                        if st.button("Cancelar", use_container_width=True, key="btn_forgot_cancel"):
+                            st.session_state.forgot_password_mode = False
+                            st.session_state.forgot_step2 = False
+                            st.session_state.forgot_target_pm = None
                             st.rerun()
+                    with col_c2:
+                        if st.button("Revogar", use_container_width=True, type="primary", key="btn_forgot_revoke"):
+                            db_revoke_user(target_pm)
+                            log_action(target_pm, "REVOGAR_AUTOCADASTRO", "Usuario solicitou revogacao por esquecimento de senha")
+                            st.success("✅ Seu cadastro foi revogado com sucesso! Agora você pode solicitar um novo cadastro.")
+                            st.session_state.forgot_password_mode = False
+                            st.session_state.forgot_step2 = False
+                            st.session_state.forgot_target_pm = None
+                            st.session_state.auth_mode_radio = "📝 Solicitar Cadastro"
+                            st.rerun()
+                else:
+                    st.write("Informe o seu Nº PM para verificar seu cadastro:")
+                    forgot_pm = st.text_input("Nº PM:", key="forgot_pm_input", placeholder="Ex: 123456")
+                    
+                    col_f1, col_f2 = st.columns(2)
+                    with col_f1:
+                        if st.button("Voltar ao Login", use_container_width=True, key="btn_forgot_back"):
+                            st.session_state.forgot_password_mode = False
+                            st.rerun()
+                    with col_f2:
+                        if st.button("Verificar Cadastro", use_container_width=True, type="primary", key="btn_forgot_verify"):
+                            if not forgot_pm or not forgot_pm.isdigit():
+                                st.error("Por favor, informe um Nº PM válido (apenas números).")
+                            else:
+                                f_pm = forgot_pm.strip()
+                                status = db_check_user_status(f_pm)
+                                if not status:
+                                    st.error("❌ Nº PM não encontrado no sistema!")
+                                elif status == "Bloqueado":
+                                    st.warning("⚠️ Seu acesso já está revogado. Você pode ir para a opção '📝 Solicitar Cadastro' e realizar seu novo cadastro.")
+                                else:
+                                    st.session_state.forgot_target_pm = f_pm
+                                    st.session_state.forgot_step2 = True
+                                    st.rerun()
+            else:
+                with st.form("form_login", clear_on_submit=False):
+                    login_pm = st.text_input("Nº PM:", key="login_pm_val", placeholder="Ex: 123456 ou ADM")
+                    login_pass = st.text_input("Senha:", type="password", key="login_pass_val")
+                    submitted_login = st.form_submit_button("Entrar", use_container_width=True, type="primary")
 
-
-                        elif status == "Pendente":
-
-
-                            st.warning("⚠️ Sua conta está aguardando liberação do Administrador.")
-
-
-                        else:
-
-
-                            st.error("❌ Acesso revogado/bloqueado. Entre em contato com a DRH.")
-
-
+                if submitted_login:
+                    spm = login_pm.strip()
+                    spass = login_pass
+                    
+                    if not spm or not spass:
+                        st.error("Por favor, preencha todos os campos.")
                     else:
+                        h_pass = hashlib.sha256(spass.encode()).hexdigest()
+                        res = db_get_user_for_login(spm, h_pass)
+                        if res:
+                            name, role, rpm, unit, status = res
+                            if status == "Ativo":
+                                st.session_state.authenticated = True
+                                st.session_state.user_pm = spm
+                                st.session_state.user_name = name
+                                if role in ("P1/SADM", "P1"):
+                                    role = "P1"
+                                elif role in ("DRH6", "Gestor"):
+                                    role = "Gestor"
+                                st.session_state.user_role = role
+                                st.session_state.user_rpm = rpm
+                                st.session_state.user_unit = unit
+                                refresh_db_cache()
+                                log_action(spm, "LOGIN", "Acesso realizado com sucesso")
+                                st.success(f"Bem-vindo, {name}!")
+                                st.rerun()
+                            elif status == "Pendente":
+                                st.warning("⚠️ Sua conta está aguardando liberação do Administrador.")
+                            else:
+                                st.error("❌ Acesso revogado/bloqueado. Entre em contato com a DRH.")
+                        else:
+                            st.error("❌ Nº PM ou Senha incorretos.")
 
-
-                        st.error("❌ Nº PM ou Senha incorretos.")
+                st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+                if st.button("❓ Esqueci minha senha", use_container_width=True, key="btn_forgot_password"):
+                    st.session_state.forgot_password_mode = True
+                    st.session_state.forgot_step2 = False
+                    st.session_state.forgot_target_pm = None
+                    st.rerun()
 
 
                         
