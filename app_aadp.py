@@ -2831,7 +2831,18 @@ def style_audit_dataframe(df):
 
     styler = df.style.apply(get_column_styles, axis=1)
     if col_media:
-        styler = styler.format(formatter={col_media: "{:.2f}"}, na_rep="-")
+        def format_media(val):
+            try:
+                import math
+                if val is None or val == "-":
+                    return "-"
+                f_val = float(str(val).replace(",", "."))
+                if math.isnan(f_val):
+                    return "-"
+                return f"{f_val:.2f}"
+            except Exception:
+                return str(val)
+        styler = styler.format(formatter={col_media: format_media})
     return styler
 
 
