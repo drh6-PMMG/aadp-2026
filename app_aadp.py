@@ -3945,7 +3945,6 @@ with st.sidebar:
             st.session_state.active_page = page_name
             st.session_state.kpi_filter_source = "TOTAL"
             st.session_state.kpi_filter_status = None
-            st.query_params.clear()
             st.rerun()
 
 
@@ -4357,12 +4356,11 @@ if not data_ok:
     st.stop()
 
 
-# Synchronize query parameters with session state
-q_source = st.query_params.get("kpi_source", "TOTAL")
-q_status = st.query_params.get("kpi_status", None)
+if "kpi_filter_source" not in st.session_state:
+    st.session_state.kpi_filter_source = "TOTAL"
+if "kpi_filter_status" not in st.session_state:
+    st.session_state.kpi_filter_status = None
 
-st.session_state.kpi_filter_source = q_source if q_source in ["TOTAL", "COMISSAO", "PROVISORIA"] else "TOTAL"
-st.session_state.kpi_filter_status = q_status if q_status in ["ENCERRADA", "ABERTAS", "PARC_ENCERRADA", "HOMOLOGACAO"] else None
 
 
 df_base = df.copy()
@@ -4424,26 +4422,13 @@ else:
 
 st.markdown(f'<div class="info-box">📌 Exibindo {fmt_num(n_total)} avaliações {ft}</div>', unsafe_allow_html=True)
 
-def make_kpi_href(source, status):
-    parts = []
-    if source and source != "TOTAL":
-        parts.append(f"kpi_source={source}")
-    if status:
-        parts.append(f"kpi_status={status}")
-    if parts:
-        return "?" + "&".join(parts)
-    return "?"
-
-curr_src = st.session_state.kpi_filter_source
-curr_st = st.session_state.kpi_filter_status
-
-href_total  = make_kpi_href("TOTAL", None)
-href_ca     = make_kpi_href("TOTAL" if curr_src == "COMISSAO" else "COMISSAO", curr_st)
-href_np     = make_kpi_href("TOTAL" if curr_src == "PROVISORIA" else "PROVISORIA", curr_st)
-href_enc    = make_kpi_href(curr_src, None if curr_st == "ENCERRADA" else "ENCERRADA")
-href_aberta = make_kpi_href(curr_src, None if curr_st == "ABERTAS" else "ABERTAS")
-href_parc   = make_kpi_href(curr_src, None if curr_st == "PARC_ENCERRADA" else "PARC_ENCERRADA")
-href_hom    = make_kpi_href(curr_src, None if curr_st == "HOMOLOGACAO" else "HOMOLOGACAO")
+click_js_total  = "(function(){ const d = window.parent ? window.parent.document : document; const b = Array.from(d.querySelectorAll('button')).find(el => el.textContent.trim() === 'Click Total' || el.getAttribute('aria-label') === 'Click Total'); if(b) b.click(); })()"
+click_js_ca     = "(function(){ const d = window.parent ? window.parent.document : document; const b = Array.from(d.querySelectorAll('button')).find(el => el.textContent.trim() === 'Click CA' || el.getAttribute('aria-label') === 'Click CA'); if(b) b.click(); })()"
+click_js_np     = "(function(){ const d = window.parent ? window.parent.document : document; const b = Array.from(d.querySelectorAll('button')).find(el => el.textContent.trim() === 'Click NP' || el.getAttribute('aria-label') === 'Click NP'); if(b) b.click(); })()"
+click_js_enc    = "(function(){ const d = window.parent ? window.parent.document : document; const b = Array.from(d.querySelectorAll('button')).find(el => el.textContent.trim() === 'Click Enc' || el.getAttribute('aria-label') === 'Click Enc'); if(b) b.click(); })()"
+click_js_aberta = "(function(){ const d = window.parent ? window.parent.document : document; const b = Array.from(d.querySelectorAll('button')).find(el => el.textContent.trim() === 'Click Aberta' || el.getAttribute('aria-label') === 'Click Aberta'); if(b) b.click(); })()"
+click_js_parc   = "(function(){ const d = window.parent ? window.parent.document : document; const b = Array.from(d.querySelectorAll('button')).find(el => el.textContent.trim() === 'Click Parc' || el.getAttribute('aria-label') === 'Click Parc'); if(b) b.click(); })()"
+click_js_hom    = "(function(){ const d = window.parent ? window.parent.document : document; const b = Array.from(d.querySelectorAll('button')).find(el => el.textContent.trim() === 'Click Hom' || el.getAttribute('aria-label') === 'Click Hom'); if(b) b.click(); })()"
 
 class_total  = " kpi-active-total" if st.session_state.kpi_filter_source == "TOTAL" else ""
 class_ca     = " kpi-active-ca" if st.session_state.kpi_filter_source == "COMISSAO" else ""
@@ -4456,63 +4441,131 @@ class_hom    = " kpi-active-hom" if st.session_state.kpi_filter_status == "HOMOL
 col_block1, col_block2 = st.columns([1, 1.25], gap="large")
 
 with col_block1:
-    st.markdown(f'<a href="{href_total}" target="_self" style="text-decoration: none; color: inherit;">'
-                f'<div class="kpi-card kpi-total{class_total}">'
+    st.markdown(f'<div class="kpi-card kpi-total{class_total}" onclick="{click_js_total}" style="cursor: pointer;">'
                 '<div class="label">TOTAL AVALIAÇÕES</div>'
                 f'<div class="value">{fmt_num(n_total_card)}</div>'
                 '<div class="sub">avaliações</div>'
-                '</div></a>', unsafe_allow_html=True)
+                '</div>', unsafe_allow_html=True)
 
     st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
     cb1_1, cb1_2 = st.columns(2)
     with cb1_1:
-        st.markdown(f'<a href="{href_ca}" target="_self" style="text-decoration: none; color: inherit;">'
-                    f'<div class="kpi-card kpi-ca{class_ca}">'
+        st.markdown(f'<div class="kpi-card kpi-ca{class_ca}" onclick="{click_js_ca}" style="cursor: pointer;">'
                     '<div class="label">COMISSÃO ATUAL</div>'
                     f'<div class="value">{fmt_num(n_ca_card)}</div>'
                     f'<div class="sub">{n_ca_card/max(n_total_card,1)*100:.1f}%</div>'
-                    '</div></a>', unsafe_allow_html=True)
+                    '</div>', unsafe_allow_html=True)
     with cb1_2:
-        st.markdown(f'<a href="{href_np}" target="_self" style="text-decoration: none; color: inherit;">'
-                    f'<div class="kpi-card kpi-np{class_np}">'
+        st.markdown(f'<div class="kpi-card kpi-np{class_np}" onclick="{click_js_np}" style="cursor: pointer;">'
                     '<div class="label">NOTA PROVISÓRIA</div>'
                     f'<div class="value">{fmt_num(n_np_card)}</div>'
                     f'<div class="sub">{n_np_card/max(n_total_card,1)*100:.1f}%</div>'
-                    '</div></a>', unsafe_allow_html=True)
+                    '</div>', unsafe_allow_html=True)
 
 with col_block2:
-    st.markdown(f'<a href="{href_enc}" target="_self" style="text-decoration: none; color: inherit;">'
-                f'<div class="kpi-card kpi-enc{class_enc}">'
+    st.markdown(f'<div class="kpi-card kpi-enc{class_enc}" onclick="{click_js_enc}" style="cursor: pointer;">'
                 '<div class="label">ENCERRADAS</div>'
                 f'<div class="value">{fmt_num(n_enc_card)}</div>'
                 f'<div class="sub">{n_enc_card/max(n_total_card,1)*100:.1f}%</div>'
-                '</div></a>', unsafe_allow_html=True)
+                '</div>', unsafe_allow_html=True)
 
     st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
     cb2_1, cb2_2, cb2_3 = st.columns(3)
     with cb2_1:
-        st.markdown(f'<a href="{href_aberta}" target="_self" style="text-decoration: none; color: inherit;">'
-                    f'<div class="kpi-card kpi-aberta{class_aberta}">'
+        st.markdown(f'<div class="kpi-card kpi-aberta{class_aberta}" onclick="{click_js_aberta}" style="cursor: pointer;">'
                     '<div class="label">ABERTAS</div>'
                     f'<div class="value">{fmt_num(n_aberta_card)}</div>'
                     '<div class="sub">AV1 pendente</div>'
-                    '</div></a>', unsafe_allow_html=True)
+                    '</div>', unsafe_allow_html=True)
     with cb2_2:
-        st.markdown(f'<a href="{href_parc}" target="_self" style="text-decoration: none; color: inherit;">'
-                    f'<div class="kpi-card kpi-parc{class_parc}">'
+        st.markdown(f'<div class="kpi-card kpi-parc{class_parc}" onclick="{click_js_parc}" style="cursor: pointer;">'
                     '<div class="label">PARC. ENCERRADA</div>'
                     f'<div class="value">{fmt_num(n_parc_card)}</div>'
                     '<div class="sub">AV2 pendente</div>'
-                    '</div></a>', unsafe_allow_html=True)
+                    '</div>', unsafe_allow_html=True)
     with cb2_3:
-        st.markdown(f'<a href="{href_hom}" target="_self" style="text-decoration: none; color: inherit;">'
-                    f'<div class="kpi-card kpi-hom{class_hom}">'
+        st.markdown(f'<div class="kpi-card kpi-hom{class_hom}" onclick="{click_js_hom}" style="cursor: pointer;">'
                     '<div class="label">HOMOLOGAÇÃO</div>'
                     f'<div class="value">{fmt_num(n_hom_card)}</div>'
                     '<div class="sub">HOM pendente</div>'
-                    '</div></a>', unsafe_allow_html=True)
+                    '</div>', unsafe_allow_html=True)
+
+# Render the helper buttons that are collapsed and hidden by CSS
+st.markdown("""
+<style>
+button[aria-label="Click Total"],
+button[aria-label="Click CA"],
+button[aria-label="Click NP"],
+button[aria-label="Click Enc"],
+button[aria-label="Click Aberta"],
+button[aria-label="Click Parc"],
+button[aria-label="Click Hom"] {
+    position: absolute !important;
+    width: 0 !important;
+    height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    border: none !important;
+    background: transparent !important;
+}
+div.element-container:has(button[aria-label="Click Total"]),
+div.element-container:has(button[aria-label="Click CA"]),
+div.element-container:has(button[aria-label="Click NP"]),
+div.element-container:has(button[aria-label="Click Enc"]),
+div.element-container:has(button[aria-label="Click Aberta"]),
+div.element-container:has(button[aria-label="Click Parc"]),
+div.element-container:has(button[aria-label="Click Hom"]) {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+if st.button("Click Total", key="btn_kpi_total"):
+    st.session_state.kpi_filter_source = "TOTAL"
+    st.rerun()
+if st.button("Click CA", key="btn_kpi_ca"):
+    if st.session_state.kpi_filter_source == "COMISSAO":
+        st.session_state.kpi_filter_source = "TOTAL"
+    else:
+        st.session_state.kpi_filter_source = "COMISSAO"
+    st.rerun()
+if st.button("Click NP", key="btn_kpi_np"):
+    if st.session_state.kpi_filter_source == "PROVISORIA":
+        st.session_state.kpi_filter_source = "TOTAL"
+    else:
+        st.session_state.kpi_filter_source = "PROVISORIA"
+    st.rerun()
+if st.button("Click Enc", key="btn_kpi_enc"):
+    if st.session_state.kpi_filter_status == "ENCERRADA":
+        st.session_state.kpi_filter_status = None
+    else:
+        st.session_state.kpi_filter_status = "ENCERRADA"
+    st.rerun()
+if st.button("Click Aberta", key="btn_kpi_aberta"):
+    if st.session_state.kpi_filter_status == "ABERTAS":
+        st.session_state.kpi_filter_status = None
+    else:
+        st.session_state.kpi_filter_status = "ABERTAS"
+    st.rerun()
+if st.button("Click Parc", key="btn_kpi_parc"):
+    if st.session_state.kpi_filter_status == "PARC_ENCERRADA":
+        st.session_state.kpi_filter_status = None
+    else:
+        st.session_state.kpi_filter_status = "PARC_ENCERRADA"
+    st.rerun()
+if st.button("Click Hom", key="btn_kpi_hom"):
+    if st.session_state.kpi_filter_status == "HOMOLOGACAO":
+        st.session_state.kpi_filter_status = None
+    else:
+        st.session_state.kpi_filter_status = "HOMOLOGACAO"
+    st.rerun()
 
 
 
@@ -4547,7 +4600,6 @@ if st.session_state.last_page != active_page:
     st.session_state.kpi_filter_source = "TOTAL"
     st.session_state.kpi_filter_status = None
     st.session_state.last_page = active_page
-    st.query_params.clear()
 
 
 
