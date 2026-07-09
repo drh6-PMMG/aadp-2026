@@ -787,6 +787,34 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 .kpi-active-parc   { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 140, 0, 0.45) !important; border: 1.5px solid #FF8C00 !important; border-left: 5px solid #FF8C00 !important; }
 .kpi-active-hom    { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 217, 102, 0.45) !important; border: 1.5px solid #FFD966 !important; border-left: 5px solid #FFD966 !important; }
 
+/* Styles for overlaying transparent buttons over KPI cards */
+div[data-testid="column"]:has(.kpi-card) {
+    position: relative !important;
+}
+div[data-testid="column"]:has(.kpi-card) .stButton {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 120px !important;
+    z-index: 9999 !important;
+}
+div[data-testid="column"]:has(.kpi-card) .stButton button {
+    width: 100% !important;
+    height: 100% !important;
+    background: transparent !important;
+    border: none !important;
+    color: transparent !important;
+    opacity: 0 !important;
+    cursor: pointer !important;
+}
+div[data-testid="column"]:has(.kpi-card):hover .kpi-card {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+
+
 
 
 
@@ -4422,14 +4450,6 @@ else:
 st.markdown(f'<div class="info-box">📌 Exibindo {fmt_num(n_total)} avaliações {ft}</div>', unsafe_allow_html=True)
 
 # CSS/JS click triggers
-click_js_total  = "(function(){ const d = window.parent ? window.parent.document : document; const b = Array.from(d.querySelectorAll('button')).find(el => el.textContent.trim() === 'Click Total'); if(b) b.click(); })()"
-click_js_ca     = "(function(){ const d = window.parent ? window.parent.document : document; const b = Array.from(d.querySelectorAll('button')).find(el => el.textContent.trim() === 'Click CA'); if(b) b.click(); })()"
-click_js_np     = "(function(){ const d = window.parent ? window.parent.document : document; const b = Array.from(d.querySelectorAll('button')).find(el => el.textContent.trim() === 'Click NP'); if(b) b.click(); })()"
-click_js_enc    = "(function(){ const d = window.parent ? window.parent.document : document; const b = Array.from(d.querySelectorAll('button')).find(el => el.textContent.trim() === 'Click Enc'); if(b) b.click(); })()"
-click_js_aberta = "(function(){ const d = window.parent ? window.parent.document : document; const b = Array.from(d.querySelectorAll('button')).find(el => el.textContent.trim() === 'Click Aberta'); if(b) b.click(); })()"
-click_js_parc   = "(function(){ const d = window.parent ? window.parent.document : document; const b = Array.from(d.querySelectorAll('button')).find(el => el.textContent.trim() === 'Click Parc'); if(b) b.click(); })()"
-click_js_hom    = "(function(){ const d = window.parent ? window.parent.document : document; const b = Array.from(d.querySelectorAll('button')).find(el => el.textContent.trim() === 'Click Hom'); if(b) b.click(); })()"
-
 class_total  = " kpi-active-total" if st.session_state.kpi_filter_source == "TOTAL" else ""
 class_ca     = " kpi-active-ca" if st.session_state.kpi_filter_source == "COMISSAO" else ""
 class_np     = " kpi-active-np" if st.session_state.kpi_filter_source == "PROVISORIA" else ""
@@ -4441,150 +4461,95 @@ class_hom    = " kpi-active-hom" if st.session_state.kpi_filter_status == "HOMOL
 col_block1, col_block2 = st.columns([1, 1.25], gap="large")
 
 with col_block1:
-    st.markdown(f'<div class="kpi-card kpi-total{class_total}" onclick="{click_js_total}" style="cursor: pointer;">'
+    st.markdown(f'<div class="kpi-card kpi-total{class_total}">'
                 '<div class="label">TOTAL AVALIAÇÕES</div>'
                 f'<div class="value">{fmt_num(n_total_card)}</div>'
                 '<div class="sub">avaliações</div>'
                 '</div>', unsafe_allow_html=True)
+    if st.button("", key="btn_kpi_total"):
+        st.session_state.kpi_filter_source = "TOTAL"
+        st.rerun()
 
     st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
     cb1_1, cb1_2 = st.columns(2)
     with cb1_1:
-        st.markdown(f'<div class="kpi-card kpi-ca{class_ca}" onclick="{click_js_ca}" style="cursor: pointer;">'
+        st.markdown(f'<div class="kpi-card kpi-ca{class_ca}">'
                     '<div class="label">COMISSÃO ATUAL</div>'
                     f'<div class="value">{fmt_num(n_ca_card)}</div>'
                     f'<div class="sub">{n_ca_card/max(n_total_card,1)*100:.1f}%</div>'
                     '</div>', unsafe_allow_html=True)
+        if st.button("", key="btn_kpi_ca"):
+            if st.session_state.kpi_filter_source == "COMISSAO":
+                st.session_state.kpi_filter_source = "TOTAL"
+            else:
+                st.session_state.kpi_filter_source = "COMISSAO"
+            st.rerun()
     with cb1_2:
-        st.markdown(f'<div class="kpi-card kpi-np{class_np}" onclick="{click_js_np}" style="cursor: pointer;">'
+        st.markdown(f'<div class="kpi-card kpi-np{class_np}">'
                     '<div class="label">NOTA PROVISÓRIA</div>'
                     f'<div class="value">{fmt_num(n_np_card)}</div>'
                     f'<div class="sub">{n_np_card/max(n_total_card,1)*100:.1f}%</div>'
                     '</div>', unsafe_allow_html=True)
+        if st.button("", key="btn_kpi_np"):
+            if st.session_state.kpi_filter_source == "PROVISORIA":
+                st.session_state.kpi_filter_source = "TOTAL"
+            else:
+                st.session_state.kpi_filter_source = "PROVISORIA"
+            st.rerun()
 
 with col_block2:
-    st.markdown(f'<div class="kpi-card kpi-enc{class_enc}" onclick="{click_js_enc}" style="cursor: pointer;">'
+    st.markdown(f'<div class="kpi-card kpi-enc{class_enc}">'
                 '<div class="label">ENCERRADAS</div>'
                 f'<div class="value">{fmt_num(n_enc_card)}</div>'
                 f'<div class="sub">{n_enc_card/max(n_total_card,1)*100:.1f}%</div>'
                 '</div>', unsafe_allow_html=True)
-
-    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
-
-    cb2_1, cb2_2, cb2_3 = st.columns(3)
-    with cb2_1:
-        st.markdown(f'<div class="kpi-card kpi-aberta{class_aberta}" onclick="{click_js_aberta}" style="cursor: pointer;">'
-                    '<div class="label">ABERTAS</div>'
-                    f'<div class="value">{fmt_num(n_aberta_card)}</div>'
-                    '<div class="sub">AV1 pendente</div>'
-                    '</div>', unsafe_allow_html=True)
-    with cb2_2:
-        st.markdown(f'<div class="kpi-card kpi-parc{class_parc}" onclick="{click_js_parc}" style="cursor: pointer;">'
-                    '<div class="label">PARC. ENCERRADA</div>'
-                    f'<div class="value">{fmt_num(n_parc_card)}</div>'
-                    '<div class="sub">AV2 pendente</div>'
-                    '</div>', unsafe_allow_html=True)
-    with cb2_3:
-        st.markdown(f'<div class="kpi-card kpi-hom{class_hom}" onclick="{click_js_hom}" style="cursor: pointer;">'
-                    '<div class="label">HOMOLOGAÇÃO</div>'
-                    f'<div class="value">{fmt_num(n_hom_card)}</div>'
-                    '<div class="sub">HOM pendente</div>'
-                    '</div>', unsafe_allow_html=True)
-
-# Hidden streamlit buttons used as bridge callbacks
-st.markdown("""
-<style>
-div.element-container:has(#hidden-buttons-marker),
-div.element-container:has(#hidden-buttons-marker) + div.element-container {
-    display: none !important;
-}
-</style>
-<div id="hidden-buttons-marker"></div>
-""", unsafe_allow_html=True)
-btn_cols = st.columns(7)
-with btn_cols[0]:
-    if st.button("Click Total", key="btn_kpi_total"):
-        st.session_state.kpi_filter_source = "TOTAL"
-        st.rerun()
-with btn_cols[1]:
-    if st.button("Click CA", key="btn_kpi_ca"):
-        if st.session_state.kpi_filter_source == "COMISSAO":
-            st.session_state.kpi_filter_source = "TOTAL"
-        else:
-            st.session_state.kpi_filter_source = "COMISSAO"
-        st.rerun()
-with btn_cols[2]:
-    if st.button("Click NP", key="btn_kpi_np"):
-        if st.session_state.kpi_filter_source == "PROVISORIA":
-            st.session_state.kpi_filter_source = "TOTAL"
-        else:
-            st.session_state.kpi_filter_source = "PROVISORIA"
-        st.rerun()
-with btn_cols[3]:
-    if st.button("Click Enc", key="btn_kpi_enc"):
+    if st.button("", key="btn_kpi_enc"):
         if st.session_state.kpi_filter_status == "ENCERRADA":
             st.session_state.kpi_filter_status = None
         else:
             st.session_state.kpi_filter_status = "ENCERRADA"
         st.rerun()
-with btn_cols[4]:
-    if st.button("Click Aberta", key="btn_kpi_aberta"):
-        if st.session_state.kpi_filter_status == "ABERTAS":
-            st.session_state.kpi_filter_status = None
-        else:
-            st.session_state.kpi_filter_status = "ABERTAS"
-        st.rerun()
-with btn_cols[5]:
-    if st.button("Click Parc", key="btn_kpi_parc"):
-        if st.session_state.kpi_filter_status == "PARC_ENCERRADA":
-            st.session_state.kpi_filter_status = None
-        else:
-            st.session_state.kpi_filter_status = "PARC_ENCERRADA"
-        st.rerun()
-with btn_cols[6]:
-    if st.button("Click Hom", key="btn_kpi_hom"):
-        if st.session_state.kpi_filter_status == "HOMOLOGACAO":
-            st.session_state.kpi_filter_status = None
-        else:
-            st.session_state.kpi_filter_status = "HOMOLOGACAO"
-        st.rerun()
 
-# Inject Javascript to hide the hidden callback buttons in parent document
-st.markdown("""
-<script>
-(function() {
-    function hideButtons() {
-        const doc = window.parent ? window.parent.document : document;
-        const buttons = Array.from(doc.querySelectorAll('button'));
-        buttons.forEach(btn => {
-            const txt = btn.textContent.trim();
-            if (txt === 'Click Total' || 
-                txt === 'Click CA' || 
-                txt === 'Click NP' || 
-                txt === 'Click Enc' || 
-                txt === 'Click Aberta' || 
-                txt === 'Click Parc' || 
-                txt === 'Click Hom') {
-                
-                let parent = btn.parentElement;
-                while (parent && !parent.classList.contains('element-container') && parent.getAttribute('data-testid') !== 'element-container') {
-                    parent = parent.parentElement;
-                }
-                if (parent) {
-                    parent.style.display = 'none';
-                }
-            }
-        });
-    }
-    hideButtons();
-    setTimeout(hideButtons, 50);
-    setTimeout(hideButtons, 200);
-    setTimeout(hideButtons, 600);
-    setTimeout(hideButtons, 1200);
-})();
-</script>
-""", unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+
+    cb2_1, cb2_2, cb2_3 = st.columns(3)
+    with cb2_1:
+        st.markdown(f'<div class="kpi-card kpi-aberta{class_aberta}">'
+                    '<div class="label">ABERTAS</div>'
+                    f'<div class="value">{fmt_num(n_aberta_card)}</div>'
+                    '<div class="sub">AV1 pendente</div>'
+                    '</div>', unsafe_allow_html=True)
+        if st.button("", key="btn_kpi_aberta"):
+            if st.session_state.kpi_filter_status == "ABERTAS":
+                st.session_state.kpi_filter_status = None
+            else:
+                st.session_state.kpi_filter_status = "ABERTAS"
+            st.rerun()
+    with cb2_2:
+        st.markdown(f'<div class="kpi-card kpi-parc{class_parc}">'
+                    '<div class="label">PARC. ENCERRADA</div>'
+                    f'<div class="value">{fmt_num(n_parc_card)}</div>'
+                    '<div class="sub">AV2 pendente</div>'
+                    '</div>', unsafe_allow_html=True)
+        if st.button("", key="btn_kpi_parc"):
+            if st.session_state.kpi_filter_status == "PARC_ENCERRADA":
+                st.session_state.kpi_filter_status = None
+            else:
+                st.session_state.kpi_filter_status = "PARC_ENCERRADA"
+            st.rerun()
+    with cb2_3:
+        st.markdown(f'<div class="kpi-card kpi-hom{class_hom}">'
+                    '<div class="label">HOMOLOGAÇÃO</div>'
+                    f'<div class="value">{fmt_num(n_hom_card)}</div>'
+                    '<div class="sub">HOM pendente</div>'
+                    '</div>', unsafe_allow_html=True)
+        if st.button("", key="btn_kpi_hom"):
+            if st.session_state.kpi_filter_status == "HOMOLOGACAO":
+                st.session_state.kpi_filter_status = None
+            else:
+                st.session_state.kpi_filter_status = "HOMOLOGACAO"
+            st.rerun()
 
 
 
