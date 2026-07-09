@@ -3606,7 +3606,7 @@ with st.sidebar:
 
 
         pages.append(("📄 Relatório Word", "Relatório Word"))
-    if st.session_state.user_role == "ADMINISTRADOR":
+    if st.session_state.user_role in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
         pages.append(("📊 Auditoria de Notas", "Auditoria de Notas"))
 
 
@@ -7760,10 +7760,14 @@ if active_page == "Relatório Word":
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 7 — PAINEL ADMINISTRADOR
 # ══════════════════════════════════════════════════════════════════════════════
-if active_page == "Auditoria de Notas" and st.session_state.user_role == "ADMINISTRADOR":
+if active_page == "Auditoria de Notas" and st.session_state.user_role in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
     st.markdown("### 📊 Auditoria de Notas")
     st.info("👉 Esta tela apresenta o conteúdo consolidado da planilha mestre `Analise avaliacoes completa.xlsx` contendo as regras de negócio de avaliações, recursos e notas médias finais.")
     
+    _role_audit = st.session_state.user_role
+    _user_rpm   = st.session_state.get("user_rpm", "")
+    _user_unit  = st.session_state.get("user_unit", "")
+
     # Obter caminhos dos arquivos locais e Drive
     fonte = cfg.get("fonte_dados", "📁 Pasta local / Servidor")
     drive_master_xlsx_id = cfg.get("drive_master_xlsx_id", "")
@@ -7789,13 +7793,41 @@ if active_page == "Auditoria de Notas" and st.session_state.user_role == "ADMINI
         st.error(f"Erro ao carregar auditoria: {err}")
         st.stop()
         
-    # Aplicar filtros da barra lateral (RPM e Unidade/Subunidade)
+    # ── Escopo por perfil ─────────────────────────────────────────────────────
+    # ADMINISTRADOR / GESTOR → acesso integral (visão de toda a PMMG)
+    # P1                     → filtrado pelo RPM do usuário (UDI / UDG)
+    # SADM                   → filtrado pela Unidade Principal do usuário
     df_audit_disp = df_audit.copy()
-    if rpm_filter:
-        df_audit_disp = df_audit_disp[df_audit_disp["Nome RPM"].isin(rpm_filter)]
-    if unid_filter:
-        df_audit_disp = df_audit_disp[df_audit_disp["Nome Unidade Principal"].isin(unid_filter)]
-        
+
+    if _role_audit == "P1":
+        # P1 enxerga apenas os avaliados da sua UDI/UDG (RPM)
+        if _user_rpm and "Nome RPM" in df_audit_disp.columns:
+            df_audit_disp = df_audit_disp[
+                df_audit_disp["Nome RPM"].astype(str).str.upper() == str(_user_rpm).upper()
+            ]
+            st.info(f"🔒 Exibindo apenas registros da sua UDI/UDG: **{_user_rpm}**")
+        else:
+            st.warning("⚠️ RPM do usuário não identificado. Contate o administrador.")
+            st.stop()
+
+    elif _role_audit == "SADM":
+        # SADM enxerga apenas os avaliados da sua Unidade Principal
+        if _user_unit and "Nome Unidade Principal" in df_audit_disp.columns:
+            df_audit_disp = df_audit_disp[
+                df_audit_disp["Nome Unidade Principal"].astype(str).str.upper() == str(_user_unit).upper()
+            ]
+            st.info(f"🔒 Exibindo apenas registros da sua Unidade Principal: **{_user_unit}**")
+        else:
+            st.warning("⚠️ Unidade Principal do usuário não identificada. Contate o administrador.")
+            st.stop()
+
+    else:
+        # ADMINISTRADOR / GESTOR: aplicar filtros opcionais da barra lateral
+        if rpm_filter:
+            df_audit_disp = df_audit_disp[df_audit_disp["Nome RPM"].isin(rpm_filter)]
+        if unid_filter:
+            df_audit_disp = df_audit_disp[df_audit_disp["Nome Unidade Principal"].isin(unid_filter)]
+
     st.markdown(f"##### Conteúdo da Planilha Mestre Consolidada ({fmt_num(len(df_audit_disp))} registros)")
     
     # Exibir a planilha de auditoria diretamente!
