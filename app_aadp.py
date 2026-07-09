@@ -1466,23 +1466,20 @@ def db_get_pending_users():
 
 
 def db_get_active_users():
-
-
     users = get_cached_users()
-
-
     active = []
-
-
     for u in users:
-
-
         if u["status"] == "Ativo" and str(u["pm"]) != "ADM":
-
-
-            active.append((u["pm"], u["name"], u["rank"], u["rpm"], u["unit"], u["role"], u["created_at"]))
-
-
+            active.append((
+                u["pm"],
+                u["rank"],
+                u["name"],
+                u.get("rpm", ""),
+                u.get("unit", ""),
+                u.get("function", ""),  # Setor = NOME UNIDADE (col J SIGEF)
+                u["role"],
+                u["created_at"]
+            ))
     return active
 
 
@@ -3600,12 +3597,10 @@ with st.sidebar:
 
 
     if sidebar_active_role not in ("P1", "SADM"):
-
-
         pages.append(("📥 Gerar Relatório", "Gerar Relatório"))
-
-
         pages.append(("📄 Relatório Word", "Relatório Word"))
+
+    # Auditoria de Notas: visível para ADMINISTRADOR, GESTOR, P1 e SADM
     if st.session_state.user_role in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
         pages.append(("📊 Auditoria de Notas", "Auditoria de Notas"))
 
@@ -7956,7 +7951,11 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
         if not active_list:
             st.info("Nenhum usuário ativo cadastrado.")
         else:
-            df_act = pd.DataFrame(active_list, columns=["Nº PM", "Nome", "Posto", "RPM", "Unidade", "Perfil", "Data Cadastro"])
+            df_act = pd.DataFrame(active_list, columns=["Nº PM", "Posto/Grad.", "Nome", "RPM", "Unidade Principal", "Setor", "Perfil", "Data Cadastro"])
+            
+            # Reordenar para Nº PM / Posto/Grad. / Nome primeiro
+            col_order = ["Nº PM", "Posto/Grad.", "Nome", "RPM", "Unidade Principal", "Setor", "Perfil", "Data Cadastro"]
+            df_act = df_act[[c for c in col_order if c in df_act.columns]]
             
             # Filtragem se houver termo digitado
             if filter_pm:
@@ -7965,13 +7964,11 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
             if df_act.empty:
                 st.info("Nenhum usuário cadastrado encontrado com o Nº PM informado.")
             else:
-                df_act_disp = df_act.copy()
-                df_act_disp.index = range(1, len(df_act_disp) + 1)
-                st.dataframe(df_act_disp, use_container_width=True)
+                st.dataframe(df_act, use_container_width=True, hide_index=True)
                 
                 st.markdown("##### ⚙️ Gerenciar / Alterar Cadastro:")
                 
-                user_options = [f"{row['Posto']} {row['Nome']} (PM: {row['Nº PM']})" for idx, row in df_act.iterrows()]
+                user_options = [f"{row['Posto/Grad.']} {row['Nome']} (PM: {row['Nº PM']})" for _, row in df_act.iterrows()]
                 selected_user_label = st.selectbox("Escolha o usuário para gerenciar:", user_options, key="manage_user_select")
                 
                 if selected_user_label:
