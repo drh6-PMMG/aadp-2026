@@ -787,6 +787,100 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 .kpi-active-parc   { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 140, 0, 0.45) !important; border: 1.5px solid #FF8C00 !important; border-left: 5px solid #FF8C00 !important; }
 .kpi-active-hom    { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 217, 102, 0.45) !important; border: 1.5px solid #FFD966 !important; border-left: 5px solid #FFD966 !important; }
 
+/* Glassmorphic Crystal Style Button */
+button[aria-label="👁️ Mostrar Encerradas"],
+button[aria-label="🙈 Ocultar Encerradas"] {
+    background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 30px !important;
+    color: #e5dccb !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.1) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+    transition: all 0.3s ease !important;
+}
+
+button[aria-label="👁️ Mostrar Encerradas"]:hover,
+button[aria-label="🙈 Ocultar Encerradas"]:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35), inset 0 1px 3px rgba(255, 255, 255, 0.2) !important;
+    transform: translateY(-1px) !important;
+}
+
+button[aria-label="👁️ Mostrar Encerradas"]:active,
+button[aria-label="🙈 Ocultar Encerradas"]:active {
+    background: rgba(255, 255, 255, 0.02) !important;
+    transform: translateY(0px) !important;
+}
+
+/* Crystal Liquid styles for interactive legend buttons */
+button[aria-label="🟢 Encerrada"],
+button[aria-label="🔴 Aberta"],
+button[aria-label="🟠 Parcialmente Encerrada"],
+button[aria-label="🟡 Homologação"],
+button[aria-label="⚪ Encerrada"],
+button[aria-label="⚪ Aberta"],
+button[aria-label="⚪ Parcialmente Encerrada"],
+button[aria-label="⚪ Homologação"] {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border-radius: 30px !important;
+    color: #e5dccb !important;
+    font-weight: 600 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Hover effects */
+button[aria-label="🟢 Encerrada"]:hover,
+button[aria-label="🔴 Aberta"]:hover,
+button[aria-label="🟠 Parcialmente Encerrada"]:hover,
+button[aria-label="🟡 Homologação"]:hover,
+button[aria-label="⚪ Encerrada"]:hover,
+button[aria-label="⚪ Aberta"]:hover,
+button[aria-label="⚪ Parcialmente Encerrada"]:hover,
+button[aria-label="⚪ Homologação"]:hover {
+    transform: translateY(-1px) !important;
+}
+
+/* Colored glowing styles for active buttons */
+button[aria-label="🟢 Encerrada"] {
+    background: rgba(112, 173, 71, 0.15) !important;
+    border: 1px solid #70AD47 !important;
+    box-shadow: 0 0 10px rgba(112, 173, 71, 0.4) !important;
+}
+button[aria-label="🔴 Aberta"] {
+    background: rgba(255, 68, 68, 0.15) !important;
+    border: 1px solid #FF4444 !important;
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.4) !important;
+}
+button[aria-label="🟠 Parcialmente Encerrada"] {
+    background: rgba(255, 140, 0, 0.15) !important;
+    border: 1px solid #FF8C00 !important;
+    box-shadow: 0 0 10px rgba(255, 140, 0, 0.4) !important;
+}
+button[aria-label="🟡 Homologação"] {
+    background: rgba(255, 217, 102, 0.15) !important;
+    border: 1px solid #FFD966 !important;
+    box-shadow: 0 0 10px rgba(255, 217, 102, 0.4) !important;
+}
+
+/* Muted look for inactive buttons */
+button[aria-label="⚪ Encerrada"],
+button[aria-label="⚪ Aberta"],
+button[aria-label="⚪ Parcialmente Encerrada"],
+button[aria-label="⚪ Homologação"] {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    opacity: 0.55 !important;
+}
+
+
+
 
 
 
@@ -4363,9 +4457,7 @@ n_aberta = (df["Status Avaliação"]=="Aberta").sum()
 n_ca     = (df["Situação Comissão"]=="Comissão Atual").sum()
 n_np     = (df["Situação Comissão"]=="Nota Provisória").sum()
 
-filtro_ativo = bool(rpm_filter or unid_filter or sit_com_filter or status_filter or cert_filter)
-ft = f"({fmt_num(n_total)} de {fmt_num(len(df_full))} com filtro)" if filtro_ativo else f"(total: {fmt_num(n_total)})"
-st.markdown(f'<div class="info-box">📌 Exibindo {fmt_num(n_total)} avaliações {ft}</div>', unsafe_allow_html=True)
+
 
 col_block1, col_block2 = st.columns([1, 1.25], gap="large")
 
@@ -4418,6 +4510,7 @@ with col_block2:
         st.markdown('<div class="kpi-card kpi-hom">'
                     '<div class="label">HOMOLOGAÇÃO</div>'
                     f'<div class="value">{fmt_num(n_hom)}</div>'
+                    '<div class="sub">HOM pendente</div>'
                     '</div>', unsafe_allow_html=True)
 
 
@@ -4668,11 +4761,16 @@ if active_page == "Análise Gráfica":
         st.plotly_chart(fig_sit, use_container_width=True)
 
     with c2:
-        excluir_encerradas = st.checkbox(
-            "Ocultar 'Encerrada' (Ampliar pendentes)",
-            value=False,
-            key="hide_encerrada_status_comissao"
-        )
+        if "hide_enc_chart" not in st.session_state:
+            st.session_state.hide_enc_chart = False
+            
+        btn_label = "👁️ Mostrar Encerradas" if st.session_state.hide_enc_chart else "🙈 Ocultar Encerradas"
+        if st.button(btn_label, key="btn_toggle_enc_chart", use_container_width=True):
+            st.session_state.hide_enc_chart = not st.session_state.hide_enc_chart
+            st.rerun()
+            
+        excluir_encerradas = st.session_state.hide_enc_chart
+        st.markdown("<p style='font-size: 0.78rem; color: #a0a0a0; margin-top: -8px; margin-bottom: 12px; font-style: italic;'>ℹ️ Oculta avaliações encerradas para ampliar e detalhar a escala dos status pendentes.</p>", unsafe_allow_html=True)
         
         cross = df.groupby(["Status Avaliação","Situação Comissão"]).size().reset_index(name="Qtd")
         
@@ -4726,17 +4824,43 @@ if active_page == "Análise Gráfica":
     with col_s2:
         st.write("") # spacing
 
+    # Initialize legend button states if not in session state
+    if "dist_legend_enc" not in st.session_state:
+        st.session_state.dist_legend_enc = True
+    if "dist_legend_abe" not in st.session_state:
+        st.session_state.dist_legend_abe = True
+    if "dist_legend_par" not in st.session_state:
+        st.session_state.dist_legend_par = True
+    if "dist_legend_hom" not in st.session_state:
+        st.session_state.dist_legend_hom = True
+
     # Legenda Interativa - Checkboxes para selecionar os status
-    st.markdown("<p style='font-size: 0.95rem; font-weight: bold; margin-bottom: 2px; color: #bca374;'>Legenda Interativa — Selecione os Status para Exibição e Ordenação:</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 0.95rem; font-weight: bold; margin-bottom: 6px; color: #bca374;'>Legenda Interativa — Selecione os Status para Exibição e Ordenação:</p>", unsafe_allow_html=True)
     l1, l2, l3, l4 = st.columns(4)
     with l1:
-        show_enc = st.checkbox("🟢 Encerrada", value=True, key="dist_legend_enc")
+        enc_label = "🟢 Encerrada" if st.session_state.dist_legend_enc else "⚪ Encerrada"
+        if st.button(enc_label, key="btn_dist_enc", use_container_width=True):
+            st.session_state.dist_legend_enc = not st.session_state.dist_legend_enc
+            st.rerun()
+        show_enc = st.session_state.dist_legend_enc
     with l2:
-        show_abe = st.checkbox("🔴 Aberta", value=True, key="dist_legend_abe")
+        abe_label = "🔴 Aberta" if st.session_state.dist_legend_abe else "⚪ Aberta"
+        if st.button(abe_label, key="btn_dist_abe", use_container_width=True):
+            st.session_state.dist_legend_abe = not st.session_state.dist_legend_abe
+            st.rerun()
+        show_abe = st.session_state.dist_legend_abe
     with l3:
-        show_par = st.checkbox("🟠 Parcialmente Encerrada", value=True, key="dist_legend_par")
+        par_label = "🟠 Parcialmente Encerrada" if st.session_state.dist_legend_par else "⚪ Parcialmente Encerrada"
+        if st.button(par_label, key="btn_dist_par", use_container_width=True):
+            st.session_state.dist_legend_par = not st.session_state.dist_legend_par
+            st.rerun()
+        show_par = st.session_state.dist_legend_par
     with l4:
-        show_hom = st.checkbox("🟡 Homologação", value=True, key="dist_legend_hom")
+        hom_label = "🟡 Homologação" if st.session_state.dist_legend_hom else "⚪ Homologação"
+        if st.button(hom_label, key="btn_dist_hom", use_container_width=True):
+            st.session_state.dist_legend_hom = not st.session_state.dist_legend_hom
+            st.rerun()
+        show_hom = st.session_state.dist_legend_hom
 
     # Mapear status selecionados
     active_statuses = []
