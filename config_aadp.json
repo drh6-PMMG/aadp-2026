@@ -1,4 +1,15 @@
 {
   "db_path": "C:\\Users\\guilh\\Downloads\\analise AADP 2026",
-  "sheet_api_url": "https://script.google.com/macros/s/AKfycbz9XrPmYIjQpR8_MV8_fuDoc6xnc4u6tPEZwFHZ13yTRFN4d7sbgjXjw2GojgYOHkI_Ag/exec"
+  "drive_av_id": "1D11KcGM0BrHO0li9lTBaeEhkKNntx6GO",
+  "drive_si_id": "10Ld_4XEz9b4kI_T6TC9W19tQdtBJCz5F",
+  "drive_geral_id": "1eBnInmKsHUo-gtQ1T6uoCs-zFANvDgf1",
+  "drive_master_xlsx_id": "14N90REqQm0FSudwG7qw5HQ28SjPvCaeh",
+  "sheet_api_url": "https://script.google.com/macros/s/AKfycbz9XrPmYIjQpR8_MV8_fuDoc6xnc4u6tPEZwFHZ13yTRFN4d7sbgjXjw2GojgYOHkI_Ag/exec",
+  "fonte_dados": "☁️ Google Drive",
+  "smtp_host": "smtp.gmail.com",
+  "smtp_port": "587",
+  "smtp_user": "guilhermeemory1@gmail.com",
+  "smtp_pass": "hpuo lbdu guzg zkad",
+  "alert_receiver_email": "guilhermeemory@yahoo.com.br",
+  "alert_webhook_url": "https://hook.us2.make.com/rpfn7ayzo592z5wqla846nlmd2qng7it"
 }
