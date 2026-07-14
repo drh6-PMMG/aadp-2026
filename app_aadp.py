@@ -3939,6 +3939,15 @@ if not st.session_state.authenticated:
 
                                 st.error(f"Erro ao salvar cadastro: {str(e)}")
 
+        st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div style='text-align: center; padding: 12px; border-radius: 8px; border: 1px solid rgba(155, 138, 92, 0.2); background: rgba(155, 138, 92, 0.05);'>"
+            "<small style='color: var(--text-color); opacity: 0.85;'>🌓 <b>Dica de Visualização</b>:<br>"
+            "Você pode alternar livremente entre os temas <b>Claro (Light)</b> e <b>Escuro (Dark)</b>!<br>"
+            "Para fazer isso, clique nos <b>três pontinhos</b> no canto superior direito da tela &rarr; <b>Settings</b> &rarr; e altere o campo <b>Theme</b>.</small>"
+            "</div>", 
+            unsafe_allow_html=True
+        )
 
     st.stop()
 
@@ -4287,6 +4296,16 @@ with st.sidebar:
 
 
         st.rerun()
+
+    st.markdown("---")
+    st.markdown(
+        "<div style='padding: 10px; border-radius: 8px; border: 1px solid rgba(155, 138, 92, 0.2); background: rgba(155, 138, 92, 0.04);'>"
+        "<small style='color: var(--text-color); opacity: 0.85;'>🌓 <b>Dica de Visualização</b>:<br>"
+        "Você pode alternar entre os temas <b>Claro (Light)</b> e <b>Escuro (Dark)</b>!<br>"
+        "Clique nos <b>três pontinhos</b> no canto superior direito &rarr; <b>Settings</b> &rarr; e altere o campo <b>Theme</b>.</small>"
+        "</div>", 
+        unsafe_allow_html=True
+    )
 
 
 
