@@ -692,7 +692,7 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 [data-testid="stSidebar"]{
 
 
-  background:linear-gradient(180deg,#0c0b07 0%,#1c1911 100%);
+  background:linear-gradient(180deg,#0c0b07 0%,#1c1c1c 100%);
 
 
   border-right:1px solid #9b8a5c;
@@ -710,7 +710,7 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 [data-testid="stSidebar"] h3{color:#9b8a5c!important;}
 
 
-.main{background:#13110b;}
+.main{background:#121212;}
 
 
 
@@ -743,7 +743,7 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 .main-title{
 
 
-  background:linear-gradient(135deg,#0c0b07 0%,#252116 100%);
+  background:linear-gradient(135deg,#0c0b07 0%,#282828 100%);
 
 
   color:#9b8a5c;padding:24px 28px;border-radius:12px;margin-bottom:20px;
@@ -770,7 +770,7 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 
 
 
-.kpi-card{background:#1c1911;border-radius:12px;padding:16px 20px;
+.kpi-card{background:#1c1c1c;border-radius:12px;padding:16px 20px;
 
 
   box-shadow:0 4px 15px rgba(0,0,0,0.3);border-left:5px solid;
@@ -813,13 +813,13 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 
 
 .kpi-enc      {border-color:#70AD47;} .kpi-enc      .value{color:#7bed9f!important;}
-.kpi-active-total  { background: #252116 !important; box-shadow: 0 0 15px rgba(155, 138, 92, 0.45) !important; border: 1.5px solid #9b8a5c !important; border-left: 5px solid #9b8a5c !important; }
-.kpi-active-ca     { background: #252116 !important; box-shadow: 0 0 15px rgba(155, 138, 92, 0.45) !important; border: 1.5px solid #9b8a5c !important; border-left: 5px solid #9b8a5c !important; }
-.kpi-active-np     { background: #252116 !important; box-shadow: 0 0 15px rgba(140, 110, 66, 0.45) !important; border: 1.5px solid #8c6e42 !important; border-left: 5px solid #8c6e42 !important; }
-.kpi-active-enc    { background: #252116 !important; box-shadow: 0 0 15px rgba(112, 173, 71, 0.45) !important; border: 1.5px solid #70AD47 !important; border-left: 5px solid #70AD47 !important; }
-.kpi-active-aberta { background: #252116 !important; box-shadow: 0 0 15px rgba(255, 68, 68, 0.45) !important; border: 1.5px solid #FF4444 !important; border-left: 5px solid #FF4444 !important; }
-.kpi-active-parc   { background: #252116 !important; box-shadow: 0 0 15px rgba(255, 140, 0, 0.45) !important; border: 1.5px solid #FF8C00 !important; border-left: 5px solid #FF8C00 !important; }
-.kpi-active-hom    { background: #252116 !important; box-shadow: 0 0 15px rgba(255, 217, 102, 0.45) !important; border: 1.5px solid #FFD966 !important; border-left: 5px solid #FFD966 !important; }
+.kpi-active-total  { background: #282828 !important; box-shadow: 0 0 15px rgba(155, 138, 92, 0.45) !important; border: 1.5px solid #9b8a5c !important; border-left: 5px solid #9b8a5c !important; }
+.kpi-active-ca     { background: #282828 !important; box-shadow: 0 0 15px rgba(155, 138, 92, 0.45) !important; border: 1.5px solid #9b8a5c !important; border-left: 5px solid #9b8a5c !important; }
+.kpi-active-np     { background: #282828 !important; box-shadow: 0 0 15px rgba(140, 110, 66, 0.45) !important; border: 1.5px solid #8c6e42 !important; border-left: 5px solid #8c6e42 !important; }
+.kpi-active-enc    { background: #282828 !important; box-shadow: 0 0 15px rgba(112, 173, 71, 0.45) !important; border: 1.5px solid #70AD47 !important; border-left: 5px solid #70AD47 !important; }
+.kpi-active-aberta { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 68, 68, 0.45) !important; border: 1.5px solid #FF4444 !important; border-left: 5px solid #FF4444 !important; }
+.kpi-active-parc   { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 140, 0, 0.45) !important; border: 1.5px solid #FF8C00 !important; border-left: 5px solid #FF8C00 !important; }
+.kpi-active-hom    { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 217, 102, 0.45) !important; border: 1.5px solid #FFD966 !important; border-left: 5px solid #FFD966 !important; }
 
 /* Glassmorphic Crystal Style Button */
 button[aria-label="👁️ Mostrar Encerradas"],
@@ -982,7 +982,7 @@ button[kind="primary"] * {
 
 
 
-.stTabs [data-baseweb="tab-list"]{background:#1c1911;border-radius:10px;padding:6px;
+.stTabs [data-baseweb="tab-list"]{background:#1c1c1c;border-radius:10px;padding:6px;
 
 
   box-shadow:0 2px 8px rgba(0,0,0,.3);gap:4px;}
@@ -1021,7 +1021,7 @@ button[kind="primary"] * {
   padding:12px 16px;font-size:.85rem;color:#ffd257;margin-bottom:12px;}
 
 
-div[data-testid="metric-container"]{background:#1c1911;border-radius:10px;
+div[data-testid="metric-container"]{background:#1c1c1c;border-radius:10px;
 
 
   padding:12px;box-shadow:0 2px 8px rgba(0,0,0,.3);}
@@ -3939,19 +3939,7 @@ if not st.session_state.authenticated:
 
                                 st.error(f"Erro ao salvar cadastro: {str(e)}")
 
-        st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
-        st.markdown(
-            "<div style='text-align: center; padding: 12px; border-radius: 8px; border: 1px solid rgba(155, 138, 92, 0.2); background: rgba(155, 138, 92, 0.05);'>"
-            "<small style='color: var(--text-color); opacity: 0.85;'>🌓 <b>Dica de Visualização</b>:<br>"
-            "Você pode alternar livremente entre os temas <b>Claro (Light)</b> e <b>Escuro (Dark)</b>!<br>"
-            "Para fazer isso, clique nos <b>três pontinhos</b> no canto superior direito da tela &rarr; <b>Settings</b> &rarr; e altere o campo <b>Theme</b>.</small>"
-            "</div>", 
-            unsafe_allow_html=True
-        )
-
     st.stop()
-
-
 
 
 
@@ -4296,20 +4284,6 @@ with st.sidebar:
 
 
         st.rerun()
-
-    st.markdown("---")
-    st.markdown(
-        "<div style='padding: 10px; border-radius: 8px; border: 1px solid rgba(155, 138, 92, 0.2); background: rgba(155, 138, 92, 0.04);'>"
-        "<small style='color: var(--text-color); opacity: 0.85;'>🌓 <b>Dica de Visualização</b>:<br>"
-        "Você pode alternar entre os temas <b>Claro (Light)</b> e <b>Escuro (Dark)</b>!<br>"
-        "Clique nos <b>três pontinhos</b> no canto superior direito &rarr; <b>Settings</b> &rarr; e altere o campo <b>Theme</b>.</small>"
-        "</div>", 
-        unsafe_allow_html=True
-    )
-
-
-
-
 
 # ─────────────────────── CARREGAR DADOS ───────────────────────────────────────
 
@@ -4803,7 +4777,7 @@ if active_page == "Análise Gráfica":
         insidetextorientation="radial",
 
 
-        marker=dict(colors=cols_pizza, line=dict(color="#13110b", width=3)),
+        marker=dict(colors=cols_pizza, line=dict(color="#121212", width=3)),
 
 
         hovertemplate="<b>%{label}</b><br>Avaliações: <b>%{value:,}</b><br>%{percent}<extra></extra>",
@@ -4902,7 +4876,7 @@ if active_page == "Análise Gráfica":
             marker=dict(colors=[SIT_COLORS.get(s,"#aaa") for s in sit_d["Situação Comissão"]],
 
 
-                        line=dict(color="#13110b", width=3)),
+                        line=dict(color="#121212", width=3)),
 
 
             hovertemplate="<b>%{label}</b><br>%{value:,} avaliações (%{percent})<extra></extra>",
