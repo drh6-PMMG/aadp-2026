@@ -8825,7 +8825,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
             with q_c3:
                 st.markdown(f'<div class="kpi-card kpi-parc">'
                             f'<div class="label">🟠 Parcialmente Enc.</div>'
-                            f'<div class="value">{fmt_num(rpm_metrics["Parc. Encerradas"])}</div>'
+                            f'<div class="value">{fmt_num(rpm_metrics["Parcialmente Encerradas"])}</div>'
                             f'<div class="sub">Aguardando AV2</div>'
                             f'</div>', unsafe_allow_html=True)
             with q_c4:
