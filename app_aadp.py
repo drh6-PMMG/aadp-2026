@@ -8327,8 +8327,12 @@ if active_page == "Relatório Word":
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 7 — PAINEL ADMINISTRADOR
 # ══════════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 7 — AUDITORIA DE NOTAS
+# ══════════════════════════════════════════════════════════════════════════════
 if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
     st.markdown("### 📊 Auditoria de Notas")
+    st.info("👉 Esta tela apresenta o conteúdo consolidado da planilha mestre `Analise avaliacoes completa.xlsx` contendo as regras de negócio de avaliações, recursos e notas médias finais.")
     
     _role_audit = sidebar_active_role
     _user_rpm   = st.session_state.get("simulated_rpm", st.session_state.get("user_rpm", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_rpm", "")
@@ -8394,8 +8398,6 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
         if unid_filter:
             df_audit_disp = df_audit_disp[df_audit_disp["Nome Unidade Principal"].isin(unid_filter)]
 
-
-
     # ── CARDS DE RESUMO DA AUDITORIA ──────────────────────────────────────────
     # 1. Total militares com avaliações abertas e sem nota final encerrada
     c1_mask = (df_audit_disp['Todas Avaliações Foram Encerradas?'].astype(str).str.upper() == 'NAO')
@@ -8411,8 +8413,7 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
         except ValueError:
             return False
 
-    c2_mask = (df_audit_disp['Todas Avaliações Foram Encerradas?'].astype(str).str.upper() == 'SIM') & \
-               (df_audit_disp['Nota Final - Média Aritmética'].apply(is_numeric_grade))
+    c2_mask = (df_audit_disp['Todas Avaliações Foram Encerradas?'].astype(str).str.upper() == 'SIM') &                (df_audit_disp['Nota Final - Média Aritmética'].apply(is_numeric_grade))
     card2_count = len(df_audit_disp[c2_mask])
     
     # 3. Média da Nota da Unidade (média aritmética de todas as notas finais já encerradas)
@@ -8473,11 +8474,7 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
     )
 
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 7 — DADOS CONSOLIDADOS
-# ══════════════════════════════════════════════════════════════════════════════
-if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR"):
+if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
     st.markdown("### 📊 Dados Consolidados")
     st.markdown("---")
     
@@ -8511,9 +8508,22 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
             st.error(f"Erro ao carregar auditoria: {err}")
             st.stop()
             
-    df_evals_source = df_full
-    df_audit_source = df_audit
-    
+    # Obter variáveis de perfil do usuário (considerando simulação)
+    _role_consol = sidebar_active_role.upper()
+    _user_rpm = st.session_state.get("simulated_rpm", st.session_state.get("user_rpm", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_rpm", "")
+    _user_unit = st.session_state.get("simulated_unit", st.session_state.get("user_unit", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_unit", "")
+
+    # Aplicar filtragem de escopo de dados conforme o perfil
+    df_evals_source = df_full.copy()
+    df_audit_source = df_audit.copy()
+
+    if _role_consol == "P1":
+        df_evals_source = df_evals_source[df_evals_source["Unidade RPM (Avaliado)"] == _user_rpm]
+        df_audit_source = df_audit_source[df_audit_source["Nome RPM"] == _user_rpm]
+    elif _role_consol == "SADM":
+        df_evals_source = df_evals_source[df_evals_source["Unidade Principal (Avaliado)"] == _user_unit]
+        df_audit_source = df_audit_source[df_audit_source["Nome Unidade Principal"] == _user_unit]
+
     def compute_metrics(df_sub_evals, df_sub_audit):
         def get_numeric_value(val):
             try:
@@ -8525,25 +8535,23 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
 
         grades = df_sub_audit["Nota Final - Média Aritmética"].apply(get_numeric_value).dropna()
         mean_val = grades.mean() if len(grades) > 0 else 0.0
-        
-        total_evals = len(df_sub_evals)
-        n_ca = (df_sub_evals["Situação Comissão"] == "Comissão Atual").sum()
-        n_np = (df_sub_evals["Situação Comissão"] == "Nota Provisória").sum()
+
+        mil_sim = (df_sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
+        mil_nao = (df_sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "NAO").sum()
+
+        n_total = len(df_sub_evals)
         n_enc = (df_sub_evals["Status Avaliação"] == "Encerrada").sum()
         n_aberta = (df_sub_evals["Status Avaliação"] == "Aberta").sum()
         n_parc = (df_sub_evals["Status Avaliação"] == "Parcialmente Encerrada").sum()
         n_hom = (df_sub_evals["Status Avaliação"] == "Homologação").sum()
-        
-        mil_sim = (df_sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
-        mil_nao = (df_sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "NAO").sum()
-        
+
         return {
-            "Avaliações Realizadas": total_evals,
-            "Comissão Atual": n_ca,
-            "Nota Provisória": n_np,
+            "Avaliações Realizadas": n_total,
+            "Comissão Atual": (df_sub_evals["Situação Comissão"] == "Comissão Atual").sum(),
+            "Nota Provisória": (df_sub_evals["Situação Comissão"] == "Nota Provisória").sum(),
             "Encerradas": n_enc,
             "Abertas": n_aberta,
-            "Parc. Encerradas": n_parc,
+            "Parcialmente Encerradas": n_parc,
             "Homologação": n_hom,
             "AV1 Pendente": n_aberta,
             "AV2 Pendente": n_parc,
@@ -8555,19 +8563,39 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
         
     all_rpms = sorted(df_evals_source["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key)
     
-    # ── PAINEL DE EXPORTAÇÃO CONSOLIDADA ─────────────────────────────────────
+    # ── PAINEL DE EXPORTAÇÃO CONSOLIDADA POR PERFIL ──────────────────────────
     st.markdown("<h4 style='font-size: 1.2rem; color: #9b8a5c; margin-bottom: 8px;'>📥 Exportar Relatório Consolidado</h4>", unsafe_allow_html=True)
-    escopo_rel = st.radio("Selecione o escopo da exportação:", ["🌐 Geral (Todas as RPMs)", "🏢 Por RPM específica"], horizontal=True, key="escopo_rel_consolidado")
     
+    enable_export = True
     selected_rpms_rel = all_rpms
-    if "específica" in escopo_rel:
-        selected_rpms_rel = st.multiselect("Selecione as Unidades RPM/UDG para exportar:", all_rpms, default=[])
+    selected_subs_rel = None
+    
+    if _role_consol in ("ADMINISTRADOR", "GESTOR"):
+        escopo_rel = st.radio("Selecione o escopo da exportação:", ["🌐 Geral (Todas as RPMs)", "🏢 Por RPM específica"], horizontal=True, key="escopo_rel_consolidado")
+        if "específica" in escopo_rel:
+            selected_rpms_rel = st.multiselect("Selecione as Unidades RPM/UDG para exportar:", all_rpms, default=[])
+            if not selected_rpms_rel:
+                st.warning("⚠️ Selecione ao menos uma unidade para habilitar a exportação.")
+                enable_export = False
+                
+    elif _role_consol == "P1":
+        escopo_rel = st.radio("Selecione o escopo da exportação:", [f"🌐 Geral (Todas as Subordinadas da {_user_rpm})", "🏢 Por Unidade subordinada específica"], horizontal=True, key="escopo_rel_consolidado")
         
-    if "específica" in escopo_rel and not selected_rpms_rel:
-        st.warning("⚠️ Selecione ao menos uma unidade para habilitar a exportação.")
-    else:
+        all_subs_in_rpm = sorted(df_evals_source["Unidade Principal (Avaliado)"].dropna().unique())
+        selected_subs_rel = all_subs_in_rpm
+        if "específica" in escopo_rel:
+            selected_subs_rel = st.multiselect("Selecione as Unidades Subordinadas para exportar:", all_subs_in_rpm, default=[])
+            if not selected_subs_rel:
+                st.warning("⚠️ Selecione ao menos uma unidade subordinada para habilitar a exportação.")
+                enable_export = False
+                
+    elif _role_consol == "SADM":
+        selected_subs_rel = [_user_unit]
+        st.info(f"ℹ️ O relatório consolidado conterá exclusivamente os dados da sua Unidade: **{_user_unit}**.")
+        
+    if enable_export:
         # Gerar planilha consolidada em memória
-        def export_consolidated_xlsx(df_evals, df_audit, rpms_to_export):
+        def export_consolidated_xlsx(df_evals, df_audit, rpms_to_export, role=_role_consol, subs_to_export=selected_subs_rel):
             import io
             import openpyxl
             from openpyxl.styles import Font, Alignment, PatternFill
@@ -8584,92 +8612,133 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                 except ValueError:
                     return None
                     
-            ws1 = wb.create_sheet("Consolidado RPM")
             headers = [
                 "Unidade Principal (RPM/UDG)", "Total Avaliações", "Comissão Atual", "Nota Provisória",
                 "Encerradas", "Abertas", "Parcialmente Encerradas", "Homologação",
                 "AV1 Pendentes", "AV2 Pendentes", "HOM Pendentes",
                 "Militares Encerrados", "Militares Pendentes", "Média Notas"
             ]
-            ws1.append(headers)
             
-            ws2 = wb.create_sheet("Detalhamento Subordinadas")
-            headers_sub = ["RPM/UDG", "Unidade Subordinada"] + headers[1:]
-            ws2.append(headers_sub)
+            if role == "SADM":
+                ws1 = wb.create_sheet("Consolidado Unidade")
+                headers_sadm = ["Unidade Principal", "Total Avaliações", "Comissão Atual", "Nota Provisória",
+                                "Encerradas", "Abertas", "Parcialmente Encerradas", "Homologação",
+                                "AV1 Pendentes", "AV2 Pendentes", "HOM Pendentes",
+                                "Militares Encerrados", "Militares Pendentes", "Média Notas"]
+                ws1.append(headers_sadm)
+                sheets_list = [ws1]
+            else:
+                ws1 = wb.create_sheet("Consolidado RPM")
+                ws1.append(headers)
+                
+                ws2 = wb.create_sheet("Detalhamento Subordinadas")
+                headers_sub = ["RPM/UDG", "Unidade Subordinada"] + headers[1:]
+                ws2.append(headers_sub)
+                sheets_list = [ws1, ws2]
             
             font_bold = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
             fill_header = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
             align_center = Alignment(horizontal="center", vertical="center", wrap_text=True)
             
-            for ws in [ws1, ws2]:
+            for ws in sheets_list:
                 ws.row_dimensions[1].height = 28
                 for cell in ws[1]:
                     cell.font = font_bold
                     cell.fill = fill_header
                     cell.alignment = align_center
                     
-            for rpm in rpms_to_export:
-                df_rpm_evals = df_evals[df_evals["Unidade RPM (Avaliado)"] == rpm]
-                df_rpm_audit = df_audit[df_audit["Nome RPM"] == rpm]
+            if role == "SADM":
+                df_sub_evals = df_evals[df_evals["Unidade Principal (Avaliado)"] == _user_unit]
+                df_sub_audit = df_audit[df_audit["Nome Unidade Principal"] == _user_unit]
                 
-                if len(df_rpm_evals) == 0:
-                    continue
-                    
-                grades = df_rpm_audit["Nota Final - Média Aritmética"].apply(get_numeric_value).dropna()
+                grades = df_sub_audit["Nota Final - Média Aritmética"].apply(get_numeric_value).dropna()
                 mean_val = grades.mean() if len(grades) > 0 else 0.0
                 
-                mil_sim = (df_rpm_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
-                mil_nao = (df_rpm_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "NAO").sum()
+                mil_sim = (df_sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
+                mil_nao = (df_sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "NAO").sum()
                 
-                rpm_row = [
-                    rpm,
-                    len(df_rpm_evals),
-                    (df_rpm_evals["Situação Comissão"] == "Comissão Atual").sum(),
-                    (df_rpm_evals["Situação Comissão"] == "Nota Provisória").sum(),
-                    (df_rpm_evals["Status Avaliação"] == "Encerrada").sum(),
-                    (df_rpm_evals["Status Avaliação"] == "Aberta").sum(),
-                    (df_rpm_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
-                    (df_rpm_evals["Status Avaliação"] == "Homologação").sum(),
-                    (df_rpm_evals["Status Avaliação"] == "Aberta").sum(),
-                    (df_rpm_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
-                    (df_rpm_evals["Status Avaliação"] == "Homologação").sum(),
+                sub_row = [
+                    _user_unit,
+                    len(df_sub_evals),
+                    (df_sub_evals["Situação Comissão"] == "Comissão Atual").sum(),
+                    (df_sub_evals["Situação Comissão"] == "Nota Provisória").sum(),
+                    (df_sub_evals["Status Avaliação"] == "Encerrada").sum(),
+                    (df_sub_evals["Status Avaliação"] == "Aberta").sum(),
+                    (df_sub_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
+                    (df_sub_evals["Status Avaliação"] == "Homologação").sum(),
+                    (df_sub_evals["Status Avaliação"] == "Aberta").sum(),
+                    (df_sub_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
+                    (df_sub_evals["Status Avaliação"] == "Homologação").sum(),
                     mil_sim,
                     mil_nao,
                     round(mean_val, 2)
                 ]
-                ws1.append(rpm_row)
-                
-                unique_subs = sorted(df_rpm_evals["Unidade Principal (Avaliado)"].dropna().unique())
-                for sub in unique_subs:
-                    sub_evals = df_rpm_evals[df_rpm_evals["Unidade Principal (Avaliado)"] == sub]
-                    sub_audit = df_rpm_audit[df_rpm_audit["Nome Unidade Principal"] == sub]
+                ws1.append(sub_row)
+            else:
+                for rpm in rpms_to_export:
+                    df_rpm_evals = df_evals[df_evals["Unidade RPM (Avaliado)"] == rpm]
+                    df_rpm_audit = df_audit[df_audit["Nome RPM"] == rpm]
                     
-                    sub_grades = sub_audit["Nota Final - Média Aritmética"].apply(get_numeric_value).dropna()
-                    sub_mean_val = sub_grades.mean() if len(sub_grades) > 0 else 0.0
+                    if len(df_rpm_evals) == 0:
+                        continue
+                        
+                    grades = df_rpm_audit["Nota Final - Média Aritmética"].apply(get_numeric_value).dropna()
+                    mean_val = grades.mean() if len(grades) > 0 else 0.0
                     
-                    sub_mil_sim = (sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
-                    sub_mil_nao = (sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "NAO").sum()
+                    mil_sim = (df_rpm_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
+                    mil_nao = (df_rpm_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "NAO").sum()
                     
-                    sub_row = [
+                    rpm_row = [
                         rpm,
-                        sub,
-                        len(sub_evals),
-                        (sub_evals["Situação Comissão"] == "Comissão Atual").sum(),
-                        (sub_evals["Situação Comissão"] == "Nota Provisória").sum(),
-                        (sub_evals["Status Avaliação"] == "Encerrada").sum(),
-                        (sub_evals["Status Avaliação"] == "Aberta").sum(),
-                        (sub_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
-                        (sub_evals["Status Avaliação"] == "Homologação").sum(),
-                        (sub_evals["Status Avaliação"] == "Aberta").sum(),
-                        (sub_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
-                        (sub_evals["Status Avaliação"] == "Homologação").sum(),
-                        sub_mil_sim,
-                        sub_mil_nao,
-                        round(sub_mean_val, 2)
+                        len(df_rpm_evals),
+                        (df_rpm_evals["Situação Comissão"] == "Comissão Atual").sum(),
+                        (df_rpm_evals["Situação Comissão"] == "Nota Provisória").sum(),
+                        (df_rpm_evals["Status Avaliação"] == "Encerrada").sum(),
+                        (df_rpm_evals["Status Avaliação"] == "Aberta").sum(),
+                        (df_rpm_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
+                        (df_rpm_evals["Status Avaliação"] == "Homologação").sum(),
+                        (df_rpm_evals["Status Avaliação"] == "Aberta").sum(),
+                        (df_rpm_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
+                        (df_rpm_evals["Status Avaliação"] == "Homologação").sum(),
+                        mil_sim,
+                        mil_nao,
+                        round(mean_val, 2)
                     ]
-                    ws2.append(sub_row)
+                    ws1.append(rpm_row)
                     
-            for ws in [ws1, ws2]:
+                    unique_subs = sorted(df_rpm_evals["Unidade Principal (Avaliado)"].dropna().unique())
+                    for sub in unique_subs:
+                        if subs_to_export is not None and sub not in subs_to_export:
+                            continue
+                        sub_evals = df_rpm_evals[df_rpm_evals["Unidade Principal (Avaliado)"] == sub]
+                        sub_audit = df_rpm_audit[df_rpm_audit["Nome Unidade Principal"] == sub]
+                        
+                        sub_grades = sub_audit["Nota Final - Média Aritmética"].apply(get_numeric_value).dropna()
+                        sub_mean_val = sub_grades.mean() if len(sub_grades) > 0 else 0.0
+                        
+                        sub_mil_sim = (sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
+                        sub_mil_nao = (sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "NAO").sum()
+                        
+                        sub_row = [
+                            rpm,
+                            sub,
+                            len(sub_evals),
+                            (sub_evals["Situação Comissão"] == "Comissão Atual").sum(),
+                            (sub_evals["Situação Comissão"] == "Nota Provisória").sum(),
+                            (sub_evals["Status Avaliação"] == "Encerrada").sum(),
+                            (sub_evals["Status Avaliação"] == "Aberta").sum(),
+                            (sub_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
+                            (sub_evals["Status Avaliação"] == "Homologação").sum(),
+                            (sub_evals["Status Avaliação"] == "Aberta").sum(),
+                            (sub_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
+                            (sub_evals["Status Avaliação"] == "Homologação").sum(),
+                            sub_mil_sim,
+                            sub_mil_nao,
+                            round(sub_mean_val, 2)
+                        ]
+                        ws2.append(sub_row)
+                        
+            for ws in sheets_list:
                 for col in ws.columns:
                     max_len = max(len(str(cell.value or '')) for cell in col)
                     col_letter = openpyxl.utils.get_column_letter(col[0].column)
@@ -8771,6 +8840,10 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
             
             sub_rows = []
             unique_subs = sorted(df_rpm_evals["Unidade Principal (Avaliado)"].dropna().unique())
+            # SADM enxerga somente a sua respectiva unidade
+            if _role_consol == "SADM":
+                unique_subs = [s for s in unique_subs if s == _user_unit]
+                
             for sub in unique_subs:
                 sub_evals = df_rpm_evals[df_rpm_evals["Unidade Principal (Avaliado)"] == sub]
                 sub_audit = df_rpm_audit[df_rpm_audit["Nome Unidade Principal"] == sub]
@@ -8789,7 +8862,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                     "Nota Provisória": "NP",
                     "Encerradas": "Enc.",
                     "Abertas": "Aber.",
-                    "Parc. Encerradas": "Parc. Enc.",
+                    "Parcialmente Encerradas": "Parc. Enc.",
                     "Homologação": "Hom.",
                     "AV1 Pendente": "AV1 Pend.",
                     "AV2 Pendente": "AV2 Pend.",
@@ -8804,6 +8877,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                 }), use_container_width=True, hide_index=True)
             else:
                 st.info("Nenhuma unidade subordinada encontrada.")
+
 
 
 if active_page == "Painel Administrador" and st.session_state.user_role == "ADMINISTRADOR":
