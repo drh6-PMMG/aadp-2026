@@ -646,41 +646,33 @@ st.markdown("""
     let changed = false;
     const key = "streamlit:themeConfiguration";
     const expected = '{"themePreset":"dark"}';
+    const lightTheme = '{"themePreset":"light"}';
     
-    const isInitialized = () => {
-        try {
-            return window.sessionStorage.getItem("theme_initialized") === "true" ||
-                   (window.parent && window.parent.sessionStorage.getItem("theme_initialized") === "true");
-        } catch(e) {
-            return false;
-        }
-    };
-
     const forceDark = (win) => {
         try {
-            if (win.localStorage.getItem(key) !== expected) {
-                win.localStorage.setItem(key, expected);
-                changed = true;
-            }
-            const legacyKeys = ["stActiveTheme-light", "stActiveTheme-dark", "stActiveTheme", "stActiveThemeType", "stTheme", "theme"];
-            legacyKeys.forEach(k => {
-                if (win.localStorage.getItem(k)) {
-                    win.localStorage.removeItem(k);
+            const current = win.localStorage.getItem(key);
+            if (current !== lightTheme) {
+                if (current !== expected) {
+                    win.localStorage.setItem(key, expected);
                     changed = true;
                 }
-            });
-            win.sessionStorage.setItem("theme_initialized", "true");
+                const legacyKeys = ["stActiveTheme-light", "stActiveTheme-dark", "stActiveTheme", "stActiveThemeType", "stTheme", "theme"];
+                legacyKeys.forEach(k => {
+                    if (win.localStorage.getItem(k)) {
+                        win.localStorage.removeItem(k);
+                        changed = true;
+                    }
+                });
+            }
         } catch(e) {}
     };
 
-    if (!isInitialized()) {
-        forceDark(window);
-        if (window.parent) {
-            forceDark(window.parent);
-        }
-        if (changed) {
-            window.location.reload();
-        }
+    forceDark(window);
+    if (window.parent) {
+        forceDark(window.parent);
+    }
+    if (changed) {
+        window.location.reload();
     }
 })();
 </script>
