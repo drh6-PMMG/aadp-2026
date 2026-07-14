@@ -994,29 +994,37 @@ div[data-testid="metric-container"]{background:#1c1c1c;border-radius:10px;
 
 
 /* Botões Gerais - Efeito Cristal Líquido (Glassmorphism Premium) */
+/* Botões Gerais - Efeito Cristal Líquido (Glassmorphism Premium) */
 .stButton button {
-  background: rgba(255, 255, 255, 0.05) !important;
-  color: #e5dccb !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  background: rgba(128, 128, 128, 0.06) !important;
+  color: var(--text-color) !important;
+  border: 1px solid rgba(128, 128, 128, 0.2) !important;
   border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
   border-radius: 20px !important;
   padding: 8px 24px !important;
   font-weight: 600 !important;
   font-size: 0.9rem !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 4px 12px rgba(0, 0, 0, 0.1) !important;
   backdrop-filter: blur(10px) !important;
   -webkit-backdrop-filter: blur(10px) !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   letter-spacing: 0.02em !important;
 }
 
+.stButton button * {
+  color: var(--text-color) !important;
+}
+
 .stButton button:hover {
-  background: rgba(188, 163, 116, 0.2) !important;
-  color: #ffffff !important;
-  border-color: rgba(188, 163, 116, 0.5) !important;
-  border-top-color: rgba(188, 163, 116, 0.7) !important;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2), 0 0 15px rgba(188, 163, 116, 0.4) !important;
+  background: rgba(128, 128, 128, 0.12) !important;
+  color: var(--text-color) !important;
+  border-color: rgba(128, 128, 128, 0.3) !important;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2), 0 0 15px rgba(188, 163, 116, 0.2) !important;
   transform: translateY(-2px) !important;
+}
+
+.stButton button:hover * {
+  color: var(--text-color) !important;
 }
 
 .stButton button:active {
@@ -1027,40 +1035,56 @@ div[data-testid="metric-container"]{background:#1c1c1c;border-radius:10px;
 /* Botões Primários - Efeito Cristal Ouro (Ativo) */
 .stButton button[data-testid="baseButton-primary"] {
   background: linear-gradient(135deg, rgba(188, 163, 116, 0.25) 0%, rgba(0, 0, 0, 0.6) 100%) !important;
-  color: #ffffff !important;
+  color: var(--text-color) !important;
   border: 1px solid rgba(188, 163, 116, 0.4) !important;
   border-top: 1px solid rgba(255, 255, 255, 0.4) !important;
   box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25), 0 4px 15px rgba(188, 163, 116, 0.25) !important;
+}
+
+.stButton button[data-testid="baseButton-primary"] * {
+  color: var(--text-color) !important;
 }
 
 .stButton button[data-testid="baseButton-primary"]:hover {
   background: linear-gradient(135deg, rgba(188, 163, 116, 0.45) 0%, rgba(255, 255, 255, 0.1) 100%) !important;
   border-color: rgba(188, 163, 116, 0.7) !important;
   box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.4), 0 0 25px rgba(188, 163, 116, 0.6) !important;
-  color: #ffffff !important;
+  color: var(--text-color) !important;
+}
+
+.stButton button[data-testid="baseButton-primary"]:hover * {
+  color: var(--text-color) !important;
 }
 
 /* Sidebar Botões Secundários */
 div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"] {
-  background: rgba(255, 255, 255, 0.03) !important;
-  color: #e5dccb !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(128, 128, 128, 0.05) !important;
+  color: var(--text-color) !important;
+  border: 1px solid rgba(128, 128, 128, 0.2) !important;
   border-top: 1px solid rgba(255, 255, 255, 0.25) !important;
   border-radius: 20px !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 10px rgba(0,0,0,0.5) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 10px rgba(0,0,0,0.2) !important;
   font-weight: 500 !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   backdrop-filter: blur(8px) !important;
   -webkit-backdrop-filter: blur(8px) !important;
 }
 
+div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"] * {
+  color: var(--text-color) !important;
+}
+
 div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"]:hover {
   background: rgba(188, 163, 116, 0.15) !important;
-  color: #ffffff !important;
+  color: var(--text-color) !important;
   border-color: rgba(188, 163, 116, 0.4) !important;
   border-top-color: rgba(188, 163, 116, 0.6) !important;
   box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.15), 0 0 15px rgba(188, 163, 116, 0.3) !important;
   transform: translateY(-2px) !important;
+}
+
+div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"]:hover * {
+  color: var(--text-color) !important;
 }
 
 /* Sidebar Botões Primários */
