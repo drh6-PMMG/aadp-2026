@@ -790,29 +790,29 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 /* Glassmorphic Crystal Style Button */
 button[aria-label="👁️ Mostrar Encerradas"],
 button[aria-label="🙈 Ocultar Encerradas"] {
-    background: rgba(255, 255, 255, 0.05) !important;
+    background: rgba(128, 128, 128, 0.06) !important;
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border: 1px solid rgba(128, 128, 128, 0.2) !important;
     border-radius: 30px !important;
-    color: #e5dccb !important;
+    color: var(--text-color) !important;
     font-weight: 600 !important;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.1) !important;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.1) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
     transition: all 0.3s ease !important;
 }
 
 button[aria-label="👁️ Mostrar Encerradas"]:hover,
 button[aria-label="🙈 Ocultar Encerradas"]:hover {
-    background: rgba(255, 255, 255, 0.12) !important;
-    border-color: rgba(255, 255, 255, 0.25) !important;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35), inset 0 1px 3px rgba(255, 255, 255, 0.2) !important;
+    background: rgba(128, 128, 128, 0.12) !important;
+    border-color: rgba(128, 128, 128, 0.3) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2), inset 0 1px 3px rgba(255, 255, 255, 0.2) !important;
     transform: translateY(-1px) !important;
 }
 
 button[aria-label="👁️ Mostrar Encerradas"]:active,
 button[aria-label="🙈 Ocultar Encerradas"]:active {
-    background: rgba(255, 255, 255, 0.02) !important;
+    background: rgba(128, 128, 128, 0.02) !important;
     transform: translateY(0px) !important;
 }
 
@@ -828,11 +828,11 @@ button[aria-label="⚪ Homologação"] {
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
     border-radius: 30px !important;
-    color: #e5dccb !important;
+    color: var(--text-color) !important;
     font-weight: 600 !important;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
     transition: all 0.3s ease !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
 /* Hover effects */
@@ -851,22 +851,22 @@ button[aria-label="⚪ Homologação"]:hover {
 button[aria-label="🟢 Encerrada"] {
     background: rgba(112, 173, 71, 0.15) !important;
     border: 1px solid #70AD47 !important;
-    box-shadow: 0 0 10px rgba(112, 173, 71, 0.4) !important;
+    box-shadow: 0 0 10px rgba(112, 173, 71, 0.3) !important;
 }
 button[aria-label="🔴 Aberta"] {
     background: rgba(255, 68, 68, 0.15) !important;
     border: 1px solid #FF4444 !important;
-    box-shadow: 0 0 10px rgba(255, 68, 68, 0.4) !important;
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.3) !important;
 }
 button[aria-label="🟠 Parcialmente Encerrada"] {
     background: rgba(255, 140, 0, 0.15) !important;
     border: 1px solid #FF8C00 !important;
-    box-shadow: 0 0 10px rgba(255, 140, 0, 0.4) !important;
+    box-shadow: 0 0 10px rgba(255, 140, 0, 0.3) !important;
 }
 button[aria-label="🟡 Homologação"] {
     background: rgba(255, 217, 102, 0.15) !important;
     border: 1px solid #FFD966 !important;
-    box-shadow: 0 0 10px rgba(255, 217, 102, 0.4) !important;
+    box-shadow: 0 0 10px rgba(255, 217, 102, 0.3) !important;
 }
 
 /* Muted look for inactive buttons */
@@ -874,44 +874,58 @@ button[aria-label="⚪ Encerrada"],
 button[aria-label="⚪ Aberta"],
 button[aria-label="⚪ Parcialmente Encerrada"],
 button[aria-label="⚪ Homologação"] {
-    background: rgba(255, 255, 255, 0.02) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: rgba(128, 128, 128, 0.03) !important;
+    border: 1px solid rgba(128, 128, 128, 0.15) !important;
     opacity: 0.55 !important;
 }
 
 /* Glassmorphic Crystal Style for Page Navigation / Horizontal Tab Buttons */
-button[aria-label^="📊 Análise Gráfica"],
-button[aria-label^="📋 Dados Gerais"],
-button[aria-label^="⏳ Avaliações Pendentes"],
-button[aria-label^="👥 Avaliadores Pendentes"],
-button[aria-label^="📥 Gerar Relatório"],
-button[aria-label^="📄 Relatório Word"],
-button[aria-label^="📊 Auditoria de Notas"],
-button[aria-label^="⚙️ Painel Administrador"] {
-    background: rgba(255, 255, 255, 0.04) !important;
+button[aria-label*="Gráfica"],
+button[aria-label*="Gerais"],
+button[aria-label*="Pendentes"],
+button[aria-label*="Relatório"],
+button[aria-label*="Notas"],
+button[aria-label*="Administrador"] {
+    background: rgba(128, 128, 128, 0.06) !important;
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border: 1px solid rgba(128, 128, 128, 0.2) !important;
     border-radius: 8px !important;
-    color: #e5dccb !important;
+    color: var(--text-color) !important;
     font-weight: 600 !important;
     padding: 6px 12px !important;
     transition: all 0.25s ease !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
 }
 
-button[aria-label^="📊 Análise Gráfica"]:hover,
-button[aria-label^="📋 Dados Gerais"]:hover,
-button[aria-label^="⏳ Avaliações Pendentes"]:hover,
-button[aria-label^="👥 Avaliadores Pendentes"]:hover,
-button[aria-label^="📥 Gerar Relatório"]:hover,
-button[aria-label^="📄 Relatório Word"]:hover,
-button[aria-label^="📊 Auditoria de Notas"]:hover,
-button[aria-label^="⚙️ Painel Administrador"]:hover {
-    background: rgba(255, 255, 255, 0.09) !important;
-    border-color: rgba(255, 255, 255, 0.22) !important;
+/* Force inner text tags (p, span, div) to inherit/use text-color */
+button[aria-label*="Gráfica"] *,
+button[aria-label*="Gerais"] *,
+button[aria-label*="Pendentes"] *,
+button[aria-label*="Relatório"] *,
+button[aria-label*="Notas"] *,
+button[aria-label*="Administrador"] * {
+    color: var(--text-color) !important;
+}
+
+button[aria-label*="Gráfica"]:hover,
+button[aria-label*="Gerais"]:hover,
+button[aria-label*="Pendentes"]:hover,
+button[aria-label*="Relatório"]:hover,
+button[aria-label*="Notas"]:hover,
+button[aria-label*="Administrador"]:hover {
+    background: rgba(128, 128, 128, 0.12) !important;
+    border-color: rgba(128, 128, 128, 0.3) !important;
     transform: translateY(-1px) !important;
-    color: #ffffff !important;
+}
+
+button[aria-label*="Gráfica"]:hover *,
+button[aria-label*="Gerais"]:hover *,
+button[aria-label*="Pendentes"]:hover *,
+button[aria-label*="Relatório"]:hover *,
+button[aria-label*="Notas"]:hover *,
+button[aria-label*="Administrador"]:hover * {
+    color: var(--text-color) !important;
 }
 
 /* Make active page buttons glow gold */
@@ -919,8 +933,12 @@ button[kind="primary"] {
     background: rgba(188, 163, 116, 0.2) !important;
     border: 1.5px solid #bca374 !important;
     box-shadow: 0 0 12px rgba(188, 163, 116, 0.35) !important;
-    color: #ffffff !important;
+    color: var(--text-color) !important;
     font-weight: 700 !important;
+}
+
+button[kind="primary"] * {
+    color: var(--text-color) !important;
 }
 
 
