@@ -686,10 +686,10 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 [data-testid="stSidebar"]{
 
 
-  background:linear-gradient(180deg,#000000 0%,#1a1a1a 100%);
+  background:linear-gradient(180deg,#0c0b07 0%,#1c1911 100%);
 
 
-  border-right:1px solid #bca374;
+  border-right:1px solid #9b8a5c;
 
 
 }
@@ -701,10 +701,10 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 [data-testid="stSidebar"] h1,[data-testid="stSidebar"] h2,
 
 
-[data-testid="stSidebar"] h3{color:#bca374!important;}
+[data-testid="stSidebar"] h3{color:#9b8a5c!important;}
 
 
-.main{background:#121212;}
+.main{background:#13110b;}
 
 
 
@@ -716,7 +716,7 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 [data-testid="collapsedControl"], button[data-testid="stSidebarCollapseButton"] {
 
 
-  color: #bca374 !important;
+  color: #9b8a5c !important;
 
 
   display: flex !important;
@@ -737,10 +737,10 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 .main-title{
 
 
-  background:linear-gradient(135deg,#000000 0%,#1f1f1f 100%);
+  background:linear-gradient(135deg,#0c0b07 0%,#252116 100%);
 
 
-  color:#bca374;padding:24px 28px;border-radius:12px;margin-bottom:20px;
+  color:#9b8a5c;padding:24px 28px;border-radius:12px;margin-bottom:20px;
 
 
   display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;
@@ -749,13 +749,13 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
   box-shadow:0 4px 20px rgba(0,0,0,.15);
 
 
-  border-bottom:3px solid #bca374;
+  border-bottom:3px solid #9b8a5c;
 
 
 }
 
 
-.main-title h1{margin:0;font-size:2.1rem;font-weight:800;color:#bca374;letter-spacing:0.02em;}
+.main-title h1{margin:0;font-size:2.1rem;font-weight:800;color:#9b8a5c;letter-spacing:0.02em;}
 
 
 .main-title p{margin:0;font-size:.9rem;opacity:.9;color:#e5dccb;margin-top:6px;}
@@ -764,7 +764,7 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 
 
 
-.kpi-card{background:#1c1c1c;border-radius:12px;padding:16px 20px;
+.kpi-card{background:#1c1911;border-radius:12px;padding:16px 20px;
 
 
   box-shadow:0 4px 15px rgba(0,0,0,0.3);border-left:5px solid;
@@ -788,13 +788,13 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 .kpi-card .sub{font-size:.72rem;color:#777777!important;margin-top:4px;}
 
 
-.kpi-total    {border-color:#bca374;} .kpi-total    .value{color:#e5dccb!important;}
+.kpi-total    {border-color:#9b8a5c;} .kpi-total    .value{color:#e5dccb!important;}
 
 
-.kpi-ca       {border-color:#bca374;} .kpi-ca       .value{color:#e5dccb!important;}
+.kpi-ca       {border-color:#9b8a5c;} .kpi-ca       .value{color:#e5dccb!important;}
 
 
-.kpi-np       {border-color:#8c6e42;} .kpi-np       .value{color:#bca374!important;}
+.kpi-np       {border-color:#8c6e42;} .kpi-np       .value{color:#9b8a5c!important;}
 
 
 .kpi-aberta   {border-color:#FF4444;} .kpi-aberta   .value{color:#ff6b6b!important;}
@@ -807,13 +807,13 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 
 
 .kpi-enc      {border-color:#70AD47;} .kpi-enc      .value{color:#7bed9f!important;}
-.kpi-active-total  { background: #282828 !important; box-shadow: 0 0 15px rgba(188, 163, 116, 0.45) !important; border: 1.5px solid #bca374 !important; border-left: 5px solid #bca374 !important; }
-.kpi-active-ca     { background: #282828 !important; box-shadow: 0 0 15px rgba(188, 163, 116, 0.45) !important; border: 1.5px solid #bca374 !important; border-left: 5px solid #bca374 !important; }
-.kpi-active-np     { background: #282828 !important; box-shadow: 0 0 15px rgba(140, 110, 66, 0.45) !important; border: 1.5px solid #8c6e42 !important; border-left: 5px solid #8c6e42 !important; }
-.kpi-active-enc    { background: #282828 !important; box-shadow: 0 0 15px rgba(112, 173, 71, 0.45) !important; border: 1.5px solid #70AD47 !important; border-left: 5px solid #70AD47 !important; }
-.kpi-active-aberta { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 68, 68, 0.45) !important; border: 1.5px solid #FF4444 !important; border-left: 5px solid #FF4444 !important; }
-.kpi-active-parc   { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 140, 0, 0.45) !important; border: 1.5px solid #FF8C00 !important; border-left: 5px solid #FF8C00 !important; }
-.kpi-active-hom    { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 217, 102, 0.45) !important; border: 1.5px solid #FFD966 !important; border-left: 5px solid #FFD966 !important; }
+.kpi-active-total  { background: #252116 !important; box-shadow: 0 0 15px rgba(155, 138, 92, 0.45) !important; border: 1.5px solid #9b8a5c !important; border-left: 5px solid #9b8a5c !important; }
+.kpi-active-ca     { background: #252116 !important; box-shadow: 0 0 15px rgba(155, 138, 92, 0.45) !important; border: 1.5px solid #9b8a5c !important; border-left: 5px solid #9b8a5c !important; }
+.kpi-active-np     { background: #252116 !important; box-shadow: 0 0 15px rgba(140, 110, 66, 0.45) !important; border: 1.5px solid #8c6e42 !important; border-left: 5px solid #8c6e42 !important; }
+.kpi-active-enc    { background: #252116 !important; box-shadow: 0 0 15px rgba(112, 173, 71, 0.45) !important; border: 1.5px solid #70AD47 !important; border-left: 5px solid #70AD47 !important; }
+.kpi-active-aberta { background: #252116 !important; box-shadow: 0 0 15px rgba(255, 68, 68, 0.45) !important; border: 1.5px solid #FF4444 !important; border-left: 5px solid #FF4444 !important; }
+.kpi-active-parc   { background: #252116 !important; box-shadow: 0 0 15px rgba(255, 140, 0, 0.45) !important; border: 1.5px solid #FF8C00 !important; border-left: 5px solid #FF8C00 !important; }
+.kpi-active-hom    { background: #252116 !important; box-shadow: 0 0 15px rgba(255, 217, 102, 0.45) !important; border: 1.5px solid #FFD966 !important; border-left: 5px solid #FFD966 !important; }
 
 /* Glassmorphic Crystal Style Button */
 button[aria-label="👁️ Mostrar Encerradas"],
@@ -958,9 +958,9 @@ button[aria-label*="Administrador"]:hover * {
 
 /* Make active page buttons glow gold */
 button[kind="primary"] {
-    background: rgba(188, 163, 116, 0.2) !important;
-    border: 1.5px solid #bca374 !important;
-    box-shadow: 0 0 12px rgba(188, 163, 116, 0.35) !important;
+    background: rgba(155, 138, 92, 0.2) !important;
+    border: 1.5px solid #9b8a5c !important;
+    box-shadow: 0 0 12px rgba(155, 138, 92, 0.35) !important;
     color: var(--text-color) !important;
     font-weight: 700 !important;
 }
@@ -976,7 +976,7 @@ button[kind="primary"] * {
 
 
 
-.stTabs [data-baseweb="tab-list"]{background:#1c1c1c;border-radius:10px;padding:6px;
+.stTabs [data-baseweb="tab-list"]{background:#1c1911;border-radius:10px;padding:6px;
 
 
   box-shadow:0 2px 8px rgba(0,0,0,.3);gap:4px;}
@@ -985,13 +985,13 @@ button[kind="primary"] * {
 .stTabs [data-baseweb="tab"]{border-radius:8px;font-weight:600;padding:8px 20px;font-size:.85rem;}
 
 
-.stTabs [aria-selected="true"]{background:#bca374!important;color:#000!important;}
+.stTabs [aria-selected="true"]{background:#9b8a5c!important;color:#000!important;}
 
 
 
 
 
-.section-hdr{background:#bca374;color:#000;padding:10px 16px;border-radius:8px;
+.section-hdr{background:#9b8a5c;color:#000;padding:10px 16px;border-radius:8px;
 
 
   font-weight:600;font-size:.9rem;margin:16px 0 8px 0;}
@@ -1003,7 +1003,7 @@ button[kind="primary"] * {
   font-weight:600;font-size:.9rem;margin:24px 0 8px 0;}
 
 
-.info-box{background:#1a1a1a;border:1px solid #bca374;border-radius:8px;
+.info-box{background:#1a1a1a;border:1px solid #9b8a5c;border-radius:8px;
 
 
   padding:12px 16px;font-size:.85rem;color:#e5dccb;margin-bottom:12px;}
@@ -1015,7 +1015,7 @@ button[kind="primary"] * {
   padding:12px 16px;font-size:.85rem;color:#ffd257;margin-bottom:12px;}
 
 
-div[data-testid="metric-container"]{background:#1c1c1c;border-radius:10px;
+div[data-testid="metric-container"]{background:#1c1911;border-radius:10px;
 
 
   padding:12px;box-shadow:0 2px 8px rgba(0,0,0,.3);}
@@ -1047,7 +1047,7 @@ div[data-testid="metric-container"]{background:#1c1c1c;border-radius:10px;
   background: rgba(128, 128, 128, 0.12) !important;
   color: var(--text-color) !important;
   border-color: rgba(128, 128, 128, 0.3) !important;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2), 0 0 15px rgba(188, 163, 116, 0.2) !important;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2), 0 0 15px rgba(155, 138, 92, 0.2) !important;
   transform: translateY(-2px) !important;
 }
 
@@ -1062,11 +1062,11 @@ div[data-testid="metric-container"]{background:#1c1c1c;border-radius:10px;
 
 /* Botões Primários - Efeito Cristal Ouro (Ativo) */
 .stButton button[data-testid="baseButton-primary"] {
-  background: linear-gradient(135deg, rgba(188, 163, 116, 0.25) 0%, rgba(0, 0, 0, 0.6) 100%) !important;
+  background: linear-gradient(135deg, rgba(155, 138, 92, 0.25) 0%, rgba(0, 0, 0, 0.6) 100%) !important;
   color: var(--text-color) !important;
-  border: 1px solid rgba(188, 163, 116, 0.4) !important;
+  border: 1px solid rgba(155, 138, 92, 0.4) !important;
   border-top: 1px solid rgba(255, 255, 255, 0.4) !important;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25), 0 4px 15px rgba(188, 163, 116, 0.25) !important;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25), 0 4px 15px rgba(155, 138, 92, 0.25) !important;
 }
 
 .stButton button[data-testid="baseButton-primary"] * {
@@ -1074,9 +1074,9 @@ div[data-testid="metric-container"]{background:#1c1c1c;border-radius:10px;
 }
 
 .stButton button[data-testid="baseButton-primary"]:hover {
-  background: linear-gradient(135deg, rgba(188, 163, 116, 0.45) 0%, rgba(255, 255, 255, 0.1) 100%) !important;
-  border-color: rgba(188, 163, 116, 0.7) !important;
-  box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.4), 0 0 25px rgba(188, 163, 116, 0.6) !important;
+  background: linear-gradient(135deg, rgba(155, 138, 92, 0.45) 0%, rgba(255, 255, 255, 0.1) 100%) !important;
+  border-color: rgba(155, 138, 92, 0.7) !important;
+  box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.4), 0 0 25px rgba(155, 138, 92, 0.6) !important;
   color: var(--text-color) !important;
 }
 
@@ -1103,11 +1103,11 @@ div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"] * {
 }
 
 div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"]:hover {
-  background: rgba(188, 163, 116, 0.15) !important;
+  background: rgba(155, 138, 92, 0.15) !important;
   color: var(--text-color) !important;
-  border-color: rgba(188, 163, 116, 0.4) !important;
-  border-top-color: rgba(188, 163, 116, 0.6) !important;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.15), 0 0 15px rgba(188, 163, 116, 0.3) !important;
+  border-color: rgba(155, 138, 92, 0.4) !important;
+  border-top-color: rgba(155, 138, 92, 0.6) !important;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.15), 0 0 15px rgba(155, 138, 92, 0.3) !important;
   transform: translateY(-2px) !important;
 }
 
@@ -1117,9 +1117,9 @@ div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"]:hover * 
 
 /* Sidebar Botões Primários */
 div[data-testid="stSidebar"] button[data-testid="baseButton-primary"] {
-  background: linear-gradient(135deg, rgba(188, 163, 116, 0.3) 0%, rgba(0, 0, 0, 0.7) 100%) !important;
+  background: linear-gradient(135deg, rgba(155, 138, 92, 0.3) 0%, rgba(0, 0, 0, 0.7) 100%) !important;
   color: #ffffff !important;
-  border: 1px solid rgba(188, 163, 116, 0.5) !important;
+  border: 1px solid rgba(155, 138, 92, 0.5) !important;
   border-top: 1px solid rgba(255, 255, 255, 0.4) !important;
   border-radius: 20px !important;
   box-shadow: inset 0 1px 3px rgba(255,255,255,0.3), 0 4px 15px rgba(188,163,116,0.3) !important;
@@ -1129,7 +1129,7 @@ div[data-testid="stSidebar"] button[data-testid="baseButton-primary"] {
 }
 
 div[data-testid="stSidebar"] button[data-testid="baseButton-primary"]:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(188, 163, 116, 0.45) 100%) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(155, 138, 92, 0.45) 100%) !important;
   color: #ffffff !important;
   border-color: rgba(255, 255, 255, 0.7) !important;
   box-shadow: inset 0 1px 3px rgba(255,255,255,0.4), 0 0 25px rgba(188,163,116,0.5) !important;
@@ -3459,7 +3459,7 @@ if not st.session_state.authenticated:
         st.image("logo_drh.png", use_container_width=True)
 
 
-        st.markdown("<h2 style='text-align: center; color: #bca374; margin-top: -15px;'>Painel de Controle AADP</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; color: #9b8a5c; margin-top: -15px;'>Painel de Controle AADP</h2>", unsafe_allow_html=True)
 
 
         st.markdown("<h4 style='text-align: center; color: #a0a0a0; font-size: 0.95rem;'>Polícia Militar de Minas Gerais · Resolução 5458/2025</h4>", unsafe_allow_html=True)
@@ -3997,7 +3997,7 @@ with st.sidebar:
     else:
 
 
-        st.markdown(f"<small>🔑 <b>Perfil:</b> <span style='color:#bca374;'>{sidebar_active_role}</span></small>", unsafe_allow_html=True)
+        st.markdown(f"<small>🔑 <b>Perfil:</b> <span style='color:#9b8a5c;'>{sidebar_active_role}</span></small>", unsafe_allow_html=True)
 
 
         
@@ -4514,7 +4514,7 @@ logo_html = f'<img src="data:image/png;base64,{logo_base64}" style="width: 100%;
 
 
 
-st.markdown(f'<div class="main-title">{logo_html}<div style="margin-top: 10px;"><h1 style="font-size: 2.3rem; margin: 0; font-weight: 800; color: #bca374; text-transform: uppercase;">Painel de Controle AADP</h1><p style="font-size: 1.05rem; margin: 5px 0 0 0; color: #e5dccb; font-weight: 500;">Polícia Militar de Minas Gerais · Resolução 5458/2025</p><p style="font-size: 0.9rem; margin-top: 8px; color: #a0a0a0; font-style: italic;">Dados consolidados em {last_mod_str}</p></div></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="main-title">{logo_html}<div style="margin-top: 10px;"><h1 style="font-size: 2.3rem; margin: 0; font-weight: 800; color: #9b8a5c; text-transform: uppercase;">Painel de Controle AADP</h1><p style="font-size: 1.05rem; margin: 5px 0 0 0; color: #e5dccb; font-weight: 500;">Polícia Militar de Minas Gerais · Resolução 5458/2025</p><p style="font-size: 0.9rem; margin-top: 8px; color: #a0a0a0; font-style: italic;">Dados consolidados em {last_mod_str}</p></div></div>', unsafe_allow_html=True)
 
 
 
@@ -4522,7 +4522,7 @@ st.markdown(f'<div class="main-title">{logo_html}<div style="margin-top: 10px;">
 
 # --- FORMULÁRIO DE ALTERAÇÃO DE SENHA ---
 if st.session_state.get("show_change_password", False):
-    st.markdown('<div class="info-box" style="border-left: 5px solid #bca374;">🛡️ <b>Alterar Senha do Usuário</b></div>', unsafe_allow_html=True)
+    st.markdown('<div class="info-box" style="border-left: 5px solid #9b8a5c;">🛡️ <b>Alterar Senha do Usuário</b></div>', unsafe_allow_html=True)
     with st.form("form_change_password", clear_on_submit=True):
         curr_pw = st.text_input("Senha Atual:", type="password", key="chg_curr_pw")
         new_pw = st.text_input("Nova Senha:", type="password", key="chg_new_pw")
@@ -4778,7 +4778,7 @@ if active_page == "Análise Gráfica":
         insidetextorientation="radial",
 
 
-        marker=dict(colors=cols_pizza, line=dict(color="#121212", width=3)),
+        marker=dict(colors=cols_pizza, line=dict(color="#13110b", width=3)),
 
 
         hovertemplate="<b>%{label}</b><br>Avaliações: <b>%{value:,}</b><br>%{percent}<extra></extra>",
@@ -4799,7 +4799,7 @@ if active_page == "Análise Gráfica":
         x=0.5, y=0.5, showarrow=False,
 
 
-        font=dict(size=22, color="#bca374", family="Inter"),
+        font=dict(size=22, color="#9b8a5c", family="Inter"),
 
 
         align="center",
@@ -4817,7 +4817,7 @@ if active_page == "Análise Gráfica":
         title=dict(text="<b>Status das Avaliações — AADP 2026</b>",
 
 
-                   font=dict(size=20, color="#bca374"), x=0.5, y=0.96),
+                   font=dict(size=20, color="#9b8a5c"), x=0.5, y=0.96),
 
 
         height=500, showlegend=False,
@@ -4877,7 +4877,7 @@ if active_page == "Análise Gráfica":
             marker=dict(colors=[SIT_COLORS.get(s,"#aaa") for s in sit_d["Situação Comissão"]],
 
 
-                        line=dict(color="#121212", width=3)),
+                        line=dict(color="#13110b", width=3)),
 
 
             hovertemplate="<b>%{label}</b><br>%{value:,} avaliações (%{percent})<extra></extra>",
@@ -4892,7 +4892,7 @@ if active_page == "Análise Gráfica":
             template="plotly_dark",
 
 
-            title=dict(text="<b>Situação da Comissão</b>", font_size=15, x=0.5, font=dict(color="#bca374")),
+            title=dict(text="<b>Situação da Comissão</b>", font_size=15, x=0.5, font=dict(color="#9b8a5c")),
 
 
             height=380, showlegend=False,
@@ -4945,7 +4945,7 @@ if active_page == "Análise Gráfica":
                                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                                xaxis_title="", yaxis_title="Qtd",
                                showlegend=False,
-                               title_font=dict(color="#bca374"))
+                               title_font=dict(color="#9b8a5c"))
         
         fig_bar.update_xaxes(showgrid=False)
         fig_bar.update_yaxes(showgrid=True, gridcolor="#2a2a2a")
@@ -4987,7 +4987,7 @@ if active_page == "Análise Gráfica":
         st.session_state.dist_legend_hom = True
 
     # Legenda Interativa - Checkboxes para selecionar os status
-    st.markdown("<p style='font-size: 0.95rem; font-weight: bold; margin-bottom: 6px; color: #bca374;'>Legenda Interativa — Selecione os Status para Exibição e Ordenação:</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 0.95rem; font-weight: bold; margin-bottom: 6px; color: #9b8a5c;'>Legenda Interativa — Selecione os Status para Exibição e Ordenação:</p>", unsafe_allow_html=True)
     l1, l2, l3, l4 = st.columns(4)
     with l1:
         enc_label = "🟢 Encerrada" if st.session_state.dist_legend_enc else "⚪ Encerrada"
@@ -5074,7 +5074,7 @@ if active_page == "Análise Gráfica":
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         xaxis_title="", yaxis_title="Avaliações",
         showlegend=False,
-        title_font=dict(color="#bca374")
+        title_font=dict(color="#9b8a5c")
     )
     
     fig_rpm.update_xaxes(tickangle=45, showgrid=False)
@@ -5133,7 +5133,7 @@ if active_page == "Análise Gráfica":
                                 xaxis_title="", yaxis_title="Qtd",
 
 
-                                title_font=dict(color="#bca374"))
+                                title_font=dict(color="#9b8a5c"))
 
 
         fig_cert.update_xaxes(showgrid=False)
@@ -5267,7 +5267,7 @@ if active_page == "Análise Gráfica":
                     bgcolor="rgba(0,0,0,0)"
                 ),
                 hovermode="x unified",
-                title_font=dict(color="#bca374")
+                title_font=dict(color="#9b8a5c")
             )
 
 
