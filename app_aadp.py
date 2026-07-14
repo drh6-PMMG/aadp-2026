@@ -927,12 +927,20 @@ button[aria-label*="Administrador"] {
     border-radius: 8px !important;
     color: var(--text-color) !important;
     font-weight: 600 !important;
-    padding: 6px 12px !important;
+    padding: 6px 4px !important;
     transition: all 0.25s ease !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+    
+    /* Fixed unified dimensions and vertical centering */
+    min-height: 75px !important;
+    height: 75px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
 }
 
-/* Force inner text tags (p, span, div) to inherit/use text-color */
+/* Force inner text tags to wrap on pre-line and have uniform small font size */
 button[aria-label*="Gráfica"] *,
 button[aria-label*="Gerais"] *,
 button[aria-label*="Pendentes"] *,
@@ -940,6 +948,28 @@ button[aria-label*="Relatório"] *,
 button[aria-label*="Notas"] *,
 button[aria-label*="Administrador"] * {
     color: var(--text-color) !important;
+    white-space: pre-line !important;
+    text-align: center !important;
+    font-size: 0.78rem !important;
+    line-height: 1.25 !important;
+}
+
+/* Highlight the icon (first line / emoji) by making it significantly larger */
+button[aria-label*="Gráfica"] p::first-line,
+button[aria-label*="Gerais"] p::first-line,
+button[aria-label*="Pendentes"] p::first-line,
+button[aria-label*="Relatório"] p::first-line,
+button[aria-label*="Notas"] p::first-line,
+button[aria-label*="Administrador"] p::first-line,
+button[aria-label*="Gráfica"] span::first-line,
+button[aria-label*="Gerais"] span::first-line,
+button[aria-label*="Pendentes"] span::first-line,
+button[aria-label*="Relatório"] span::first-line,
+button[aria-label*="Notas"] span::first-line,
+button[aria-label*="Administrador"] span::first-line {
+    font-size: 1.45rem !important;
+    line-height: 1.4 !important;
+    font-weight: normal !important;
 }
 
 button[aria-label*="Gráfica"]:hover,
@@ -4639,25 +4669,25 @@ st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
 main_active_role = st.session_state.get("simulated_role", st.session_state.user_role) if st.session_state.get("simulation_active", False) else st.session_state.user_role
 
 main_nav_pages = [
-    ("📊 Análise Gráfica", "Análise Gráfica"),
-    ("📋 Dados Gerais", "Dados Gerais"),
-    ("⏳ Avaliações Pendentes", "Avaliações Pendentes"),
-    ("👥 Avaliadores Pendentes", "Avaliadores Pendentes"),
+    ("📊\nAnálise Gráfica", "Análise Gráfica"),
+    ("📋\nDados Gerais", "Dados Gerais"),
+    ("⏳\nAvaliações Pendentes", "Avaliações Pendentes"),
+    ("👥\nAvaliadores Pendentes", "Avaliadores Pendentes"),
 ]
 
 if main_active_role not in ("P1", "SADM"):
-    main_nav_pages.append(("📥 Gerar Relatório", "Gerar Relatório"))
-    main_nav_pages.append(("📄 Relatório Word", "Relatório Word"))
+    main_nav_pages.append(("📥\nGerar Relatório", "Gerar Relatório"))
+    main_nav_pages.append(("📄\nRelatório Word", "Relatório Word"))
 
 if main_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
-    main_nav_pages.append(("📊 Auditoria de Notas", "Auditoria de Notas"))
+    main_nav_pages.append(("📊\nAuditoria de Notas", "Auditoria de Notas"))
 
 if st.session_state.user_role == "ADMINISTRADOR":
     p_count = db_get_pending_count()
     if p_count > 0:
-        main_nav_pages.append((f"⚙️ Painel Administrador ({p_count} 🔴)", "Painel Administrador"))
+        main_nav_pages.append((f"⚙️\nPainel Administrador ({p_count} 🔴)", "Painel Administrador"))
     else:
-        main_nav_pages.append(("⚙️ Painel Administrador", "Painel Administrador"))
+        main_nav_pages.append(("⚙️\nPainel Administrador", "Painel Administrador"))
 
 # Render as horizontal buttons in columns
 num_tabs = len(main_nav_pages)
