@@ -1159,6 +1159,160 @@ div[data-testid="stSidebar"] button[data-testid="baseButton-primary"]:hover {
 }
 
 
+/* Glassmorphic Crystal Style for Report Scope Selection Buttons */
+div.element-container:has(.report-scope-marker) + div[data-testid="stHorizontalBlock"] button,
+div.element-container:has(.report-scope-marker) + div.element-container button,
+div.element-container:has(.report-scope-marker) + div button {
+    background: rgba(128, 128, 128, 0.05) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(128, 128, 128, 0.18) !important;
+    border-radius: 8px !important;
+    color: var(--text-color) !important;
+    font-weight: 600 !important;
+    padding: 6px 4px !important;
+    transition: all 0.25s ease !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+    
+    /* Fixed unified dimensions and vertical centering */
+    min-height: 95px !important;
+    height: 95px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+div.element-container:has(.report-scope-marker) + div[data-testid="stHorizontalBlock"] button *,
+div.element-container:has(.report-scope-marker) + div.element-container button *,
+div.element-container:has(.report-scope-marker) + div button * {
+    color: var(--text-color) !important;
+    white-space: pre-line !important;
+    text-align: center !important;
+    font-size: 0.85rem !important;
+    line-height: 1.3 !important;
+    font-weight: 600 !important;
+}
+
+/* Highlight the emoji icon as larger */
+div.element-container:has(.report-scope-marker) + div[data-testid="stHorizontalBlock"] button p::first-line,
+div.element-container:has(.report-scope-marker) + div.element-container button p::first-line,
+div.element-container:has(.report-scope-marker) + div button p::first-line,
+div.element-container:has(.report-scope-marker) + div[data-testid="stHorizontalBlock"] button span::first-line,
+div.element-container:has(.report-scope-marker) + div.element-container button span::first-line,
+div.element-container:has(.report-scope-marker) + div button span::first-line {
+    font-size: 1.75rem !important;
+    line-height: 1.45 !important;
+    font-weight: normal !important;
+}
+
+div.element-container:has(.report-scope-marker) + div[data-testid="stHorizontalBlock"] button:hover,
+div.element-container:has(.report-scope-marker) + div.element-container button:hover,
+div.element-container:has(.report-scope-marker) + div button:hover {
+    background: rgba(128, 128, 128, 0.12) !important;
+    border-color: rgba(128, 128, 128, 0.3) !important;
+    transform: translateY(-1px) !important;
+}
+
+div.element-container:has(.report-scope-marker) + div[data-testid="stHorizontalBlock"] button:hover *,
+div.element-container:has(.report-scope-marker) + div.element-container button:hover *,
+div.element-container:has(.report-scope-marker) + div button:hover * {
+    color: var(--text-color) !important;
+}
+
+/* Selected active button (primary) */
+div.element-container:has(.report-scope-marker) + div[data-testid="stHorizontalBlock"] button[kind="primary"],
+div.element-container:has(.report-scope-marker) + div.element-container button[kind="primary"],
+div.element-container:has(.report-scope-marker) + div button[kind="primary"] {
+    background: rgba(155, 138, 92, 0.22) !important;
+    border: 1.5px solid #9b8a5c !important;
+    box-shadow: 0 0 14px rgba(155, 138, 92, 0.45) !important;
+    color: var(--text-color) !important;
+}
+
+div.element-container:has(.report-scope-marker) + div[data-testid="stHorizontalBlock"] button[kind="primary"] *,
+div.element-container:has(.report-scope-marker) + div.element-container button[kind="primary"] *,
+div.element-container:has(.report-scope-marker) + div button[kind="primary"] * {
+    color: var(--text-color) !important;
+}
+
+/* Glassmorphic Crystal Style for Excel Scope Selection Buttons */
+div.element-container:has(.excel-scope-marker) + div[data-testid="stHorizontalBlock"] button,
+div.element-container:has(.excel-scope-marker) + div.element-container button,
+div.element-container:has(.excel-scope-marker) + div button {
+    background: rgba(128, 128, 128, 0.05) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(128, 128, 128, 0.18) !important;
+    border-radius: 8px !important;
+    color: var(--text-color) !important;
+    font-weight: 600 !important;
+    padding: 6px 4px !important;
+    transition: all 0.25s ease !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+    
+    /* Fixed unified dimensions and vertical centering */
+    min-height: 95px !important;
+    height: 95px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+div.element-container:has(.excel-scope-marker) + div[data-testid="stHorizontalBlock"] button *,
+div.element-container:has(.excel-scope-marker) + div.element-container button *,
+div.element-container:has(.excel-scope-marker) + div button * {
+    color: var(--text-color) !important;
+    white-space: pre-line !important;
+    text-align: center !important;
+    font-size: 0.85rem !important;
+    line-height: 1.3 !important;
+    font-weight: 600 !important;
+}
+
+/* Highlight the emoji icon as larger */
+div.element-container:has(.excel-scope-marker) + div[data-testid="stHorizontalBlock"] button p::first-line,
+div.element-container:has(.excel-scope-marker) + div.element-container button p::first-line,
+div.element-container:has(.excel-scope-marker) + div button p::first-line,
+div.element-container:has(.excel-scope-marker) + div[data-testid="stHorizontalBlock"] button span::first-line,
+div.element-container:has(.excel-scope-marker) + div.element-container button span::first-line,
+div.element-container:has(.excel-scope-marker) + div button span::first-line {
+    font-size: 1.75rem !important;
+    line-height: 1.45 !important;
+    font-weight: normal !important;
+}
+
+div.element-container:has(.excel-scope-marker) + div[data-testid="stHorizontalBlock"] button:hover,
+div.element-container:has(.excel-scope-marker) + div.element-container button:hover,
+div.element-container:has(.excel-scope-marker) + div button:hover {
+    background: rgba(128, 128, 128, 0.12) !important;
+    border-color: rgba(128, 128, 128, 0.3) !important;
+    transform: translateY(-1px) !important;
+}
+
+div.element-container:has(.excel-scope-marker) + div[data-testid="stHorizontalBlock"] button:hover *,
+div.element-container:has(.excel-scope-marker) + div.element-container button:hover *,
+div.element-container:has(.excel-scope-marker) + div button:hover * {
+    color: var(--text-color) !important;
+}
+
+/* Selected active button (primary) */
+div.element-container:has(.excel-scope-marker) + div[data-testid="stHorizontalBlock"] button[kind="primary"],
+div.element-container:has(.excel-scope-marker) + div.element-container button[kind="primary"],
+div.element-container:has(.excel-scope-marker) + div button[kind="primary"] {
+    background: rgba(155, 138, 92, 0.22) !important;
+    border: 1.5px solid #9b8a5c !important;
+    box-shadow: 0 0 14px rgba(155, 138, 92, 0.45) !important;
+    color: var(--text-color) !important;
+}
+
+div.element-container:has(.excel-scope-marker) + div[data-testid="stHorizontalBlock"] button[kind="primary"] *,
+div.element-container:has(.excel-scope-marker) + div.element-container button[kind="primary"] *,
+div.element-container:has(.excel-scope-marker) + div button[kind="primary"] * {
+    color: var(--text-color) !important;
+}
+
 </style>
 
 
@@ -5454,19 +5608,31 @@ if active_page == "Avaliações Pendentes":
 
 
 
-    k1,k2,k3,k4 = st.columns(4)
-
-
-    k1.metric("🔴 Abertas",          (df_pv["Status Avaliação"]=="Aberta").sum())
-
-
-    k2.metric("🟠 Parc. Encerradas", (df_pv["Status Avaliação"]=="Parcialmente Encerrada").sum())
-
-
-    k3.metric("🟡 Homologação",       (df_pv["Status Avaliação"]=="Homologação").sum())
-
-
-    k4.metric("📊 Total",             len(df_pv))
+    k1, k2, k3, k4 = st.columns(4)
+    with k1:
+        st.markdown(f'<div class="kpi-card kpi-aberta">'
+                    '<div class="label">🔴 Abertas</div>'
+                    f'<div class="value">{fmt_num((df_pv["Status Avaliação"]=="Aberta").sum())}</div>'
+                    '<div class="sub">AV1 pendente</div>'
+                    '</div>', unsafe_allow_html=True)
+    with k2:
+        st.markdown(f'<div class="kpi-card kpi-parc">'
+                    '<div class="label">🟠 Parc. Encerradas</div>'
+                    f'<div class="value">{fmt_num((df_pv["Status Avaliação"]=="Parcialmente Encerrada").sum())}</div>'
+                    '<div class="sub">AV2 pendente</div>'
+                    '</div>', unsafe_allow_html=True)
+    with k3:
+        st.markdown(f'<div class="kpi-card kpi-hom">'
+                    '<div class="label">🟡 Homologação</div>'
+                    f'<div class="value">{fmt_num((df_pv["Status Avaliação"]=="Homologação").sum())}</div>'
+                    '<div class="sub">Homologação pendente</div>'
+                    '</div>', unsafe_allow_html=True)
+    with k4:
+        st.markdown(f'<div class="kpi-card kpi-total">'
+                    '<div class="label">📊 Total</div>'
+                    f'<div class="value">{fmt_num(len(df_pv))}</div>'
+                    '<div class="sub">Registros filtrados</div>'
+                    '</div>', unsafe_allow_html=True)
 
 
 
@@ -5617,6 +5783,34 @@ if active_page == "Avaliadores Pendentes":
 
 
         df_hom = df[df["Status Avaliação"] == "Homologação"]
+
+    # Pre-calcular quantitativo de avaliadores/homologadores únicos pendentes (função)
+    cnt_av1 = df_ab["nrPM (Av1)"].dropna().astype(str).str.strip().replace("", pd.NA).dropna().nunique()
+    cnt_av2 = df_pe["nrPM (Av2)"].dropna().astype(str).str.strip().replace("", pd.NA).dropna().nunique()
+    cnt_hom = df_hom["nrPM (Hom)"].dropna().astype(str).str.strip().replace("", pd.NA).dropna().nunique()
+
+    # Renderizar cards de quantitativos funcionais
+    col_av1, col_av2, col_av3 = st.columns(3)
+    with col_av1:
+        st.markdown(f'<div class="kpi-card kpi-total">'
+                    '<div class="label">👤 Avaliador 1 (AV1)</div>'
+                    f'<div class="value">{fmt_num(cnt_av1)}</div>'
+                    '<div class="sub">Avaliadores com pendência de AV1</div>'
+                    '</div>', unsafe_allow_html=True)
+    with col_av2:
+        st.markdown(f'<div class="kpi-card kpi-parc">'
+                    '<div class="label">👥 Avaliador 2 (AV2)</div>'
+                    f'<div class="value">{fmt_num(cnt_av2)}</div>'
+                    '<div class="sub">Avaliadores com pendência de AV2</div>'
+                    '</div>', unsafe_allow_html=True)
+    with col_av3:
+        st.markdown(f'<div class="kpi-card kpi-hom">'
+                    '<div class="label">⚖️ Homologador (HOM)</div>'
+                    f'<div class="value">{fmt_num(cnt_hom)}</div>'
+                    '<div class="sub">Homologadores com pendência de HOM</div>'
+                    '</div>', unsafe_allow_html=True)
+
+    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
 
 
@@ -7982,17 +8176,33 @@ if active_page == "Gerar Relatório":
     if active_role in ("P1", "SADM"):
         st.warning("⚠️ Você não possui permissão para acessar esta funcionalidade.")
     else:
-        st.markdown('<div class="info-box">'
-                    '✅ Geração <b>100% em memória</b> — funciona tanto no servidor local '
-                    'quanto no <b>Streamlit Community Cloud</b> (online). '
-                    'O arquivo ZIP é baixado diretamente no seu navegador.</div>',
-                    unsafe_allow_html=True)
-    
-        modo_rel = st.radio("📋 Tipo de relatório:", [
-            "🌐 Completo — Geral + todas as Unidades RPM",
-            "📋 Somente Planilha Geral",
-            "🎯 Unidades RPM específicas",
-        ], horizontal=False)
+        if "excel_modo_rel" not in st.session_state:
+            st.session_state.excel_modo_rel = "Completo"
+            
+        st.markdown("<p style='font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; color: #9b8a5c;'>Tipo de relatório:</p>", unsafe_allow_html=True)
+        st.markdown("<div class='excel-scope-marker'></div>", unsafe_allow_html=True)
+        
+        col_ex1, col_ex2, col_ex3 = st.columns(3)
+        with col_ex1:
+            is_ex1 = (st.session_state.excel_modo_rel == "Completo")
+            btn_ex1_type = "primary" if is_ex1 else "secondary"
+            if st.button("🌐\nCompleto\n(Geral + RPMs)", key="btn_excel_scope_completo", use_container_width=True, type=btn_ex1_type):
+                st.session_state.excel_modo_rel = "Completo"
+                st.rerun()
+        with col_ex2:
+            is_ex2 = (st.session_state.excel_modo_rel == "Somente Geral")
+            btn_ex2_type = "primary" if is_ex2 else "secondary"
+            if st.button("📋\nGeral\n(Somente Geral)", key="btn_excel_scope_geral", use_container_width=True, type=btn_ex2_type):
+                st.session_state.excel_modo_rel = "Somente Geral"
+                st.rerun()
+        with col_ex3:
+            is_ex3 = (st.session_state.excel_modo_rel == "Unidades RPM específicas")
+            btn_ex3_type = "primary" if is_ex3 else "secondary"
+            if st.button("🎯\nEspecíficas\n(Filtrar Unidades)", key="btn_excel_scope_especifica", use_container_width=True, type=btn_ex3_type):
+                st.session_state.excel_modo_rel = "Unidades RPM específicas"
+                st.rerun()
+                
+        modo_rel = st.session_state.excel_modo_rel
     
         units_sel = []
         if "específicas" in modo_rel:
@@ -8034,14 +8244,7 @@ if active_page == "Gerar Relatório":
 # ══════════════════════════════════════════════════════════════════════════════
 if active_page == "Relatório Word":
     st.markdown("### 📄 Relatório Word (.docx)")
-    st.markdown('<div class="info-box">'
-                '📄 <b>Geração de Relatório Executivo:</b> Esta aba gera um relatório gerencial completo '
-                'em formato Word com base no arquivo Geral.xlsx.</div>',
-                unsafe_allow_html=True)
-                
     df_word = df_full
-    st.success("✅ Banco de dados AADP 2026 processado automaticamente!")
-    st.info(f"📊 {len(df_word):,} registros disponíveis para geração de relatórios!")
                 
     if df_word is not None:
         st.markdown("---")
@@ -8049,14 +8252,35 @@ if active_page == "Relatório Word":
         if active_role in ("P1", "SADM"):
             st.warning("⚠️ Você não possui permissão para acessar esta funcionalidade.")
         else:
-            st.markdown("#### Configurações do Relatório")
+            st.markdown("<h4 style='font-size: 1.35rem; font-weight: bold; margin-bottom: 12px; color: #9b8a5c;'>Configurações do Relatório</h4>", unsafe_allow_html=True)
             
-            # Opções solicitadas pelo negócio
-            rel_scope = st.radio("Escopo do Relatório:", [
-                "🏢 Geral RPM (Somente consolidados das unidades principais UDI/UDG)",
-                "🌐 Geral Subordinadas (Completo com UDI/UDG e unidades subordinadas)",
-                "🎯 Por RPM específica (Filtrar por unidades específicas)"
-            ])
+            if "rel_scope" not in st.session_state:
+                st.session_state.rel_scope = "Geral RPM"
+                
+            st.markdown("<p style='font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; color: #9b8a5c;'>Escopo do Relatório:</p>", unsafe_allow_html=True)
+            st.markdown("<div class='report-scope-marker'></div>", unsafe_allow_html=True)
+            
+            col_sc1, col_sc2, col_sc3 = st.columns(3)
+            with col_sc1:
+                is_sc1 = (st.session_state.rel_scope == "Geral RPM")
+                btn_sc1_type = "primary" if is_sc1 else "secondary"
+                if st.button("🏢\nGeral RPM\n(UDI/UDG Principais)", key="btn_scope_geral_rpm", use_container_width=True, type=btn_sc1_type):
+                    st.session_state.rel_scope = "Geral RPM"
+                    st.rerun()
+            with col_sc2:
+                is_sc2 = (st.session_state.rel_scope == "Geral Subordinadas")
+                btn_sc2_type = "primary" if is_sc2 else "secondary"
+                if st.button("🌐\nGeral Subordinadas\n(UDI/UDG + Subordinadas)", key="btn_scope_geral_sub", use_container_width=True, type=btn_sc2_type):
+                    st.session_state.rel_scope = "Geral Subordinadas"
+                    st.rerun()
+            with col_sc3:
+                is_sc3 = (st.session_state.rel_scope == "Por RPM específica")
+                btn_sc3_type = "primary" if is_sc3 else "secondary"
+                if st.button("🎯\nPor RPM específica\n(Filtrar por Unidades)", key="btn_scope_especifica", use_container_width=True, type=btn_sc3_type):
+                    st.session_state.rel_scope = "Por RPM específica"
+                    st.rerun()
+                    
+            rel_scope = st.session_state.rel_scope
             
             selected_rpms = []
             if "específica" in rel_scope:
@@ -8100,7 +8324,6 @@ if active_page == "Relatório Word":
 # ══════════════════════════════════════════════════════════════════════════════
 if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
     st.markdown("### 📊 Auditoria de Notas")
-    st.info("👉 Esta tela apresenta o conteúdo consolidado da planilha mestre `Analise avaliacoes completa.xlsx` contendo as regras de negócio de avaliações, recursos e notas médias finais.")
     
     _role_audit = sidebar_active_role
     _user_rpm   = st.session_state.get("simulated_rpm", st.session_state.get("user_rpm", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_rpm", "")
