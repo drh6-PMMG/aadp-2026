@@ -644,10 +644,20 @@ st.markdown("""
 <script>
 (function() {
     let changed = false;
+    const key = "streamlit:themeConfiguration";
+    const expected = '{"themePreset":"dark"}';
+    
+    const isInitialized = () => {
+        try {
+            return window.sessionStorage.getItem("theme_initialized") === "true" ||
+                   (window.parent && window.parent.sessionStorage.getItem("theme_initialized") === "true");
+        } catch(e) {
+            return false;
+        }
+    };
+
     const forceDark = (win) => {
         try {
-            const expected = '{"themePreset":"dark"}';
-            const key = "streamlit:themeConfiguration";
             if (win.localStorage.getItem(key) !== expected) {
                 win.localStorage.setItem(key, expected);
                 changed = true;
@@ -659,14 +669,18 @@ st.markdown("""
                     changed = true;
                 }
             });
+            win.sessionStorage.setItem("theme_initialized", "true");
         } catch(e) {}
     };
-    forceDark(window);
-    if (window.parent) {
-        forceDark(window.parent);
-    }
-    if (changed) {
-        window.location.reload();
+
+    if (!isInitialized()) {
+        forceDark(window);
+        if (window.parent) {
+            forceDark(window.parent);
+        }
+        if (changed) {
+            window.location.reload();
+        }
     }
 })();
 </script>
