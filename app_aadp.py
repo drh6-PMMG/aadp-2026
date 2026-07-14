@@ -914,7 +914,9 @@ button[aria-label="⚪ Homologação"] {
 }
 
 /* Glassmorphic Crystal Style for Page Navigation / Horizontal Tab Buttons */
-div.element-container:has(.main-nav-marker) + div.element-container button {
+div.element-container:has(.main-nav-marker) + div[data-testid="stHorizontalBlock"] button,
+div.element-container:has(.main-nav-marker) + div.element-container button,
+div.element-container:has(.main-nav-marker) + div button {
     background: rgba(128, 128, 128, 0.06) !important;
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
@@ -936,7 +938,9 @@ div.element-container:has(.main-nav-marker) + div.element-container button {
 }
 
 /* Force inner text tags to wrap on pre-line and have uniform small font size */
-div.element-container:has(.main-nav-marker) + div.element-container button * {
+div.element-container:has(.main-nav-marker) + div[data-testid="stHorizontalBlock"] button *,
+div.element-container:has(.main-nav-marker) + div.element-container button *,
+div.element-container:has(.main-nav-marker) + div button * {
     color: var(--text-color) !important;
     white-space: pre-line !important;
     text-align: center !important;
@@ -945,25 +949,35 @@ div.element-container:has(.main-nav-marker) + div.element-container button * {
 }
 
 /* Highlight the icon (first line / emoji) by making it significantly larger */
+div.element-container:has(.main-nav-marker) + div[data-testid="stHorizontalBlock"] button p::first-line,
 div.element-container:has(.main-nav-marker) + div.element-container button p::first-line,
-div.element-container:has(.main-nav-marker) + div.element-container button span::first-line {
-    font-size: 1.6rem !important;
-    line-height: 1.4 !important;
+div.element-container:has(.main-nav-marker) + div button p::first-line,
+div.element-container:has(.main-nav-marker) + div[data-testid="stHorizontalBlock"] button span::first-line,
+div.element-container:has(.main-nav-marker) + div.element-container button span::first-line,
+div.element-container:has(.main-nav-marker) + div button span::first-line {
+    font-size: 1.65rem !important;
+    line-height: 1.45 !important;
     font-weight: normal !important;
 }
 
-div.element-container:has(.main-nav-marker) + div.element-container button:hover {
+div.element-container:has(.main-nav-marker) + div[data-testid="stHorizontalBlock"] button:hover,
+div.element-container:has(.main-nav-marker) + div.element-container button:hover,
+div.element-container:has(.main-nav-marker) + div button:hover {
     background: rgba(128, 128, 128, 0.12) !important;
     border-color: rgba(128, 128, 128, 0.3) !important;
     transform: translateY(-1px) !important;
 }
 
-div.element-container:has(.main-nav-marker) + div.element-container button:hover * {
+div.element-container:has(.main-nav-marker) + div[data-testid="stHorizontalBlock"] button:hover *,
+div.element-container:has(.main-nav-marker) + div.element-container button:hover *,
+div.element-container:has(.main-nav-marker) + div button:hover * {
     color: var(--text-color) !important;
 }
 
 /* Make active page buttons glow gold */
-div.element-container:has(.main-nav-marker) + div.element-container button[kind="primary"] {
+div.element-container:has(.main-nav-marker) + div[data-testid="stHorizontalBlock"] button[kind="primary"],
+div.element-container:has(.main-nav-marker) + div.element-container button[kind="primary"],
+div.element-container:has(.main-nav-marker) + div button[kind="primary"] {
     background: rgba(155, 138, 92, 0.2) !important;
     border: 1.5px solid #9b8a5c !important;
     box-shadow: 0 0 12px rgba(155, 138, 92, 0.35) !important;
@@ -971,7 +985,9 @@ div.element-container:has(.main-nav-marker) + div.element-container button[kind=
     font-weight: 700 !important;
 }
 
-div.element-container:has(.main-nav-marker) + div.element-container button[kind="primary"] * {
+div.element-container:has(.main-nav-marker) + div[data-testid="stHorizontalBlock"] button[kind="primary"] *,
+div.element-container:has(.main-nav-marker) + div.element-container button[kind="primary"] *,
+div.element-container:has(.main-nav-marker) + div button[kind="primary"] * {
     color: var(--text-color) !important;
 }
 
