@@ -1433,7 +1433,7 @@ def load_config():
     # Carrega do st.secrets do Streamlit para evitar perda de IDs/links após reinicializações
 
 
-    for key in ["drive_av_id", "drive_si_id", "drive_geral_id", "drive_master_xlsx_id", "sheet_api_url", "fonte_dados", "db_path"]:
+    for key in ["drive_av_id", "drive_si_id", "drive_geral_id", "drive_master_xlsx_id", "sheet_api_url", "fonte_dados", "db_path", "smtp_host", "smtp_port", "smtp_user", "smtp_pass", "alert_receiver_email", "alert_webhook_url"]:
 
 
         try:
@@ -1781,7 +1781,84 @@ def refresh_db_cache():
     return users
 
 
+def send_new_user_alert(pm, name, rank, rpm, unit, function):
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.header import Header
+    import urllib.request
+    import json
+    
+    cfg = load_config()
+    
+    subject = f"⚠️ Novo Cadastro Pendente AADP 2026 - PM: {pm}"
+    body = f"""Olá Administrador,
 
+Um novo pedido de cadastro de acesso ao AADP 2026 foi realizado:
+
+• Nº PM: {pm}
+• Nome: {name}
+• Posto/Graduação: {rank}
+• RPM/UDG: {rpm}
+• Unidade: {unit}
+• Função: {function}
+
+Por favor, acesse o Painel Administrador do sistema para aprovar ou recusar esta solicitação.
+"""
+    
+    # 1. Webhook Alert (Zapier/Make/etc)
+    webhook_url = cfg.get("alert_webhook_url", "").strip()
+    if webhook_url:
+        try:
+            payload = {
+                "event": "new_user_registration",
+                "pm": pm,
+                "name": name,
+                "rank": rank,
+                "rpm": rpm,
+                "unit": unit,
+                "function": function,
+                "message": body
+            }
+            req = urllib.request.Request(
+                webhook_url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=5) as response:
+                pass
+        except Exception as e:
+            log_action("SYSTEM", "ALERT_WEBHOOK_ERROR", f"Falha no webhook de alerta: {str(e)}")
+
+    # 2. SMTP Email Alert
+    smtp_host = cfg.get("smtp_host", "").strip()
+    smtp_port = str(cfg.get("smtp_port", "")).strip()
+    smtp_user = cfg.get("smtp_user", "").strip()
+    smtp_pass = cfg.get("smtp_pass", "").replace(" ", "").strip()
+    receiver = cfg.get("alert_receiver_email", "").strip()
+    
+    if smtp_host and smtp_port and smtp_user and smtp_pass and receiver:
+        try:
+            msg = MIMEText(body, "plain", "utf-8")
+            msg["Subject"] = Header(subject, "utf-8")
+            msg["From"] = smtp_user
+            msg["To"] = receiver
+            
+            port = int(smtp_port)
+            if port == 465:
+                server = smtplib.SMTP_SSL(smtp_host, port, timeout=10)
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_user, [receiver], msg.as_string())
+                server.quit()
+            else:
+                server = smtplib.SMTP(smtp_host, port, timeout=10)
+                server.ehlo()
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_user, [receiver], msg.as_string())
+                server.quit()
+            log_action("SYSTEM", "ALERT_EMAIL_SENT", f"Email de alerta enviado para {receiver}")
+        except Exception as e:
+            log_action("SYSTEM", "ALERT_EMAIL_ERROR", f"Falha no envio de email: {str(e)}")
 
 
 def get_cached_users():
@@ -2553,10 +2630,11 @@ def db_re_request_access(pm, name, rank, rpm, unit, sector, password_hash):
 
 
     if success:
-
-
         refresh_db_cache()
-
+        try:
+            send_new_user_alert(pm, name, rank, rpm, unit, sector)
+        except Exception:
+            pass
 
     return success
 
@@ -2634,10 +2712,11 @@ def db_create_new_request(pm, name, rank, rpm, unit, sector, password_hash):
 
 
     if success:
-
-
         refresh_db_cache()
-
+        try:
+            send_new_user_alert(pm, name, rank, rpm, unit, sector)
+        except Exception:
+            pass
 
     return success
 
