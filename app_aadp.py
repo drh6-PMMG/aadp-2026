@@ -3632,7 +3632,10 @@ if not st.session_state.authenticated:
     with c2:
 
 
-        st.image("logo_drh.png", use_container_width=True)
+        if os.path.exists("logo_drh.png"):
+            st.image("logo_drh.png", use_container_width=True)
+        else:
+            st.markdown("<div style='text-align: center; font-size: 4.5rem; margin-bottom: 25px;'>👮</div>", unsafe_allow_html=True)
 
 
         st.markdown("<h2 style='text-align: center; color: #9b8a5c; margin-top: -15px;'>Painel de Controle AADP</h2>", unsafe_allow_html=True)
@@ -4256,9 +4259,8 @@ with st.sidebar:
     if sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
         pages.append(("📊 Auditoria de Notas", "Auditoria de Notas"))
 
-
-        
-
+    if sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR"):
+        pages.append(("📊 Dados Consolidados", "Dados Consolidados"))
 
     # O administrador real sempre vê o painel administrador
 
@@ -4821,6 +4823,9 @@ if main_active_role not in ("P1", "SADM"):
 
 if main_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
     main_nav_pages.append(("📊\nAuditoria de Notas", "Auditoria de Notas"))
+
+if main_active_role.upper() in ("ADMINISTRADOR", "GESTOR"):
+    main_nav_pages.append(("📊\nDados Consolidados", "Dados Consolidados"))
 
 if st.session_state.user_role == "ADMINISTRADOR":
     p_count = db_get_pending_count()
@@ -8466,6 +8471,339 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
         key="dl_audit_notes_xlsx",
         use_container_width=True
     )
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 7 — DADOS CONSOLIDADOS
+# ══════════════════════════════════════════════════════════════════════════════
+if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR"):
+    st.markdown("### 📊 Dados Consolidados")
+    st.markdown("---")
+    
+    st.markdown("""
+        <style>
+            div[data-testid="stExpander"] div.kpi-card {
+                min-height: 145px !important;
+                height: 145px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                padding: 12px 16px !important;
+            }
+            div[data-testid="stExpander"] div.kpi-card .value {
+                margin: auto 0 !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    drive_master_xlsx_id = cfg.get("drive_master_xlsx_id", "")
+    fonte = cfg.get("fonte_dados", "📁 Pasta local / Servidor")
+    
+    if fonte == "☁️ Google Drive":
+        master_xlsx_path = os.path.join(str(DADOS_DIR), "Analise avaliacoes completa.xlsx")
+    else:
+        master_xlsx_path = os.path.join(str(Path(DADOS_DIR).parent), "Analise avaliacoes completa.xlsx")
+        
+    with st.spinner("Consolidando dados do sistema..."):
+        df_audit, err = load_audit_excel(master_xlsx_path, drive_master_xlsx_id)
+        if err or df_audit is None:
+            st.error(f"Erro ao carregar auditoria: {err}")
+            st.stop()
+            
+    df_evals_source = df_full
+    df_audit_source = df_audit
+    
+    def compute_metrics(df_sub_evals, df_sub_audit):
+        def get_numeric_value(val):
+            try:
+                if val is None or str(val).strip() in ("", "-", "None", "nan"):
+                    return None
+                return float(str(val).replace(",", "."))
+            except ValueError:
+                return None
+
+        grades = df_sub_audit["Nota Final - Média Aritmética"].apply(get_numeric_value).dropna()
+        mean_val = grades.mean() if len(grades) > 0 else 0.0
+        
+        total_evals = len(df_sub_evals)
+        n_ca = (df_sub_evals["Situação Comissão"] == "Comissão Atual").sum()
+        n_np = (df_sub_evals["Situação Comissão"] == "Nota Provisória").sum()
+        n_enc = (df_sub_evals["Status Avaliação"] == "Encerrada").sum()
+        n_aberta = (df_sub_evals["Status Avaliação"] == "Aberta").sum()
+        n_parc = (df_sub_evals["Status Avaliação"] == "Parcialmente Encerrada").sum()
+        n_hom = (df_sub_evals["Status Avaliação"] == "Homologação").sum()
+        
+        mil_sim = (df_sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
+        mil_nao = (df_sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "NAO").sum()
+        
+        return {
+            "Avaliações Realizadas": total_evals,
+            "Comissão Atual": n_ca,
+            "Nota Provisória": n_np,
+            "Encerradas": n_enc,
+            "Abertas": n_aberta,
+            "Parc. Encerradas": n_parc,
+            "Homologação": n_hom,
+            "AV1 Pendente": n_aberta,
+            "AV2 Pendente": n_parc,
+            "HOM Pendente": n_hom,
+            "Militares Encerrados": mil_sim,
+            "Militares Pendentes": mil_nao,
+            "Média Notas": mean_val
+        }
+        
+    all_rpms = sorted(df_evals_source["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key)
+    
+    # ── PAINEL DE EXPORTAÇÃO CONSOLIDADA ─────────────────────────────────────
+    st.markdown("<h4 style='font-size: 1.2rem; color: #9b8a5c; margin-bottom: 8px;'>📥 Exportar Relatório Consolidado</h4>", unsafe_allow_html=True)
+    escopo_rel = st.radio("Selecione o escopo da exportação:", ["🌐 Geral (Todas as RPMs)", "🏢 Por RPM específica"], horizontal=True, key="escopo_rel_consolidado")
+    
+    selected_rpms_rel = all_rpms
+    if "específica" in escopo_rel:
+        selected_rpms_rel = st.multiselect("Selecione as Unidades RPM/UDG para exportar:", all_rpms, default=[])
+        
+    if "específica" in escopo_rel and not selected_rpms_rel:
+        st.warning("⚠️ Selecione ao menos uma unidade para habilitar a exportação.")
+    else:
+        # Gerar planilha consolidada em memória
+        def export_consolidated_xlsx(df_evals, df_audit, rpms_to_export):
+            import io
+            import openpyxl
+            from openpyxl.styles import Font, Alignment, PatternFill
+            
+            wb = openpyxl.Workbook()
+            default_sheet = wb.active
+            wb.remove(default_sheet)
+            
+            def get_numeric_value(val):
+                try:
+                    if val is None or str(val).strip() in ("", "-", "None", "nan"):
+                        return None
+                    return float(str(val).replace(",", "."))
+                except ValueError:
+                    return None
+                    
+            ws1 = wb.create_sheet("Consolidado RPM")
+            headers = [
+                "Unidade Principal (RPM/UDG)", "Total Avaliações", "Comissão Atual", "Nota Provisória",
+                "Encerradas", "Abertas", "Parcialmente Encerradas", "Homologação",
+                "AV1 Pendentes", "AV2 Pendentes", "HOM Pendentes",
+                "Militares Encerrados", "Militares Pendentes", "Média Notas"
+            ]
+            ws1.append(headers)
+            
+            ws2 = wb.create_sheet("Detalhamento Subordinadas")
+            headers_sub = ["RPM/UDG", "Unidade Subordinada"] + headers[1:]
+            ws2.append(headers_sub)
+            
+            font_bold = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+            fill_header = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+            align_center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            
+            for ws in [ws1, ws2]:
+                ws.row_dimensions[1].height = 28
+                for cell in ws[1]:
+                    cell.font = font_bold
+                    cell.fill = fill_header
+                    cell.alignment = align_center
+                    
+            for rpm in rpms_to_export:
+                df_rpm_evals = df_evals[df_evals["Unidade RPM (Avaliado)"] == rpm]
+                df_rpm_audit = df_audit[df_audit["Nome RPM"] == rpm]
+                
+                if len(df_rpm_evals) == 0:
+                    continue
+                    
+                grades = df_rpm_audit["Nota Final - Média Aritmética"].apply(get_numeric_value).dropna()
+                mean_val = grades.mean() if len(grades) > 0 else 0.0
+                
+                mil_sim = (df_rpm_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
+                mil_nao = (df_rpm_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "NAO").sum()
+                
+                rpm_row = [
+                    rpm,
+                    len(df_rpm_evals),
+                    (df_rpm_evals["Situação Comissão"] == "Comissão Atual").sum(),
+                    (df_rpm_evals["Situação Comissão"] == "Nota Provisória").sum(),
+                    (df_rpm_evals["Status Avaliação"] == "Encerrada").sum(),
+                    (df_rpm_evals["Status Avaliação"] == "Aberta").sum(),
+                    (df_rpm_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
+                    (df_rpm_evals["Status Avaliação"] == "Homologação").sum(),
+                    (df_rpm_evals["Status Avaliação"] == "Aberta").sum(),
+                    (df_rpm_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
+                    (df_rpm_evals["Status Avaliação"] == "Homologação").sum(),
+                    mil_sim,
+                    mil_nao,
+                    round(mean_val, 2)
+                ]
+                ws1.append(rpm_row)
+                
+                unique_subs = sorted(df_rpm_evals["Unidade Principal (Avaliado)"].dropna().unique())
+                for sub in unique_subs:
+                    sub_evals = df_rpm_evals[df_rpm_evals["Unidade Principal (Avaliado)"] == sub]
+                    sub_audit = df_rpm_audit[df_rpm_audit["Nome Unidade Principal"] == sub]
+                    
+                    sub_grades = sub_audit["Nota Final - Média Aritmética"].apply(get_numeric_value).dropna()
+                    sub_mean_val = sub_grades.mean() if len(sub_grades) > 0 else 0.0
+                    
+                    sub_mil_sim = (sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
+                    sub_mil_nao = (sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "NAO").sum()
+                    
+                    sub_row = [
+                        rpm,
+                        sub,
+                        len(sub_evals),
+                        (sub_evals["Situação Comissão"] == "Comissão Atual").sum(),
+                        (sub_evals["Situação Comissão"] == "Nota Provisória").sum(),
+                        (sub_evals["Status Avaliação"] == "Encerrada").sum(),
+                        (sub_evals["Status Avaliação"] == "Aberta").sum(),
+                        (sub_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
+                        (sub_evals["Status Avaliação"] == "Homologação").sum(),
+                        (sub_evals["Status Avaliação"] == "Aberta").sum(),
+                        (sub_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
+                        (sub_evals["Status Avaliação"] == "Homologação").sum(),
+                        sub_mil_sim,
+                        sub_mil_nao,
+                        round(sub_mean_val, 2)
+                    ]
+                    ws2.append(sub_row)
+                    
+            for ws in [ws1, ws2]:
+                for col in ws.columns:
+                    max_len = max(len(str(cell.value or '')) for cell in col)
+                    col_letter = openpyxl.utils.get_column_letter(col[0].column)
+                    ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
+                    
+            buf = io.BytesIO()
+            wb.save(buf)
+            buf.seek(0)
+            return buf.read()
+            
+        xlsx_consolidated = export_consolidated_xlsx(df_evals_source, df_audit_source, selected_rpms_rel)
+        st.download_button(
+            label="📥 Baixar Planilha Consolidada (Excel .xlsx)",
+            data=xlsx_consolidated,
+            file_name=f"Relatorio_Consolidado_AADP_{now_br().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+            key="btn_download_consolidado"
+        )
+        
+    st.markdown("---")
+    st.markdown("Clique em uma Unidade Principal (RPM/UDG) para visualizar seu resumo consolidado e expandir suas Unidades Subordinadas.")
+    
+    for rpm in all_rpms:
+        df_rpm_evals = df_evals_source[df_evals_source["Unidade RPM (Avaliado)"] == rpm]
+        df_rpm_audit = df_audit_source[df_audit_source["Nome RPM"] == rpm]
+        
+        rpm_metrics = compute_metrics(df_rpm_evals, df_rpm_audit)
+        
+        total_evals = rpm_metrics["Avaliações Realizadas"]
+        enc_evals = rpm_metrics["Encerradas"]
+        avg_grade = rpm_metrics["Média Notas"]
+        
+        exp_header = f"🏢 {rpm} | Total Avaliações: {fmt_num(total_evals)} | Encerradas: {fmt_num(enc_evals)} | Média: {avg_grade:.2f}".replace(".", ",")
+        
+        with st.expander(exp_header):
+            # Linha 1: 4 Cards principais
+            k_c1, k_c2, k_c3, k_c4 = st.columns(4)
+            with k_c1:
+                st.markdown(f'<div class="kpi-card kpi-total">'
+                            f'<div class="label">Total Avaliações</div>'
+                            f'<div class="value">{fmt_num(total_evals)}</div>'
+                            f'<div class="sub">Comissão: {fmt_num(rpm_metrics["Comissão Atual"])} CA | {fmt_num(rpm_metrics["Nota Provisória"])} NP</div>'
+                            f'</div>', unsafe_allow_html=True)
+            with k_c2:
+                st.markdown(f'<div class="kpi-card kpi-aberta">'
+                            f'<div class="label">Pendências Funcionais</div>'
+                            f'<div class="value" style="font-size: 1.05rem; line-height: 1.35; font-weight: 700; margin-top: 6px; margin-bottom: 6px;">'
+                            f'<span style="color: #ff6b6b !important;">AVALIADOR 1: {fmt_num(rpm_metrics["AV1 Pendente"])}</span><br>'
+                            f'<span style="color: #ff9f43 !important;">AVALIADOR 2: {fmt_num(rpm_metrics["AV2 Pendente"])}</span><br>'
+                            f'<span style="color: #ffd257 !important;">HOMOLOGADOR: {fmt_num(rpm_metrics["HOM Pendente"])}</span>'
+                            f'</div>'
+                            f'</div>', unsafe_allow_html=True)
+            with k_c3:
+                st.markdown(f'<div class="kpi-card kpi-parc">'
+                            f'<div class="label">Militares Pendentes</div>'
+                            f'<div class="value">{fmt_num(rpm_metrics["Militares Pendentes"])}</div>'
+                            f'<div class="sub">Militar com avaliações não encerradas</div>'
+                            f'</div>', unsafe_allow_html=True)
+            with k_c4:
+                avg_grade_str = f"{avg_grade:.2f}".replace(".", ",")
+                st.markdown(f'<div class="kpi-card kpi-ca">'
+                            f'<div class="label">Média das Notas</div>'
+                            f'<div class="value">{avg_grade_str}</div>'
+                            f'<div class="sub">Média aritmética final consolidada</div>'
+                            f'</div>', unsafe_allow_html=True)
+                            
+            st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+            
+            # Linha 2: 4 Quadrantes de Status
+            q_c1, q_c2, q_c3, q_c4 = st.columns(4)
+            with q_c1:
+                st.markdown(f'<div class="kpi-card kpi-enc">'
+                            f'<div class="label">🟢 Encerradas</div>'
+                            f'<div class="value">{fmt_num(enc_evals)}</div>'
+                            f'<div class="sub">Avaliações finalizadas</div>'
+                            f'</div>', unsafe_allow_html=True)
+            with q_c2:
+                st.markdown(f'<div class="kpi-card kpi-aberta">'
+                            f'<div class="label">🔴 Abertas</div>'
+                            f'<div class="value">{fmt_num(rpm_metrics["Abertas"])}</div>'
+                            f'<div class="sub">Sem nota ou AV1 pendente</div>'
+                            f'</div>', unsafe_allow_html=True)
+            with q_c3:
+                st.markdown(f'<div class="kpi-card kpi-parc">'
+                            f'<div class="label">🟠 Parcialmente Enc.</div>'
+                            f'<div class="value">{fmt_num(rpm_metrics["Parc. Encerradas"])}</div>'
+                            f'<div class="sub">Aguardando AV2</div>'
+                            f'</div>', unsafe_allow_html=True)
+            with q_c4:
+                st.markdown(f'<div class="kpi-card kpi-hom">'
+                            f'<div class="label">🟡 Homologação</div>'
+                            f'<div class="value">{fmt_num(rpm_metrics["Homologação"])}</div>'
+                            f'<div class="sub">Aguardando Homologador</div>'
+                            f'</div>', unsafe_allow_html=True)
+                            
+            st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
+            st.markdown("##### 📁 Detalhamento de Unidades Subordinadas")
+            
+            sub_rows = []
+            unique_subs = sorted(df_rpm_evals["Unidade Principal (Avaliado)"].dropna().unique())
+            for sub in unique_subs:
+                sub_evals = df_rpm_evals[df_rpm_evals["Unidade Principal (Avaliado)"] == sub]
+                sub_audit = df_rpm_audit[df_rpm_audit["Nome Unidade Principal"] == sub]
+                
+                metrics = compute_metrics(sub_evals, sub_audit)
+                row = {"Unidade Subordinada": sub}
+                row.update(metrics)
+                sub_rows.append(row)
+                
+            if sub_rows:
+                df_sub_table = pd.DataFrame(sub_rows)
+                
+                df_sub_table_disp = df_sub_table.rename(columns={
+                    "Avaliações Realizadas": "Total Aval.",
+                    "Comissão Atual": "CA",
+                    "Nota Provisória": "NP",
+                    "Encerradas": "Enc.",
+                    "Abertas": "Aber.",
+                    "Parc. Encerradas": "Parc. Enc.",
+                    "Homologação": "Hom.",
+                    "AV1 Pendente": "AV1 Pend.",
+                    "AV2 Pendente": "AV2 Pend.",
+                    "HOM Pendente": "HOM Pend.",
+                    "Militares Encerrados": "Mil. Enc.",
+                    "Militares Pendentes": "Mil. Pend.",
+                    "Média Notas": "Média"
+                })
+                
+                st.dataframe(df_sub_table_disp.style.format({
+                    "Média": lambda x: f"{x:.2f}".replace(".", ",")
+                }), use_container_width=True, hide_index=True)
+            else:
+                st.info("Nenhuma unidade subordinada encontrada.")
 
 
 if active_page == "Painel Administrador" and st.session_state.user_role == "ADMINISTRADOR":
