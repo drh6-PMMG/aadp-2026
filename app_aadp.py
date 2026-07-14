@@ -879,6 +879,51 @@ button[aria-label="⚪ Homologação"] {
     opacity: 0.55 !important;
 }
 
+/* Glassmorphic Crystal Style for Page Navigation / Horizontal Tab Buttons */
+button[aria-label^="📊 Análise Gráfica"],
+button[aria-label^="📋 Dados Gerais"],
+button[aria-label^="⏳ Avaliações Pendentes"],
+button[aria-label^="👥 Avaliadores Pendentes"],
+button[aria-label^="📥 Gerar Relatório"],
+button[aria-label^="📄 Relatório Word"],
+button[aria-label^="📊 Auditoria de Notas"],
+button[aria-label^="⚙️ Painel Administrador"] {
+    background: rgba(255, 255, 255, 0.04) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 8px !important;
+    color: #e5dccb !important;
+    font-weight: 600 !important;
+    padding: 6px 12px !important;
+    transition: all 0.25s ease !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+button[aria-label^="📊 Análise Gráfica"]:hover,
+button[aria-label^="📋 Dados Gerais"]:hover,
+button[aria-label^="⏳ Avaliações Pendentes"]:hover,
+button[aria-label^="👥 Avaliadores Pendentes"]:hover,
+button[aria-label^="📥 Gerar Relatório"]:hover,
+button[aria-label^="📄 Relatório Word"]:hover,
+button[aria-label^="📊 Auditoria de Notas"]:hover,
+button[aria-label^="⚙️ Painel Administrador"]:hover {
+    background: rgba(255, 255, 255, 0.09) !important;
+    border-color: rgba(255, 255, 255, 0.22) !important;
+    transform: translateY(-1px) !important;
+    color: #ffffff !important;
+}
+
+/* Make active page buttons glow gold */
+button[kind="primary"] {
+    background: rgba(188, 163, 116, 0.2) !important;
+    border: 1.5px solid #bca374 !important;
+    box-shadow: 0 0 12px rgba(188, 163, 116, 0.35) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+}
+
+
 
 
 
@@ -4519,7 +4564,44 @@ with col_block2:
 
 
 
-st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
+
+# ─────────────────────── HORIZONTAL NAVIGATION TABS ──────────────────────────
+main_active_role = st.session_state.get("simulated_role", st.session_state.user_role) if st.session_state.get("simulation_active", False) else st.session_state.user_role
+
+main_nav_pages = [
+    ("📊 Análise Gráfica", "Análise Gráfica"),
+    ("📋 Dados Gerais", "Dados Gerais"),
+    ("⏳ Avaliações Pendentes", "Avaliações Pendentes"),
+    ("👥 Avaliadores Pendentes", "Avaliadores Pendentes"),
+]
+
+if main_active_role not in ("P1", "SADM"):
+    main_nav_pages.append(("📥 Gerar Relatório", "Gerar Relatório"))
+    main_nav_pages.append(("📄 Relatório Word", "Relatório Word"))
+
+if main_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
+    main_nav_pages.append(("📊 Auditoria de Notas", "Auditoria de Notas"))
+
+if st.session_state.user_role == "ADMINISTRADOR":
+    p_count = db_get_pending_count()
+    if p_count > 0:
+        main_nav_pages.append((f"⚙️ Painel Administrador ({p_count} 🔴)", "Painel Administrador"))
+    else:
+        main_nav_pages.append(("⚙️ Painel Administrador", "Painel Administrador"))
+
+# Render as horizontal buttons in columns
+num_tabs = len(main_nav_pages)
+tab_cols = st.columns(num_tabs)
+for idx, (label, page_name) in enumerate(main_nav_pages):
+    with tab_cols[idx]:
+        is_active = (st.session_state.active_page == page_name)
+        btn_type = "primary" if is_active else "secondary"
+        if st.button(label, key=f"main_tab_{page_name}", use_container_width=True, type=btn_type):
+            st.session_state.active_page = page_name
+            st.rerun()
+
+st.markdown("<div style='margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.08);'></div>", unsafe_allow_html=True)
 
 
 
