@@ -914,12 +914,7 @@ button[aria-label="⚪ Homologação"] {
 }
 
 /* Glassmorphic Crystal Style for Page Navigation / Horizontal Tab Buttons */
-button[aria-label*="Gráfica"],
-button[aria-label*="Gerais"],
-button[aria-label*="Pendentes"],
-button[aria-label*="Relatório"],
-button[aria-label*="Notas"],
-button[aria-label*="Administrador"] {
+div.element-container:has(.main-nav-marker) + div.element-container button {
     background: rgba(128, 128, 128, 0.06) !important;
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
@@ -932,8 +927,8 @@ button[aria-label*="Administrador"] {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
     
     /* Fixed unified dimensions and vertical centering */
-    min-height: 75px !important;
-    height: 75px !important;
+    min-height: 85px !important;
+    height: 85px !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
@@ -941,59 +936,34 @@ button[aria-label*="Administrador"] {
 }
 
 /* Force inner text tags to wrap on pre-line and have uniform small font size */
-button[aria-label*="Gráfica"] *,
-button[aria-label*="Gerais"] *,
-button[aria-label*="Pendentes"] *,
-button[aria-label*="Relatório"] *,
-button[aria-label*="Notas"] *,
-button[aria-label*="Administrador"] * {
+div.element-container:has(.main-nav-marker) + div.element-container button * {
     color: var(--text-color) !important;
     white-space: pre-line !important;
     text-align: center !important;
-    font-size: 0.78rem !important;
+    font-size: 0.8rem !important;
     line-height: 1.25 !important;
 }
 
 /* Highlight the icon (first line / emoji) by making it significantly larger */
-button[aria-label*="Gráfica"] p::first-line,
-button[aria-label*="Gerais"] p::first-line,
-button[aria-label*="Pendentes"] p::first-line,
-button[aria-label*="Relatório"] p::first-line,
-button[aria-label*="Notas"] p::first-line,
-button[aria-label*="Administrador"] p::first-line,
-button[aria-label*="Gráfica"] span::first-line,
-button[aria-label*="Gerais"] span::first-line,
-button[aria-label*="Pendentes"] span::first-line,
-button[aria-label*="Relatório"] span::first-line,
-button[aria-label*="Notas"] span::first-line,
-button[aria-label*="Administrador"] span::first-line {
-    font-size: 1.45rem !important;
+div.element-container:has(.main-nav-marker) + div.element-container button p::first-line,
+div.element-container:has(.main-nav-marker) + div.element-container button span::first-line {
+    font-size: 1.6rem !important;
     line-height: 1.4 !important;
     font-weight: normal !important;
 }
 
-button[aria-label*="Gráfica"]:hover,
-button[aria-label*="Gerais"]:hover,
-button[aria-label*="Pendentes"]:hover,
-button[aria-label*="Relatório"]:hover,
-button[aria-label*="Notas"]:hover,
-button[aria-label*="Administrador"]:hover {
+div.element-container:has(.main-nav-marker) + div.element-container button:hover {
     background: rgba(128, 128, 128, 0.12) !important;
     border-color: rgba(128, 128, 128, 0.3) !important;
     transform: translateY(-1px) !important;
 }
 
-button[aria-label*="Gráfica"]:hover *,
-button[aria-label*="Gerais"]:hover *,
-button[aria-label*="Pendentes"]:hover *,
-button[aria-label*="Relatório"]:hover *,
-button[aria-label*="Notas"]:hover *,
-button[aria-label*="Administrador"]:hover * {
+div.element-container:has(.main-nav-marker) + div.element-container button:hover * {
     color: var(--text-color) !important;
 }
 
 /* Make active page buttons glow gold */
-button[kind="primary"] {
+div.element-container:has(.main-nav-marker) + div.element-container button[kind="primary"] {
     background: rgba(155, 138, 92, 0.2) !important;
     border: 1.5px solid #9b8a5c !important;
     box-shadow: 0 0 12px rgba(155, 138, 92, 0.35) !important;
@@ -1001,7 +971,7 @@ button[kind="primary"] {
     font-weight: 700 !important;
 }
 
-button[kind="primary"] * {
+div.element-container:has(.main-nav-marker) + div.element-container button[kind="primary"] * {
     color: var(--text-color) !important;
 }
 
@@ -4663,7 +4633,7 @@ with col_block2:
 
 
 
-st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
+st.markdown("<div class='main-nav-marker' style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
 
 # ─────────────────────── HORIZONTAL NAVIGATION TABS ──────────────────────────
 main_active_role = st.session_state.get("simulated_role", st.session_state.user_role) if st.session_state.get("simulation_active", False) else st.session_state.user_role
