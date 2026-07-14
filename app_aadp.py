@@ -4259,7 +4259,7 @@ with st.sidebar:
     if sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
         pages.append(("📊 Auditoria de Notas", "Auditoria de Notas"))
 
-    if sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR"):
+    if sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
         pages.append(("📊 Dados Consolidados", "Dados Consolidados"))
 
     # O administrador real sempre vê o painel administrador
@@ -4824,7 +4824,7 @@ if main_active_role not in ("P1", "SADM"):
 if main_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
     main_nav_pages.append(("📊\nAuditoria de Notas", "Auditoria de Notas"))
 
-if main_active_role.upper() in ("ADMINISTRADOR", "GESTOR"):
+if main_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
     main_nav_pages.append(("📊\nDados Consolidados", "Dados Consolidados"))
 
 if st.session_state.user_role == "ADMINISTRADOR":
