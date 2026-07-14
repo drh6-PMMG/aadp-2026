@@ -641,7 +641,29 @@ st.set_page_config(
 
 
 st.markdown("""
-
+<script>
+(function() {
+    let deleted = false;
+    const clearThemes = (win) => {
+        try {
+            const keys = ["stActiveTheme-light", "stActiveTheme-dark", "stActiveTheme", "stActiveThemeType", "stTheme", "theme"];
+            keys.forEach(k => {
+                if (win.localStorage.getItem(k)) {
+                    win.localStorage.removeItem(k);
+                    deleted = true;
+                }
+            });
+        } catch(e) {}
+    };
+    clearThemes(window);
+    if (window.parent) {
+        clearThemes(window.parent);
+    }
+    if (deleted) {
+        window.location.reload();
+    }
+})();
+</script>
 
 <style>
 
