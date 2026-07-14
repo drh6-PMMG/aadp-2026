@@ -643,23 +643,29 @@ st.set_page_config(
 st.markdown("""
 <script>
 (function() {
-    let deleted = false;
-    const clearThemes = (win) => {
+    let changed = false;
+    const forceDark = (win) => {
         try {
-            const keys = ["stActiveTheme-light", "stActiveTheme-dark", "stActiveTheme", "stActiveThemeType", "stTheme", "theme"];
-            keys.forEach(k => {
+            const expected = '{"themePreset":"dark"}';
+            const key = "streamlit:themeConfiguration";
+            if (win.localStorage.getItem(key) !== expected) {
+                win.localStorage.setItem(key, expected);
+                changed = true;
+            }
+            const legacyKeys = ["stActiveTheme-light", "stActiveTheme-dark", "stActiveTheme", "stActiveThemeType", "stTheme", "theme"];
+            legacyKeys.forEach(k => {
                 if (win.localStorage.getItem(k)) {
                     win.localStorage.removeItem(k);
-                    deleted = true;
+                    changed = true;
                 }
             });
         } catch(e) {}
     };
-    clearThemes(window);
+    forceDark(window);
     if (window.parent) {
-        clearThemes(window.parent);
+        forceDark(window.parent);
     }
-    if (deleted) {
+    if (changed) {
         window.location.reload();
     }
 })();
