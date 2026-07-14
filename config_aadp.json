@@ -10,6 +10,6 @@
   "smtp_port": "587",
   "smtp_user": "guilhermeemory1@gmail.com",
   "smtp_pass": "hpuo lbdu guzg zkad",
-  "alert_receiver_email": "guilhermeemory@yahoo.com.br",
-  "alert_webhook_url": "https://hook.us2.make.com/rpfn7ayzo592z5wqla846nlmd2qng7it"
+  "alert_receiver_email": "guilhermeemory1@gmail.com",
+  "alert_webhook_url": ""
 }
