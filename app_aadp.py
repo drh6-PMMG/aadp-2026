@@ -8570,6 +8570,62 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
             div[data-testid="stExpander"] div.kpi-card .value {
                 margin: auto 0 !important;
             }
+            /* Style the expander summary itself to be a premium liquid crystal button */
+            div[data-testid="stExpander"] details summary {
+                background: linear-gradient(135deg, rgba(128, 128, 128, 0.05) 0%, rgba(20, 20, 20, 0.4) 100%) !important;
+                backdrop-filter: blur(10px) !important;
+                -webkit-backdrop-filter: blur(10px) !important;
+                border: 1px solid rgba(128, 128, 128, 0.25) !important;
+                border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+                border-radius: 12px !important;
+                padding: 12px 18px !important;
+                box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            }
+            div[data-testid="stExpander"] details summary:hover {
+                background: linear-gradient(135deg, rgba(155, 138, 92, 0.15) 0%, rgba(30, 30, 30, 0.5) 100%) !important;
+                border-color: rgba(155, 138, 92, 0.45) !important;
+                box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.1), 0 0 15px rgba(155, 138, 92, 0.25) !important;
+                transform: translateY(-1px) !important;
+            }
+            /* Highlight the unit name (which we'll make bold in markdown) */
+            div[data-testid="stExpander"] details summary strong {
+                color: #e5dccb !important;
+                font-size: 1.05rem !important;
+                font-weight: 800 !important;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8) !important;
+                background: rgba(155, 138, 92, 0.20) !important;
+                border: 1px solid rgba(155, 138, 92, 0.4) !important;
+                padding: 4px 10px !important;
+                border-radius: 8px !important;
+                box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1) !important;
+                display: inline-block !important;
+                margin-right: 15px !important;
+            }
+            /* Style code blocks inside summary as crystal liquid sub-buttons */
+            div[data-testid="stExpander"] details summary code {
+                background: rgba(128, 128, 128, 0.08) !important;
+                backdrop-filter: blur(5px) !important;
+                -webkit-backdrop-filter: blur(5px) !important;
+                border: 1px solid rgba(128, 128, 128, 0.25) !important;
+                border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+                color: #a0a0a0 !important;
+                font-family: inherit !important;
+                font-size: 0.85rem !important;
+                font-weight: 700 !important;
+                padding: 4px 12px !important;
+                border-radius: 30px !important;
+                box-shadow: inset 0 1px 0px rgba(255, 255, 255, 0.05), 0 2px 5px rgba(0,0,0,0.2) !important;
+                margin-left: 8px !important;
+                display: inline-block !important;
+                transition: all 0.25s ease !important;
+            }
+            /* Style the inside tags when hover */
+            div[data-testid="stExpander"] details summary:hover code {
+                color: #e5dccb !important;
+                border-color: rgba(155, 138, 92, 0.3) !important;
+                background: rgba(155, 138, 92, 0.12) !important;
+            }
         </style>
     """, unsafe_allow_html=True)
     
@@ -8851,7 +8907,8 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
         enc_evals = rpm_metrics["Encerradas"]
         avg_grade = rpm_metrics["Média Notas"]
         
-        exp_header = f"🏢 {rpm} | Total Avaliações: {fmt_num(total_evals)} | Encerradas: {fmt_num(enc_evals)} | Média: {avg_grade:.2f}".replace(".", ",")
+        avg_grade_str = f"{avg_grade:.2f}".replace(".", ",")
+        exp_header = f"🏢 **{rpm}** &nbsp;&nbsp;&nbsp;&nbsp; `Total: {fmt_num(total_evals)}` &nbsp;&nbsp; `Encerradas: {fmt_num(enc_evals)}` &nbsp;&nbsp; `Média: {avg_grade_str}`"
         
         with st.expander(exp_header):
             # Linha 1: 4 Cards principais
@@ -8935,7 +8992,18 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
             if sub_rows:
                 df_sub_table = pd.DataFrame(sub_rows)
                 
+                # Reordenar colunas para colocar a média das notas logo após o nome da unidade subordinada
+                cols_ordered = [
+                    "Unidade Subordinada", "Média Notas", "Avaliações Realizadas",
+                    "Comissão Atual", "Nota Provisória", "Encerradas", "Abertas",
+                    "Parcialmente Encerradas", "Homologação", "AV1 Pendente",
+                    "AV2 Pendente", "HOM Pendente", "Militares Encerrados", "Militares Pendentes"
+                ]
+                cols_ordered = [c for c in cols_ordered if c in df_sub_table.columns]
+                df_sub_table = df_sub_table[cols_ordered]
+                
                 df_sub_table_disp = df_sub_table.rename(columns={
+                    "Média Notas": "Média das Notas",
                     "Avaliações Realizadas": "Total Aval.",
                     "Comissão Atual": "CA",
                     "Nota Provisória": "NP",
@@ -8947,13 +9015,28 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                     "AV2 Pendente": "AV2 Pend.",
                     "HOM Pendente": "HOM Pend.",
                     "Militares Encerrados": "Mil. Enc.",
-                    "Militares Pendentes": "Mil. Pend.",
-                    "Média Notas": "Média"
+                    "Militares Pendentes": "Mil. Pend."
                 })
                 
-                st.dataframe(df_sub_table_disp.style.format({
-                    "Média": lambda x: f"{x:.2f}".replace(".", ",")
-                }), use_container_width=True, hide_index=True)
+                st.dataframe(
+                    df_sub_table_disp.style.format({
+                        "Média das Notas": lambda x: f"{x:.2f}".replace(".", ",")
+                    })
+                    .map(lambda x: 'color: #9b8a5c; font-weight: bold;', subset=["Média das Notas"])
+                    .map(lambda x: 'color: #4b7bec; font-weight: bold;', subset=["CA"])
+                    .map(lambda x: 'color: #FFC000; font-weight: bold;', subset=["NP"])
+                    .map(lambda x: 'color: #7bed9f; font-weight: bold;', subset=["Enc."])
+                    .map(lambda x: 'color: #ff6b6b; font-weight: bold;', subset=["Aber."])
+                    .map(lambda x: 'color: #ff9f43; font-weight: bold;', subset=["Parc. Enc."])
+                    .map(lambda x: 'color: #ffd257; font-weight: bold;', subset=["Hom."])
+                    .map(lambda x: 'color: #ff6b6b; font-weight: bold;', subset=["AV1 Pend."])
+                    .map(lambda x: 'color: #ff9f43; font-weight: bold;', subset=["AV2 Pend."])
+                    .map(lambda x: 'color: #ffd257; font-weight: bold;', subset=["HOM Pend."])
+                    .map(lambda x: 'color: #7bed9f; font-weight: bold;', subset=["Mil. Enc."])
+                    .map(lambda x: 'color: #ff6b6b; font-weight: bold;', subset=["Mil. Pend."]),
+                    use_container_width=True,
+                    hide_index=True
+                )
             else:
                 st.info("Nenhuma unidade subordinada encontrada.")
 
