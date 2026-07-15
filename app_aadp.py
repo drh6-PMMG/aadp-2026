@@ -9004,36 +9004,42 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                 
                 df_sub_table_disp = df_sub_table.rename(columns={
                     "Média Notas": "Média das Notas",
-                    "Avaliações Realizadas": "Total Aval.",
-                    "Comissão Atual": "CA",
-                    "Nota Provisória": "NP",
-                    "Encerradas": "Enc.",
-                    "Abertas": "Aber.",
-                    "Parcialmente Encerradas": "Parc. Enc.",
-                    "Homologação": "Hom.",
-                    "AV1 Pendente": "AV1 Pend.",
-                    "AV2 Pendente": "AV2 Pend.",
-                    "HOM Pendente": "HOM Pend.",
-                    "Militares Encerrados": "Mil. Enc.",
-                    "Militares Pendentes": "Mil. Pend."
+                    "Avaliações Realizadas": "Total Avaliações",
+                    "Comissão Atual": "Comissão Atual",
+                    "Nota Provisória": "Nota Provisória",
+                    "Encerradas": "Encerradas",
+                    "Abertas": "Abertas",
+                    "Parcialmente Encerradas": "Parcialmente Encerradas",
+                    "Homologação": "Homologação",
+                    "AV1 Pendente": "Avaliador 1 Pendente",
+                    "AV2 Pendente": "Avaliador 2 Pendente",
+                    "HOM Pendente": "Homologador Pendente",
+                    "Militares Encerrados": "Militares Encerrados",
+                    "Militares Pendentes": "Militares Pendentes"
                 })
                 
                 st.dataframe(
                     df_sub_table_disp.style.format({
                         "Média das Notas": lambda x: f"{x:.2f}".replace(".", ",")
                     })
+                    .set_properties(**{'text-align': 'center'})
+                    .set_table_styles([
+                        {'selector': 'th', 'props': [('text-align', 'center'), ('white-space', 'normal'), ('word-wrap', 'break-word'), ('vertical-align', 'middle')]},
+                        {'selector': 'td', 'props': [('text-align', 'center'), ('vertical-align', 'middle')]}
+                    ])
                     .map(lambda x: 'color: #9b8a5c; font-weight: bold;', subset=["Média das Notas"])
-                    .map(lambda x: 'color: #4b7bec; font-weight: bold;', subset=["CA"])
-                    .map(lambda x: 'color: #FFC000; font-weight: bold;', subset=["NP"])
-                    .map(lambda x: 'color: #7bed9f; font-weight: bold;', subset=["Enc."])
-                    .map(lambda x: 'color: #ff6b6b; font-weight: bold;', subset=["Aber."])
-                    .map(lambda x: 'color: #ff9f43; font-weight: bold;', subset=["Parc. Enc."])
-                    .map(lambda x: 'color: #ffd257; font-weight: bold;', subset=["Hom."])
-                    .map(lambda x: 'color: #ff6b6b; font-weight: bold;', subset=["AV1 Pend."])
-                    .map(lambda x: 'color: #ff9f43; font-weight: bold;', subset=["AV2 Pend."])
-                    .map(lambda x: 'color: #ffd257; font-weight: bold;', subset=["HOM Pend."])
-                    .map(lambda x: 'color: #7bed9f; font-weight: bold;', subset=["Mil. Enc."])
-                    .map(lambda x: 'color: #ff6b6b; font-weight: bold;', subset=["Mil. Pend."]),
+                    .map(lambda x: 'color: #a0a0a0;', subset=["Total Avaliações"])
+                    .map(lambda x: 'color: #a0a0a0;', subset=["Comissão Atual"])
+                    .map(lambda x: 'color: #a0a0a0;', subset=["Nota Provisória"])
+                    .map(lambda x: 'color: #7bed9f; font-weight: bold;', subset=["Encerradas"])
+                    .map(lambda x: 'color: #ff6b6b; font-weight: bold;', subset=["Abertas"])
+                    .map(lambda x: 'color: #ff9f43; font-weight: bold;', subset=["Parcialmente Encerradas"])
+                    .map(lambda x: 'color: #ffd257; font-weight: bold;', subset=["Homologação"])
+                    .map(lambda x: 'color: #a0a0a0;', subset=["Avaliador 1 Pendente"])
+                    .map(lambda x: 'color: #a0a0a0;', subset=["Avaliador 2 Pendente"])
+                    .map(lambda x: 'color: #a0a0a0;', subset=["Homologador Pendente"])
+                    .map(lambda x: 'color: #7bed9f; font-weight: bold;', subset=["Militares Encerrados"])
+                    .map(lambda x: 'color: #ff6b6b; font-weight: bold;', subset=["Militares Pendentes"]),
                     use_container_width=True,
                     hide_index=True
                 )
