@@ -4824,59 +4824,60 @@ n_np     = (df["Situação Comissão"]=="Nota Provisória").sum()
 
 
 
-col_block1, col_block2 = st.columns([1, 1.25], gap="large")
+if st.session_state.get("active_page", "Análise Gráfica") == "Análise Gráfica":
+    col_block1, col_block2 = st.columns([1, 1.25], gap="large")
 
-with col_block1:
-    st.markdown('<div class="kpi-card kpi-total">'
-                '<div class="label">TOTAL AVALIAÇÕES</div>'
-                f'<div class="value">{fmt_num(n_total)}</div>'
-                '<div class="sub">avaliações</div>'
-                '</div>', unsafe_allow_html=True)
-
-    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
-
-    cb1_1, cb1_2 = st.columns(2)
-    with cb1_1:
-        st.markdown('<div class="kpi-card kpi-ca">'
-                    '<div class="label">COMISSÃO ATUAL</div>'
-                    f'<div class="value">{fmt_num(n_ca)}</div>'
-                    f'<div class="sub">{n_ca/max(n_total,1)*100:.1f}%</div>'
-                    '</div>', unsafe_allow_html=True)
-    with cb1_2:
-        st.markdown('<div class="kpi-card kpi-np">'
-                    '<div class="label">NOTA PROVISÓRIA</div>'
-                    f'<div class="value">{fmt_num(n_np)}</div>'
-                    f'<div class="sub">{n_np/max(n_total,1)*100:.1f}%</div>'
+    with col_block1:
+        st.markdown('<div class="kpi-card kpi-total">'
+                    '<div class="label">TOTAL AVALIAÇÕES</div>'
+                    f'<div class="value">{fmt_num(n_total)}</div>'
+                    '<div class="sub">avaliações</div>'
                     '</div>', unsafe_allow_html=True)
 
-with col_block2:
-    st.markdown('<div class="kpi-card kpi-enc">'
-                '<div class="label">ENCERRADAS</div>'
-                f'<div class="value">{fmt_num(n_enc)}</div>'
-                f'<div class="sub">{n_enc/max(n_total,1)*100:.1f}%</div>'
-                '</div>', unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
-    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+        cb1_1, cb1_2 = st.columns(2)
+        with cb1_1:
+            st.markdown('<div class="kpi-card kpi-ca">'
+                        '<div class="label">COMISSÃO ATUAL</div>'
+                        f'<div class="value">{fmt_num(n_ca)}</div>'
+                        f'<div class="sub">{n_ca/max(n_total,1)*100:.1f}%</div>'
+                        '</div>', unsafe_allow_html=True)
+        with cb1_2:
+            st.markdown('<div class="kpi-card kpi-np">'
+                        '<div class="label">NOTA PROVISÓRIA</div>'
+                        f'<div class="value">{fmt_num(n_np)}</div>'
+                        f'<div class="sub">{n_np/max(n_total,1)*100:.1f}%</div>'
+                        '</div>', unsafe_allow_html=True)
 
-    cb2_1, cb2_2, cb2_3 = st.columns(3)
-    with cb2_1:
-        st.markdown('<div class="kpi-card kpi-aberta">'
-                    '<div class="label">ABERTAS</div>'
-                    f'<div class="value">{fmt_num(n_aberta)}</div>'
-                    '<div class="sub">AV1 pendente</div>'
+    with col_block2:
+        st.markdown('<div class="kpi-card kpi-enc">'
+                    '<div class="label">ENCERRADAS</div>'
+                    f'<div class="value">{fmt_num(n_enc)}</div>'
+                    f'<div class="sub">{n_enc/max(n_total,1)*100:.1f}%</div>'
                     '</div>', unsafe_allow_html=True)
-    with cb2_2:
-        st.markdown('<div class="kpi-card kpi-parc">'
-                    '<div class="label">PARC. ENCERRADA</div>'
-                    f'<div class="value">{fmt_num(n_parc)}</div>'
-                    '<div class="sub">AV2 pendente</div>'
-                    '</div>', unsafe_allow_html=True)
-    with cb2_3:
-        st.markdown('<div class="kpi-card kpi-hom">'
-                    '<div class="label">HOMOLOGAÇÃO</div>'
-                    f'<div class="value">{fmt_num(n_hom)}</div>'
-                    '<div class="sub">HOM pendente</div>'
-                    '</div>', unsafe_allow_html=True)
+
+        st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+
+        cb2_1, cb2_2, cb2_3 = st.columns(3)
+        with cb2_1:
+            st.markdown('<div class="kpi-card kpi-aberta">'
+                        '<div class="label">ABERTAS</div>'
+                        f'<div class="value">{fmt_num(n_aberta)}</div>'
+                        '<div class="sub">AV1 pendente</div>'
+                        '</div>', unsafe_allow_html=True)
+        with cb2_2:
+            st.markdown('<div class="kpi-card kpi-parc">'
+                        '<div class="label">PARC. ENCERRADA</div>'
+                        f'<div class="value">{fmt_num(n_parc)}</div>'
+                        '<div class="sub">AV2 pendente</div>'
+                        '</div>', unsafe_allow_html=True)
+        with cb2_3:
+            st.markdown('<div class="kpi-card kpi-hom">'
+                        '<div class="label">HOMOLOGAÇÃO</div>'
+                        f'<div class="value">{fmt_num(n_hom)}</div>'
+                        '<div class="sub">HOM pendente</div>'
+                        '</div>', unsafe_allow_html=True)
 
 
 
@@ -9003,46 +9004,98 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                 df_sub_table = df_sub_table[cols_ordered]
                 
                 df_sub_table_disp = df_sub_table.rename(columns={
-                    "Média Notas": "Média das Notas",
-                    "Avaliações Realizadas": "Total Avaliações",
-                    "Comissão Atual": "Comissão Atual",
-                    "Nota Provisória": "Nota Provisória",
+                    "Média Notas": "Média das<br>Notas",
+                    "Avaliações Realizadas": "Total<br>Avaliações",
+                    "Comissão Atual": "Comissão<br>Atual",
+                    "Nota Provisória": "Nota<br>Provisória",
                     "Encerradas": "Encerradas",
                     "Abertas": "Abertas",
-                    "Parcialmente Encerradas": "Parcialmente Encerradas",
+                    "Parcialmente Encerradas": "Parcialmente<br>Encerradas",
                     "Homologação": "Homologação",
-                    "AV1 Pendente": "Avaliador 1 Pendente",
-                    "AV2 Pendente": "Avaliador 2 Pendente",
-                    "HOM Pendente": "Homologador Pendente",
-                    "Militares Encerrados": "Militares Encerrados",
-                    "Militares Pendentes": "Militares Pendentes"
+                    "AV1 Pendente": "Avaliador 1<br>Pendente",
+                    "AV2 Pendente": "Avaliador 2<br>Pendente",
+                    "HOM Pendente": "Homologador<br>Pendente",
+                    "Militares Encerrados": "Militares<br>Encerrados",
+                    "Militares Pendentes": "Militares<br>Pendentes"
                 })
                 
-                st.dataframe(
-                    df_sub_table_disp.style.format({
-                        "Média das Notas": lambda x: f"{x:.2f}".replace(".", ",")
-                    })
-                    .set_properties(**{'text-align': 'center'})
-                    .set_table_styles([
-                        {'selector': 'th', 'props': [('text-align', 'center'), ('white-space', 'normal'), ('word-wrap', 'break-word'), ('vertical-align', 'middle')]},
-                        {'selector': 'td', 'props': [('text-align', 'center'), ('vertical-align', 'middle')]}
-                    ])
-                    .map(lambda x: 'color: #9b8a5c; font-weight: bold;', subset=["Média das Notas"])
-                    .map(lambda x: 'color: #a0a0a0;', subset=["Total Avaliações"])
-                    .map(lambda x: 'color: #a0a0a0;', subset=["Comissão Atual"])
-                    .map(lambda x: 'color: #a0a0a0;', subset=["Nota Provisória"])
-                    .map(lambda x: 'color: #7bed9f; font-weight: bold;', subset=["Encerradas"])
-                    .map(lambda x: 'color: #ff6b6b; font-weight: bold;', subset=["Abertas"])
-                    .map(lambda x: 'color: #ff9f43; font-weight: bold;', subset=["Parcialmente Encerradas"])
-                    .map(lambda x: 'color: #ffd257; font-weight: bold;', subset=["Homologação"])
-                    .map(lambda x: 'color: #a0a0a0;', subset=["Avaliador 1 Pendente"])
-                    .map(lambda x: 'color: #a0a0a0;', subset=["Avaliador 2 Pendente"])
-                    .map(lambda x: 'color: #a0a0a0;', subset=["Homologador Pendente"])
-                    .map(lambda x: 'color: #7bed9f; font-weight: bold;', subset=["Militares Encerrados"])
-                    .map(lambda x: 'color: #ff6b6b; font-weight: bold;', subset=["Militares Pendentes"]),
-                    use_container_width=True,
-                    hide_index=True
-                )
+                styler = df_sub_table_disp.style.format({
+                    "Média das<br>Notas": lambda x: f"{x:.2f}".replace(".", ",")
+                })
+                
+                try:
+                    styler = styler.hide(axis="index")
+                except Exception:
+                    try:
+                        styler = styler.hide_index()
+                    except Exception:
+                        pass
+                
+                styler = styler.set_table_attributes('class="consolidated-table"')
+                
+                cols_gold = [c for c in ["Média das<br>Notas"] if c in df_sub_table_disp.columns]
+                cols_grey = [c for c in ["Total<br>Avaliações", "Comissão<br>Atual", "Nota<br>Provisória", "Avaliador 1<br>Pendente", "Avaliador 2<br>Pendente", "Homologador<br>Pendente"] if c in df_sub_table_disp.columns]
+                cols_green = [c for c in ["Encerradas", "Militares<br>Encerrados"] if c in df_sub_table_disp.columns]
+                cols_red = [c for c in ["Abertas", "Militares<br>Pendentes"] if c in df_sub_table_disp.columns]
+                cols_orange = [c for c in ["Parcialmente<br>Encerradas"] if c in df_sub_table_disp.columns]
+                cols_yellow = [c for c in ["Homologação"] if c in df_sub_table_disp.columns]
+                
+                if cols_gold: styler = styler.map(lambda x: 'color: #9b8a5c; font-weight: bold; text-align: center;', subset=cols_gold)
+                if cols_grey: styler = styler.map(lambda x: 'color: #a0a0a0; text-align: center;', subset=cols_grey)
+                if cols_green: styler = styler.map(lambda x: 'color: #7bed9f; font-weight: bold; text-align: center;', subset=cols_green)
+                if cols_red: styler = styler.map(lambda x: 'color: #ff6b6b; font-weight: bold; text-align: center;', subset=cols_red)
+                if cols_orange: styler = styler.map(lambda x: 'color: #ff9f43; font-weight: bold; text-align: center;', subset=cols_orange)
+                if cols_yellow: styler = styler.map(lambda x: 'color: #ffd257; font-weight: bold; text-align: center;', subset=cols_yellow)
+                
+                html_table = styler.to_html(escape=False)
+                
+                st.markdown(f"""
+                <style>
+                .consolidated-table-container {{
+                    width: 100%;
+                    overflow-x: auto;
+                    margin: 15px 0;
+                }}
+                .consolidated-table {{
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 0.82rem;
+                    font-family: inherit;
+                    background: rgba(30, 30, 30, 0.4);
+                    backdrop-filter: blur(8px);
+                    -webkit-backdrop-filter: blur(8px);
+                    border-radius: 8px;
+                    overflow: hidden;
+                }}
+                .consolidated-table th {{
+                    background-color: rgba(155, 138, 92, 0.15) !important;
+                    color: #e5dccb !important;
+                    font-weight: 700 !important;
+                    padding: 8px 6px !important;
+                    text-align: center !important;
+                    border: 1px solid rgba(128, 128, 128, 0.2) !important;
+                    white-space: normal !important;
+                    word-break: normal !important;
+                    vertical-align: middle !important;
+                    line-height: 1.2 !important;
+                }}
+                .consolidated-table td {{
+                    padding: 8px 6px !important;
+                    text-align: center !important;
+                    border: 1px solid rgba(128, 128, 128, 0.15) !important;
+                    vertical-align: middle !important;
+                }}
+                .consolidated-table tr:nth-child(even) {{
+                    background-color: rgba(255, 255, 255, 0.01);
+                }}
+                .consolidated-table tr:hover {{
+                    background-color: rgba(155, 138, 92, 0.05);
+                }}
+                </style>
+                <div class="consolidated-table-container">
+                    {html_table}
+                </div>
+                """, unsafe_allow_html=True)
             else:
                 st.info("Nenhuma unidade subordinada encontrada.")
 
