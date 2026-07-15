@@ -9049,53 +9049,52 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                 
                 html_table = styler.to_html(escape=False)
                 
-                st.markdown(f"""
-                <style>
-                .consolidated-table-container {{
-                    width: 100%;
-                    overflow-x: auto;
-                    margin: 15px 0;
-                }}
-                .consolidated-table {{
-                    width: 100%;
-                    border-collapse: collapse;
-                    font-size: 0.82rem;
-                    font-family: inherit;
-                    background: rgba(30, 30, 30, 0.4);
-                    backdrop-filter: blur(8px);
-                    -webkit-backdrop-filter: blur(8px);
-                    border-radius: 8px;
-                    overflow: hidden;
-                }}
-                .consolidated-table th {{
-                    background-color: rgba(155, 138, 92, 0.15) !important;
-                    color: #e5dccb !important;
-                    font-weight: 700 !important;
-                    padding: 8px 6px !important;
-                    text-align: center !important;
-                    border: 1px solid rgba(128, 128, 128, 0.2) !important;
-                    white-space: normal !important;
-                    word-break: normal !important;
-                    vertical-align: middle !important;
-                    line-height: 1.2 !important;
-                }}
-                .consolidated-table td {{
-                    padding: 8px 6px !important;
-                    text-align: center !important;
-                    border: 1px solid rgba(128, 128, 128, 0.15) !important;
-                    vertical-align: middle !important;
-                }}
-                .consolidated-table tr:nth-child(even) {{
-                    background-color: rgba(255, 255, 255, 0.01);
-                }}
-                .consolidated-table tr:hover {{
-                    background-color: rgba(155, 138, 92, 0.05);
-                }}
-                </style>
-                <div class="consolidated-table-container">
-                    {html_table}
-                </div>
-                """, unsafe_allow_html=True)
+                html_content = (
+                    "<style>\n"
+                    ".consolidated-table-container {\n"
+                    "    width: 100%;\n"
+                    "    overflow-x: auto;\n"
+                    "    margin: 15px 0;\n"
+                    "}\n"
+                    ".consolidated-table {\n"
+                    "    width: 100%;\n"
+                    "    border-collapse: collapse;\n"
+                    "    font-size: 0.82rem;\n"
+                    "    font-family: inherit;\n"
+                    "    background: rgba(30, 30, 30, 0.4);\n"
+                    "    backdrop-filter: blur(8px);\n"
+                    "    -webkit-backdrop-filter: blur(8px);\n"
+                    "    border-radius: 8px;\n"
+                    "    overflow: hidden;\n"
+                    "}\n"
+                    ".consolidated-table th {\n"
+                    "    background-color: rgba(155, 138, 92, 0.15) !important;\n"
+                    "    color: #e5dccb !important;\n"
+                    "    font-weight: 700 !important;\n"
+                    "    padding: 8px 6px !important;\n"
+                    "    text-align: center !important;\n"
+                    "    border: 1px solid rgba(128, 128, 128, 0.2) !important;\n"
+                    "    white-space: normal !important;\n"
+                    "    word-break: normal !important;\n"
+                    "    vertical-align: middle !important;\n"
+                    "    line-height: 1.2 !important;\n"
+                    "}\n"
+                    ".consolidated-table td {\n"
+                    "    padding: 8px 6px !important;\n"
+                    "    text-align: center !important;\n"
+                    "    border: 1px solid rgba(128, 128, 128, 0.15) !important;\n"
+                    "    vertical-align: middle !important;\n"
+                    "}\n"
+                    ".consolidated-table tr:nth-child(even) {\n"
+                    "    background-color: rgba(255, 255, 255, 0.01);\n"
+                    "}\n"
+                    ".consolidated-table tr:hover {\n"
+                    "    background-color: rgba(155, 138, 92, 0.05);\n"
+                    "}\n"
+                    "</style>\n"
+                    f"<div class=\"consolidated-table-container\">\n{html_table}\n</div>"
+                )
+                st.markdown(html_content, unsafe_allow_html=True)
             else:
                 st.info("Nenhuma unidade subordinada encontrada.")
 
