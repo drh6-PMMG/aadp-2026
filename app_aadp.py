@@ -3165,57 +3165,45 @@ def _baixar_drive(file_id: str, destino: str):
 
 
 def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
-
-
     """Processa os dois CSVs e retorna o DataFrame final."""
-
-
     sigef = {}
-
-
     with open(si_f, encoding="cp1252", errors="replace") as f:
-
-
         for row in csv.reader(f, delimiter=";"):
-
-
             if len(row) > 9:
-
-
                 sigef[row[0].strip().lstrip("0") or "0"] = row[9].strip()
 
+    # Contagem de instâncias de avaliação ativas por PM
+    pm_counts = {}
+    with open(av_f, encoding="cp1252", errors="replace") as f:
+        reader = csv.reader(f, delimiter=";")
+        try:
+            next(reader)
+        except StopIteration:
+            pass
+        for row in reader:
+            if not row:
+                continue
+            while len(row) < 8:
+                row.append("")
+            sit = row[7].strip()
+            if sit in SITUACOES_ALVO:
+                nrpm = row[0].strip()
+                pm_counts[nrpm] = pm_counts.get(nrpm, 0) + 1
 
     rows = []
-
-
     with open(av_f, encoding="cp1252", errors="replace") as f:
-
-
         reader = csv.reader(f, delimiter=";")
-
-
         next(reader)
-
-
         for row in reader:
-
-
             while len(row) < 50: row.append("")  # CSV tem 50 colunas (colégio até Homologador)
-
-
             sit = row[7].strip()
-
-
             if sit not in SITUACOES_ALVO: continue
-
-
             nrpm = row[0].strip(); local = row[5].strip()
-
-
             j = row[9].strip(); l = row[11].strip(); n = row[13].strip()
-
-
-            sc = "Comissão Atual" if local.upper().strip() == sigef.get(nrpm.lstrip("0") or "0","").upper().strip() else "Nota Provisória"
+            
+            is_same_location = (local.upper().strip() == sigef.get(nrpm.lstrip("0") or "0", "").upper().strip())
+            has_multiple_evals = (pm_counts.get(nrpm, 0) > 1)
+            sc = "Comissão Atual" if (is_same_location or not has_multiple_evals) else "Nota Provisória"
 
 
             rows.append({
@@ -8412,8 +8400,6 @@ if active_page == "Relatório Word":
 # ══════════════════════════════════════════════════════════════════════════════
 if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
     st.markdown("### 📊 Auditoria de Notas")
-    st.info("👉 Esta tela apresenta o conteúdo consolidado da planilha mestre `Analise avaliacoes completa.xlsx` contendo as regras de negócio de avaliações, recursos e notas médias finais.")
-    
     _role_audit = sidebar_active_role
     _user_rpm   = st.session_state.get("simulated_rpm", st.session_state.get("user_rpm", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_rpm", "")
     _user_unit  = st.session_state.get("simulated_unit", st.session_state.get("user_unit", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_unit", "")
