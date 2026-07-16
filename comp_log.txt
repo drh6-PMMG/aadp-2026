@@ -1,0 +1,31 @@
+Parsing CSV files...
+Generating report using current code...
+Comparing documents...
+Generated doc: Paragraphs=144, Tables=43
+Model doc:     Paragraphs=141, Tables=43
+Paragraph 16 Text Mismatch:
+  Gen:   ''
+  Model: '1. Visão Geral — Estado'
+Paragraph 17 Text Mismatch:
+  Gen:   '1. Visão Geral — Estado'
+  Model: 'Esta seção apresenta o panorama geral consolidado do estado de Minas Gerais com base em todos os registros válidos do AADP 2026.'
+Paragraph 18 Text Mismatch:
+  Gen:   'Esta seção apresenta o panorama geral consolidado do estado de Minas Gerais com base em todos os registros válidos do AADP 2026.'
+  Model: ''
+Paragraph 20 Text Mismatch:
+  Gen:   ''
+  Model: '1.1 Subunidades 100% Encerradas'
+Paragraph 21 Text Mismatch:
+  Gen:   '1.1 Subunidades 100% Encerradas'
+  Model: 'Abaixo estão listadas as Subunidades que concluíram 100% de seus processos avaliativos, sem nenhuma pendência em aberto ou parcialmente encerrada.'
+Paragraph 22 Text Mismatch:
+  Gen:   'Abaixo estão listadas as Subunidades que concluíram 100% de seus processos avaliativos, sem nenhuma pendência em aberto ou parcialmente encerrada.'
+  Model: ''
+
+--- Comparing styles of first 30 paragraphs ---
+P 18 Style/Align Mismatch:
+  Gen:   Style=Normal, Align=None
+  Model: Style=Normal, Align=CENTER (1)
+P 19 Style/Align Mismatch:
+  Gen:   Style=Normal, Align=CENTER (1)
+  Model: Style=Normal, Align=None
