@@ -1313,6 +1313,30 @@ div.element-container:has(.excel-scope-marker) + div button[kind="primary"] * {
     color: var(--text-color) !important;
 }
 
+/* Force caqui theme colors globally for primary elements (buttons, radios, inputs) */
+button[kind="primary"], button[data-testid="stBaseButton-primary"] {
+    background-color: #9b8a5c !important;
+    color: #ffffff !important;
+    border: 1px solid #9b8a5c !important;
+}
+button[kind="primary"]:hover, button[data-testid="stBaseButton-primary"]:hover {
+    background-color: #83744c !important;
+    border-color: #83744c !important;
+    color: #ffffff !important;
+}
+button[kind="primary"] p, button[data-testid="stBaseButton-primary"] p {
+    color: #ffffff !important;
+}
+div[data-checked="true"] > div {
+    background-color: #9b8a5c !important;
+}
+div[data-checked="true"] {
+    border-color: #9b8a5c !important;
+}
+div[data-baseweb="input"] > div:focus-within {
+    border-color: #9b8a5c !important;
+}
+
 </style>
 
 
@@ -3845,7 +3869,7 @@ if not st.session_state.authenticated:
             st.markdown("##### 📝 Solicitação de acesso - Painel de Controle AADP")
 
 
-            st.info("⚠️ Informe apenas os **6 primeiros dígitos** do seu Nº PM (sem o dígito verificador).")
+            st.info("⚠️ Informe apenas os **6 primeiros dígitos** do seu Nº PM (sem o dígito verificador).\n\n🔒 **Importante:** Somente Comandante e Subcomandante de unidade, militares da P1 e SADM poderão solicitar e ter autorizado o acesso a este Painel de controle AADP.")
 
 
             
