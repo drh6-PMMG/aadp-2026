@@ -1314,25 +1314,56 @@ div.element-container:has(.excel-scope-marker) + div button[kind="primary"] * {
 }
 
 /* Force caqui theme colors globally for primary elements (buttons, radios, inputs) */
-button[kind="primary"], button[data-testid="stBaseButton-primary"] {
+button[kind="primary"], 
+button[data-testid="stBaseButton-primary"],
+div[data-testid="stBaseButton-primary"] button,
+div.stButton > button[kind="primary"],
+div.stButton > button[data-testid="stBaseButton-primary"],
+.st-emotion-cache-12w0qpk,
+.st-emotion-cache-1f3w0dd,
+.st-emotion-cache-zt52cr {
     background-color: #9b8a5c !important;
+    background: #9b8a5c !important;
     color: #ffffff !important;
     border: 1px solid #9b8a5c !important;
+    border-color: #9b8a5c !important;
 }
-button[kind="primary"]:hover, button[data-testid="stBaseButton-primary"]:hover {
+
+button[kind="primary"]:hover, 
+button[data-testid="stBaseButton-primary"]:hover,
+div[data-testid="stBaseButton-primary"] button:hover,
+div.stButton > button[kind="primary"]:hover,
+div.stButton > button[data-testid="stBaseButton-primary"]:hover,
+.st-emotion-cache-12w0qpk:hover,
+.st-emotion-cache-1f3w0dd:hover,
+.st-emotion-cache-zt52cr:hover {
     background-color: #83744c !important;
+    background: #83744c !important;
     border-color: #83744c !important;
     color: #ffffff !important;
 }
-button[kind="primary"] p, button[data-testid="stBaseButton-primary"] p {
+
+button[kind="primary"] *, 
+button[data-testid="stBaseButton-primary"] *,
+div[data-testid="stBaseButton-primary"] button *,
+div.stButton > button[kind="primary"] *,
+div.stButton > button[data-testid="stBaseButton-primary"] * {
     color: #ffffff !important;
 }
-div[data-checked="true"] > div {
+
+div[data-checked="true"] > div,
+div[data-testid="stRadio"] label[data-baseweb="radio"] div[data-checked="true"] > div,
+.st-emotion-cache-16xl6g5[data-checked="true"] > div {
     background-color: #9b8a5c !important;
-}
-div[data-checked="true"] {
     border-color: #9b8a5c !important;
 }
+
+div[data-checked="true"],
+div[data-testid="stRadio"] label[data-baseweb="radio"] div[data-checked="true"],
+.st-emotion-cache-16xl6g5[data-checked="true"] {
+    border-color: #9b8a5c !important;
+}
+
 div[data-baseweb="input"] > div:focus-within {
     border-color: #9b8a5c !important;
 }
