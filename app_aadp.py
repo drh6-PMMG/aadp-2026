@@ -8679,11 +8679,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
     else:
         master_xlsx_path = os.path.join(str(Path(DADOS_DIR).parent), "Analise avaliacoes completa.xlsx")
         
-    with st.spinner("Consolidando dados do sistema..."):
-        df_audit, err = load_audit_excel(master_xlsx_path, drive_master_xlsx_id)
-        if err or df_audit is None:
-            st.error(f"Erro ao carregar auditoria: {err}")
-            st.stop()
+    df_audit = None
             
     # Obter variáveis de perfil do usuário (considerando simulação)
     _role_consol = sidebar_active_role.upper()
@@ -8692,16 +8688,14 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
 
     # Aplicar filtragem de escopo de dados conforme o perfil
     df_evals_source = df_full.copy()
-    df_audit_source = df_audit.copy()
+    df_audit_source = None
 
     if _role_consol == "P1":
         df_evals_source = df_evals_source[df_evals_source["Unidade RPM (Avaliado)"] == _user_rpm]
-        df_audit_source = df_audit_source[df_audit_source["Nome RPM"] == _user_rpm]
     elif _role_consol == "SADM":
         df_evals_source = df_evals_source[df_evals_source["Unidade Principal (Avaliado)"] == _user_unit]
-        df_audit_source = df_audit_source[df_audit_source["Nome Unidade Principal"] == _user_unit]
 
-    def compute_metrics(df_sub_evals, df_sub_audit):
+    def compute_metrics(df_sub_evals, df_sub_audit=None):
         def get_numeric_value(val):
             try:
                 if val is None or str(val).strip() in ("", "-", "None", "nan"):
@@ -8710,17 +8704,32 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
             except ValueError:
                 return None
 
-        # Calcular média a partir dos dados gerais (df_sub_evals) em vez da auditoria
-        def get_eval_grade(row):
-            h = get_numeric_value(row.get("Nota Homologação"))
-            g = get_numeric_value(row.get("Nota Geral"))
-            return h if h is not None else g
+        # Agrupar por militar para calcular pendências e notas
+        pm_groups = df_sub_evals.groupby("nrPM (Avaliado)")
+        mil_sim = 0
+        mil_nao = 0
+        pm_grades = []
 
-        grades = df_sub_evals.apply(get_eval_grade, axis=1).dropna()
-        mean_val = grades.mean() if len(grades) > 0 else 0.0
+        for pm, group in pm_groups:
+            statuses = group["Status Avaliação"].astype(str).str.upper().str.strip()
+            todas_encerradas = (statuses == "ENCERRADA").all()
+            
+            if todas_encerradas:
+                mil_sim += 1
+                eval_grades = []
+                for idx, row in group.iterrows():
+                    h = get_numeric_value(row.get("Nota Homologação"))
+                    g = get_numeric_value(row.get("Nota Geral"))
+                    val = h if h is not None else g
+                    if val is not None:
+                        eval_grades.append(val)
+                if len(eval_grades) == len(group):
+                    pm_grades.append(sum(eval_grades) / len(eval_grades))
+            else:
+                mil_nao += 1
 
-        mil_sim = (df_sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
-        mil_nao = (df_sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "NAO").sum()
+        mean_val = sum(pm_grades) / len(pm_grades) if len(pm_grades) > 0 else 0.0
+
 
         n_total = len(df_sub_evals)
         n_enc = (df_sub_evals["Status Avaliação"] == "Encerrada").sum()
@@ -8799,6 +8808,32 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                 h = get_numeric_value(row.get("Nota Homologação"))
                 g = get_numeric_value(row.get("Nota Geral"))
                 return h if h is not None else g
+
+            def get_militares_counts(df_sub):
+                if len(df_sub) == 0:
+                    return 0, 0, 0.0
+                pm_groups = df_sub.groupby("nrPM (Avaliado)")
+                mil_sim = 0
+                mil_nao = 0
+                pm_grades = []
+                for pm, group in pm_groups:
+                    statuses = group["Status Avaliação"].astype(str).str.upper().str.strip()
+                    todas_encerradas = (statuses == "ENCERRADA").all()
+                    if todas_encerradas:
+                        mil_sim += 1
+                        eval_grades = []
+                        for idx, row in group.iterrows():
+                            h = get_numeric_value(row.get("Nota Homologação"))
+                            g = get_numeric_value(row.get("Nota Geral"))
+                            val = h if h is not None else g
+                            if val is not None:
+                                eval_grades.append(val)
+                        if len(eval_grades) == len(group):
+                            pm_grades.append(sum(eval_grades) / len(eval_grades))
+                    else:
+                        mil_nao += 1
+                mean_val = sum(pm_grades) / len(pm_grades) if len(pm_grades) > 0 else 0.0
+                return mil_sim, mil_nao, mean_val
                     
             headers = [
                 "Unidade Principal (RPM/UDG)", "Total Avaliações", "Comissão Atual", "Nota Provisória",
@@ -8837,13 +8872,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                     
             if role == "SADM":
                 df_sub_evals = df_evals[df_evals["Unidade Principal (Avaliado)"] == _user_unit]
-                df_sub_audit = df_audit[df_audit["Nome Unidade Principal"] == _user_unit]
-                
-                grades = df_sub_evals.apply(get_eval_grade, axis=1).dropna()
-                mean_val = grades.mean() if len(grades) > 0 else 0.0
-                
-                mil_sim = (df_sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
-                mil_nao = (df_sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "NAO").sum()
+                mil_sim, mil_nao, mean_val = get_militares_counts(df_sub_evals)
                 
                 sub_row = [
                     _user_unit,
@@ -8865,16 +8894,11 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
             else:
                 for rpm in rpms_to_export:
                     df_rpm_evals = df_evals[df_evals["Unidade RPM (Avaliado)"] == rpm]
-                    df_rpm_audit = df_audit[df_audit["Nome RPM"] == rpm]
                     
                     if len(df_rpm_evals) == 0:
                         continue
                         
-                    grades = df_rpm_evals.apply(get_eval_grade, axis=1).dropna()
-                    mean_val = grades.mean() if len(grades) > 0 else 0.0
-                    
-                    mil_sim = (df_rpm_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
-                    mil_nao = (df_rpm_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "NAO").sum()
+                    mil_sim, mil_nao, mean_val = get_militares_counts(df_rpm_evals)
                     
                     rpm_row = [
                         rpm,
@@ -8899,13 +8923,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                         if subs_to_export is not None and sub not in subs_to_export:
                             continue
                         sub_evals = df_rpm_evals[df_rpm_evals["Unidade Principal (Avaliado)"] == sub]
-                        sub_audit = df_rpm_audit[df_rpm_audit["Nome Unidade Principal"] == sub]
-                        
-                        sub_grades = sub_evals.apply(get_eval_grade, axis=1).dropna()
-                        sub_mean_val = sub_grades.mean() if len(sub_grades) > 0 else 0.0
-                        
-                        sub_mil_sim = (sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
-                        sub_mil_nao = (sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "NAO").sum()
+                        sub_mil_sim, sub_mil_nao, sub_mean_val = get_militares_counts(sub_evals)
                         
                         sub_row = [
                             rpm,
@@ -8952,7 +8970,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
     
     for rpm in all_rpms:
         df_rpm_evals = df_evals_source[df_evals_source["Unidade RPM (Avaliado)"] == rpm]
-        df_rpm_audit = df_audit_source[df_audit_source["Nome RPM"] == rpm]
+        df_rpm_audit = None
         
         rpm_metrics = compute_metrics(df_rpm_evals, df_rpm_audit)
         
@@ -9035,7 +9053,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                 
             for sub in unique_subs:
                 sub_evals = df_rpm_evals[df_rpm_evals["Unidade Principal (Avaliado)"] == sub]
-                sub_audit = df_rpm_audit[df_rpm_audit["Nome Unidade Principal"] == sub]
+                sub_audit = None
                 
                 metrics = compute_metrics(sub_evals, sub_audit)
                 row = {"Unidade Subordinada": sub}
