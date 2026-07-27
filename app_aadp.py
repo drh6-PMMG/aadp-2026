@@ -8710,7 +8710,13 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
             except ValueError:
                 return None
 
-        grades = df_sub_audit["Nota Final - Média Aritmética"].apply(get_numeric_value).dropna()
+        # Calcular média a partir dos dados gerais (df_sub_evals) em vez da auditoria
+        def get_eval_grade(row):
+            h = get_numeric_value(row.get("Nota Homologação"))
+            g = get_numeric_value(row.get("Nota Geral"))
+            return h if h is not None else g
+
+        grades = df_sub_evals.apply(get_eval_grade, axis=1).dropna()
         mean_val = grades.mean() if len(grades) > 0 else 0.0
 
         mil_sim = (df_sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
@@ -8788,6 +8794,11 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                     return float(str(val).replace(",", "."))
                 except ValueError:
                     return None
+
+            def get_eval_grade(row):
+                h = get_numeric_value(row.get("Nota Homologação"))
+                g = get_numeric_value(row.get("Nota Geral"))
+                return h if h is not None else g
                     
             headers = [
                 "Unidade Principal (RPM/UDG)", "Total Avaliações", "Comissão Atual", "Nota Provisória",
@@ -8828,7 +8839,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                 df_sub_evals = df_evals[df_evals["Unidade Principal (Avaliado)"] == _user_unit]
                 df_sub_audit = df_audit[df_audit["Nome Unidade Principal"] == _user_unit]
                 
-                grades = df_sub_audit["Nota Final - Média Aritmética"].apply(get_numeric_value).dropna()
+                grades = df_sub_evals.apply(get_eval_grade, axis=1).dropna()
                 mean_val = grades.mean() if len(grades) > 0 else 0.0
                 
                 mil_sim = (df_sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
@@ -8859,7 +8870,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                     if len(df_rpm_evals) == 0:
                         continue
                         
-                    grades = df_rpm_audit["Nota Final - Média Aritmética"].apply(get_numeric_value).dropna()
+                    grades = df_rpm_evals.apply(get_eval_grade, axis=1).dropna()
                     mean_val = grades.mean() if len(grades) > 0 else 0.0
                     
                     mil_sim = (df_rpm_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
@@ -8890,7 +8901,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                         sub_evals = df_rpm_evals[df_rpm_evals["Unidade Principal (Avaliado)"] == sub]
                         sub_audit = df_rpm_audit[df_rpm_audit["Nome Unidade Principal"] == sub]
                         
-                        sub_grades = sub_audit["Nota Final - Média Aritmética"].apply(get_numeric_value).dropna()
+                        sub_grades = sub_evals.apply(get_eval_grade, axis=1).dropna()
                         sub_mean_val = sub_grades.mean() if len(sub_grades) > 0 else 0.0
                         
                         sub_mil_sim = (sub_audit["Todas Avaliações Foram Encerradas?"].astype(str).str.upper() == "SIM").sum()
