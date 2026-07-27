@@ -8415,27 +8415,19 @@ if active_page == "Relatório Word":
                 unique_rpms = sorted(df_word["Unidade RPM (Avaliado)"].dropna().unique().tolist(), key=rpm_sort_key)
                 selected_rpms = st.multiselect("Selecione as Unidades UDI/UDG para o relatório:", unique_rpms)
                 
-            st.markdown("---")
-            
-            # Validação de botão de geração
+            # 🚀 Botão de Geração em Destaque no Início da Página
             if "específica" in rel_scope and not selected_rpms:
                 st.warning("⚠️ Selecione ao menos uma unidade para gerar o relatório.")
             else:
-                if st.button("🚀 Gerar e Baixar Relatório Word", key="btn_word_gen"):
+                if st.button("🚀 Gerar e Baixar Relatório Word", key="btn_word_gen", type="primary", use_container_width=True):
                     with st.spinner("⏳ Gerando relatório executivo Word com gráficos... (Isso pode levar alguns instantes)"):
                         try:
                             from gerar_relatorio_word import generate_word_report
-                            
-                            # Mapear escopo para código
                             mode_code = "geral_rpm" if "Geral RPM" in rel_scope else "geral_subordinadas" if "Geral Subordinadas" in rel_scope else "especifica"
-                            
                             doc_bytes = generate_word_report(df_word, mode_code, selected_rpms, user_role=active_role)
-                            
                             st.success("✅ Relatório Word gerado com sucesso!")
                             log_action(active_pm, "EXPORTAR_WORD", f"Modo: {mode_code}, RPMs: {selected_rpms}")
-                            
                             doc_name = f"Relatorio_Executivo_AADP2026_{now_br().strftime('%Y%m%d_%H%M%S')}.docx"
-                            
                             st.download_button(
                                 label=f"⬇️ Baixar {doc_name}",
                                 data=doc_bytes,
@@ -8445,6 +8437,186 @@ if active_page == "Relatório Word":
                             )
                         except Exception as ex:
                             st.error(f"❌ Erro ao gerar o relatório: {ex}")
+                            
+            st.markdown("---")
+            
+            # ── PRÉ-VISUALIZAÇÃO DE GRÁFICOS DO WORD ──────────────────────────────────
+            st.markdown("<h4 style='font-size: 1.25rem; font-weight: bold; margin-top: 15px; margin-bottom: 12px; color: #9b8a5c;'>📊 Pré-visualização dos Gráficos do Relatório</h4>", unsafe_allow_html=True)
+            
+            show_preview = True
+            if "específica" in rel_scope and not selected_rpms:
+                st.info("💡 Selecione ao menos uma UDI/UDG acima para visualizar a pré-visualização dos gráficos.")
+                show_preview = False
+                
+            if show_preview:
+                df_word_clean = df_word.copy()
+                df_word_clean["Unidade Principal (Avaliado)"] = (
+                    df_word_clean["Unidade Principal (Avaliado)"]
+                    .astype(str)
+                    .str.strip()
+                    .replace({"nan": "", "-": ""})
+                )
+                mask_empty = df_word_clean["Unidade Principal (Avaliado)"] == ""
+                df_word_clean.loc[mask_empty, "Unidade Principal (Avaliado)"] = df_word_clean.loc[mask_empty, "Unidade RPM (Avaliado)"]
+                
+                # Filtrar pelo escopo do relatório
+                if "específica" in rel_scope:
+                    df_escopo = df_word_clean[df_word_clean["Unidade RPM (Avaliado)"].isin(selected_rpms)].copy()
+                    units_to_render = selected_rpms
+                else:
+                    df_escopo = df_word_clean
+                    units_to_render = sorted(df_word_clean["Unidade RPM (Avaliado)"].dropna().unique().tolist(), key=rpm_sort_key)
+                
+                # Tipo de pré-visualização
+                prev_type = st.selectbox(
+                    "Selecione o nível de detalhamento dos gráficos para visualização:",
+                    ["🌍 Geral (Toda a PMMG + Gráficos de cada UDI/UDG)", "🏢 Por UDI/UDG específica (RPM + Gráficos das Subunidades)"],
+                    key="word_prev_type"
+                )
+                
+                from gerar_relatorio_word import create_status_pie, create_comissao_bar, create_pending_units_bar
+                import tempfile
+                
+                if prev_type == "🌍 Geral (Toda a PMMG + Gráficos de cada UDI/UDG)":
+                    with st.spinner("⏳ Gerando prévia dos gráficos de toda a PMMG..."):
+                        # 1. Visão Geral do Estado
+                        st.markdown("<h5 style='font-size: 1.25rem; font-weight: bold; color: #9b8a5c; margin-top: 15px; margin-bottom: 10px;'>1. Visão Geral do Estado</h5>", unsafe_allow_html=True)
+                        
+                        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f_pie:
+                            t_pie = f_pie.name
+                        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f_bar:
+                            t_bar = f_bar.name
+                        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f_pend:
+                            t_pend = f_pend.name
+                            
+                        try:
+                            create_status_pie(df_escopo, t_pie)
+                            create_comissao_bar(df_escopo, t_bar)
+                            create_pending_units_bar(df_escopo, units_to_render, t_pend)
+                            
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                st.image(t_pie, caption="Status das Avaliações - Geral", use_container_width=True)
+                            with c2:
+                                st.image(t_bar, caption="Situação da Comissão - Geral", use_container_width=True)
+                            st.image(t_pend, caption="Pendências Acumuladas por UDI/UDG", use_container_width=True)
+                        finally:
+                            for p in [t_pie, t_bar, t_pend]:
+                                try:
+                                    if os.path.exists(p): os.remove(p)
+                                except Exception: pass
+                                
+                        # 2. Detalhamento de todas as UDI/UDG (sem subunidades)
+                        st.markdown("<h5 style='font-size: 1.25rem; font-weight: bold; color: #9b8a5c; margin-top: 25px; margin-bottom: 10px;'>2. Detalhamento de todas as UDI/UDG</h5>", unsafe_allow_html=True)
+                        for rpm in units_to_render:
+                            df_rpm = df_escopo[df_escopo["Unidade RPM (Avaliado)"] == rpm]
+                            if len(df_rpm) > 0:
+                                st.markdown(
+                                    f"""
+                                    <div style='background-color: #3e3825; padding: 8px 12px; border-left: 5px solid #9b8a5c; border-radius: 4px; margin-top: 20px; margin-bottom: 10px;'>
+                                        <span style='font-size: 1.15rem; font-weight: bold; color: #f5f5f5;'>🏢 Unidade Principal: {rpm}</span>
+                                        <span style='font-size: 0.95rem; color: #cbbb8f; margin-left: 10px;'>({len(df_rpm):,} avaliações)</span>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f_pie:
+                                    t_pie = f_pie.name
+                                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f_bar:
+                                    t_bar = f_bar.name
+                                try:
+                                    create_status_pie(df_rpm, t_pie)
+                                    create_comissao_bar(df_rpm, t_bar)
+                                    c1, c2 = st.columns(2)
+                                    with c1:
+                                        st.image(t_pie, use_container_width=True)
+                                    with c2:
+                                        st.image(t_bar, use_container_width=True)
+                                finally:
+                                    for p in [t_pie, t_bar]:
+                                        try:
+                                            if os.path.exists(p): os.remove(p)
+                                        except Exception: pass
+                                        
+                else:
+                    # Por UDI/UDG específica (RPM + Gráficos das Subunidades)
+                    rpms_available = sorted(df_escopo["Unidade RPM (Avaliado)"].dropna().unique().tolist(), key=rpm_sort_key)
+                    if rpms_available:
+                        selected_rpm = st.selectbox("Selecione a UDI/UDG (RPM) para detalhar:", rpms_available, key="prev_select_rpm")
+                        
+                        df_rpm = df_escopo[df_escopo["Unidade RPM (Avaliado)"] == selected_rpm]
+                        
+                        if not df_rpm.empty:
+                            with st.spinner(f"⏳ Gerando gráficos de {selected_rpm} e suas subordinadas..."):
+                                # 1. Gráficos da Unidade Principal
+                                st.markdown(
+                                    f"""
+                                    <div style='background-color: #3e3825; padding: 10px 15px; border-left: 5px solid #9b8a5c; border-radius: 4px; margin-top: 20px; margin-bottom: 15px;'>
+                                        <span style='font-size: 1.25rem; font-weight: bold; color: #f5f5f5;'>🏢 Unidade Principal: {selected_rpm}</span>
+                                        <span style='font-size: 1.0rem; color: #cbbb8f; margin-left: 10px;'>({len(df_rpm):,} avaliações)</span>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                                
+                                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f_pie:
+                                    t_pie = f_pie.name
+                                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f_bar:
+                                    t_bar = f_bar.name
+                                try:
+                                    create_status_pie(df_rpm, t_pie)
+                                    create_comissao_bar(df_rpm, t_bar)
+                                    c1, c2 = st.columns(2)
+                                    with c1:
+                                        st.image(t_pie, use_container_width=True)
+                                    with c2:
+                                        st.image(t_bar, use_container_width=True)
+                                finally:
+                                    for p in [t_pie, t_bar]:
+                                        try:
+                                            if os.path.exists(p): os.remove(p)
+                                        except Exception: pass
+                                        
+                                # 2. Gráficos das Subunidades (Subordinadas)
+                                st.markdown(f"<h5 style='font-size: 1.15rem; font-weight: bold; color: #9b8a5c; margin-top: 25px; margin-bottom: 10px;'>2.1 Unidades Subordinadas de {selected_rpm}</h5>", unsafe_allow_html=True)
+                                unique_subs = sorted(df_rpm["Unidade Principal (Avaliado)"].dropna().unique().tolist())
+                                for sub in unique_subs:
+                                    df_sub = df_rpm[df_rpm["Unidade Principal (Avaliado)"] == sub]
+                                    if len(df_sub) > 0:
+                                        st.markdown(
+                                            f"""
+                                            <div style='background-color: #26231b; padding: 6px 10px; border-left: 3px solid #ff9f43; border-radius: 4px; margin-top: 15px; margin-bottom: 8px;'>
+                                                <span style='font-size: 1.05rem; font-weight: bold; color: #f5f5f5;'>■ Subunidade: {sub}</span>
+                                                <span style='font-size: 0.9rem; color: #ff9f43; margin-left: 10px;'>({len(df_sub):,} avaliações)</span>
+                                            </div>
+                                            """,
+                                            unsafe_allow_html=True
+                                        )
+                                        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f_pie:
+                                            t_pie = f_pie.name
+                                        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f_bar:
+                                            t_bar = f_bar.name
+                                        try:
+                                            create_status_pie(df_sub, t_pie)
+                                            create_comissao_bar(df_sub, t_bar)
+                                            c1, c2 = st.columns(2)
+                                            with c1:
+                                                st.image(t_pie, use_container_width=True)
+                                            with c2:
+                                                st.image(t_bar, use_container_width=True)
+                                        finally:
+                                            for p in [t_pie, t_bar]:
+                                                try:
+                                                    if os.path.exists(p): os.remove(p)
+                                                except Exception: pass
+                        else:
+                            st.info("Sem dados disponíveis para a unidade selecionada.")
+                    else:
+                        st.info("Nenhuma UDI/UDG disponível no escopo atual.")
+            st.markdown("---")
+            
+            # O botão foi reposicionado no início da página
+            pass
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -8961,6 +9133,85 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
         )
         
     st.markdown("---")
+    
+    # ── GRÁFICO GERAL DE RPMs ─────────────────────────────────────────────────
+    chart_data = []
+    all_grades = pd.to_numeric(df_evals_source["Nota Geral"].astype(str).str.replace(",", "."), errors="coerce").dropna()
+    general_avg = float(all_grades.mean()) if len(all_grades) > 0 else 0.0
+
+    for rpm in all_rpms:
+        df_rpm_evals = df_evals_source[df_evals_source["Unidade RPM (Avaliado)"] == rpm]
+        if len(df_rpm_evals) > 0:
+            rpm_grades = pd.to_numeric(df_rpm_evals["Nota Geral"].astype(str).str.replace(",", "."), errors="coerce").dropna()
+            rpm_avg = float(rpm_grades.mean()) if len(rpm_grades) > 0 else 0.0
+            chart_data.append({"RPM": rpm, "Média": rpm_avg})
+            
+    df_chart = pd.DataFrame(chart_data)
+    if not df_chart.empty:
+        # Calcular y_min dinâmico para zoom elegante entre 9 e 10
+        min_val = df_chart["Média"].min()
+        import math
+        y_min = max(0.0, math.floor(min_val * 10) / 10.0 - 0.1)
+        if y_min > 8.5:
+            y_min = 8.5  # dá uma margem elegante abaixo de 9.0
+
+        fig_gen = px.bar(
+            df_chart, 
+            x="RPM", 
+            y="Média", 
+            text=[f"{v:.2f}".replace(".", ",") for v in df_chart["Média"]],
+            labels={"Média": "Média das Notas", "RPM": "RPM/UDG"},
+            color_discrete_sequence=["#9b8a5c"]
+        )
+        # Linha tracejada da Média Geral
+        fig_gen.add_hline(
+            y=general_avg, 
+            line_dash="dash", 
+            line_color="#ff6b6b"
+        )
+        # Rótulo de texto fora do gráfico (margem direita)
+        fig_gen.add_annotation(
+            xref="paper",
+            yref="y",
+            x=1.01,
+            y=general_avg,
+            text=f"Média Geral<br><b>{general_avg:.2f}</b>".replace(".", ","),
+            showarrow=False,
+            font=dict(color="#ff6b6b", size=9, family="sans-serif"),
+            xanchor="left",
+            yanchor="middle",
+            align="left"
+        )
+        fig_gen.update_traces(
+            textposition='outside',
+            textfont=dict(color="#cbbb8f", size=10, family="sans-serif"),
+            marker_line_color="#cbbb8f",
+            marker_line_width=1.5,
+            opacity=0.85,
+            cliponaxis=False
+        )
+        fig_gen.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            yaxis=dict(
+                range=[y_min, 10.05],
+                gridcolor="rgba(255, 255, 255, 0.05)",
+                zeroline=False,
+                tickfont=dict(color="#a0a0a0", size=10),
+                title=None
+            ),
+            xaxis=dict(
+                gridcolor="rgba(255, 255, 255, 0.05)",
+                tickfont=dict(color="#a0a0a0", size=10),
+                title=None
+            ),
+            bargap=0.45,
+            margin=dict(l=30, r=100, t=30, b=50),  # Margem direita expandida para o rótulo
+            height=250
+        )
+        st.plotly_chart(fig_gen, use_container_width=True)
+
     st.markdown("Clique em uma Unidade Principal (RPM/UDG) para visualizar seu resumo consolidado e expandir suas Unidades Subordinadas.")
     
     for rpm in all_rpms:
@@ -9057,6 +9308,73 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                 
             if sub_rows:
                 df_sub_table = pd.DataFrame(sub_rows)
+                
+                # Renderizar o gráfico das subunidades com zoom e design premium
+                st.markdown("###### 📊 Média de Notas por Subunidade")
+                
+                # Calcular y_min dinâmico para zoom elegante das subunidades
+                sub_min_val = df_sub_table["Média Notas"].min()
+                import math
+                y_min_sub = max(0.0, math.floor(sub_min_val * 10) / 10.0 - 0.1)
+                if y_min_sub > 8.5:
+                    y_min_sub = 8.5  # dá uma margem elegante abaixo de 9.0
+
+                fig_sub = px.bar(
+                    df_sub_table,
+                    x="Unidade Subordinada",
+                    y="Média Notas",
+                    text=[f"{v:.2f}".replace(".", ",") for v in df_sub_table["Média Notas"]],
+                    labels={"Média Notas": "Média das Notas", "Unidade Subordinada": "Subunidade"},
+                    color_discrete_sequence=["#9b8a5c"]
+                )
+                # Linha tracejada da Média da RPM
+                fig_sub.add_hline(
+                    y=avg_grade,
+                    line_dash="dash",
+                    line_color="#ff9f43"
+                )
+                # Rótulo de texto fora do gráfico (margem direita)
+                fig_sub.add_annotation(
+                    xref="paper",
+                    yref="y",
+                    x=1.01,
+                    y=avg_grade,
+                    text=f"Média {rpm}<br><b>{avg_grade:.2f}</b>".replace(".", ","),
+                    showarrow=False,
+                    font=dict(color="#ff9f43", size=9, family="sans-serif"),
+                    xanchor="left",
+                    yanchor="middle",
+                    align="left"
+                )
+                fig_sub.update_traces(
+                    textposition='outside',
+                    textfont=dict(color="#cbbb8f", size=10, family="sans-serif"),
+                    marker_line_color="#cbbb8f",
+                    marker_line_width=1.5,
+                    opacity=0.85,
+                    cliponaxis=False
+                )
+                fig_sub.update_layout(
+                    template="plotly_dark",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    yaxis=dict(
+                        range=[y_min_sub, 10.05],
+                        gridcolor="rgba(255, 255, 255, 0.05)",
+                        zeroline=False,
+                        tickfont=dict(color="#a0a0a0", size=10),
+                        title=None
+                    ),
+                    xaxis=dict(
+                        gridcolor="rgba(255, 255, 255, 0.05)",
+                        tickfont=dict(color="#a0a0a0", size=10),
+                        title=None
+                    ),
+                    bargap=0.45,
+                    margin=dict(l=30, r=100, t=30, b=50),  # Margem direita expandida para o rótulo
+                    height=220
+                )
+                st.plotly_chart(fig_sub, use_container_width=True)
                 
                 # Reordenar colunas para colocar a média das notas logo após o nome da unidade subordinada
                 cols_ordered = [
