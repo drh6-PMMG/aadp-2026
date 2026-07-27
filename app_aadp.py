@@ -8537,23 +8537,33 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
     c2_mask = (df_audit_disp['Todas Avaliações Foram Encerradas?'].astype(str).str.upper() == 'SIM') &                (df_audit_disp['Nota Final - Média Aritmética'].apply(is_numeric_grade))
     card2_count = len(df_audit_disp[c2_mask])
     
-    # 3. Média da Nota da Unidade (média aritmética de todas as notas finais já encerradas)
-    def get_numeric_value(val):
-        try:
-            if val is None or str(val).strip() in ("", "-", "None", "nan"):
-                return None
-            return float(str(val).replace(",", "."))
-        except ValueError:
-            return None
-
-    grades = df_audit_disp['Nota Final - Média Aritmética'].apply(get_numeric_value).dropna()
-    if len(grades) > 0:
-        card3_avg = grades.mean()
-        import math
-        card3_avg_rounded = math.floor(card3_avg * 100 + 0.5) / 100.0
-        card3_val = f"{card3_avg_rounded:.2f}".replace(".", ",")
+    # 3. Média da Nota da Unidade (média aritmética de todas as notas finais já encerradas do banco geral)
+    df_evals_audit = df_full.copy()
+    if _role_audit == "P1":
+        if _user_rpm:
+            df_evals_audit = df_evals_audit[df_evals_audit["Unidade RPM (Avaliado)"].astype(str).str.upper() == str(_user_rpm).upper()]
+    elif _role_audit == "SADM":
+        if _user_unit:
+            df_evals_audit = df_evals_audit[df_evals_audit["Unidade Principal (Avaliado)"].astype(str).str.upper() == str(_user_unit).upper()]
     else:
+        if rpm_filter:
+            df_evals_audit = df_evals_audit[df_evals_audit["Unidade RPM (Avaliado)"].isin(rpm_filter)]
+        if unid_filter:
+            df_evals_audit = df_evals_audit[df_evals_audit["Unidade Principal (Avaliado)"].isin(unid_filter)]
+
+    if len(df_evals_audit) == 0:
         card3_val = "0,00"
+    else:
+        grades = pd.to_numeric(df_evals_audit["Nota Geral"].astype(str).str.replace(",", "."), errors="coerce").dropna()
+        if len(grades) > 0:
+            card3_avg = grades.mean()
+            import math
+            card3_avg_rounded = math.floor(card3_avg * 100 + 0.5) / 100.0
+            card3_val = f"{card3_avg_rounded:.2f}".replace(".", ",")
+        else:
+            card3_val = "0,00"
+
+
 
     # Renderizar os 3 cards lado a lado usando CSS kpi-card
     col_k1, col_k2, col_k3 = st.columns(3)
@@ -8704,31 +8714,24 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
             except ValueError:
                 return None
 
-        # Agrupar por militar para calcular pendências e notas
-        pm_groups = df_sub_evals.groupby("nrPM (Avaliado)")
-        mil_sim = 0
-        mil_nao = 0
-        pm_grades = []
-
-        for pm, group in pm_groups:
-            statuses = group["Status Avaliação"].astype(str).str.upper().str.strip()
-            todas_encerradas = (statuses == "ENCERRADA").all()
+        if len(df_sub_evals) == 0:
+            mil_sim = 0
+            mil_nao = 0
+            mean_val = 0.0
+        else:
+            is_enc = (df_sub_evals["Status Avaliação"].astype(str).str.upper().str.strip() == "ENCERRADA")
             
-            if todas_encerradas:
-                mil_sim += 1
-                eval_grades = []
-                for idx, row in group.iterrows():
-                    h = get_numeric_value(row.get("Nota Homologação"))
-                    g = get_numeric_value(row.get("Nota Geral"))
-                    val = h if h is not None else g
-                    if val is not None:
-                        eval_grades.append(val)
-                if len(eval_grades) == len(group):
-                    pm_grades.append(sum(eval_grades) / len(eval_grades))
-            else:
-                mil_nao += 1
+            pm_col = df_sub_evals["nrPM (Avaliado)"]
+            all_enc = is_enc.groupby(pm_col).all()
 
-        mean_val = sum(pm_grades) / len(pm_grades) if len(pm_grades) > 0 else 0.0
+            mil_sim = int(all_enc.sum())
+            mil_nao = int((~all_enc).sum())
+            
+            # Média simples da coluna Nota Geral diretamente
+            grades = pd.to_numeric(df_sub_evals["Nota Geral"].astype(str).str.replace(",", "."), errors="coerce").dropna()
+            mean_val = float(grades.mean()) if len(grades) > 0 else 0.0
+
+
 
 
         n_total = len(df_sub_evals)
@@ -8812,28 +8815,20 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
             def get_militares_counts(df_sub):
                 if len(df_sub) == 0:
                     return 0, 0, 0.0
-                pm_groups = df_sub.groupby("nrPM (Avaliado)")
-                mil_sim = 0
-                mil_nao = 0
-                pm_grades = []
-                for pm, group in pm_groups:
-                    statuses = group["Status Avaliação"].astype(str).str.upper().str.strip()
-                    todas_encerradas = (statuses == "ENCERRADA").all()
-                    if todas_encerradas:
-                        mil_sim += 1
-                        eval_grades = []
-                        for idx, row in group.iterrows():
-                            h = get_numeric_value(row.get("Nota Homologação"))
-                            g = get_numeric_value(row.get("Nota Geral"))
-                            val = h if h is not None else g
-                            if val is not None:
-                                eval_grades.append(val)
-                        if len(eval_grades) == len(group):
-                            pm_grades.append(sum(eval_grades) / len(eval_grades))
-                    else:
-                        mil_nao += 1
-                mean_val = sum(pm_grades) / len(pm_grades) if len(pm_grades) > 0 else 0.0
+                is_enc = (df_sub["Status Avaliação"].astype(str).str.upper().str.strip() == "ENCERRADA")
+                
+                pm_col = df_sub["nrPM (Avaliado)"]
+                all_enc = is_enc.groupby(pm_col).all()
+
+                mil_sim = int(all_enc.sum())
+                mil_nao = int((~all_enc).sum())
+                
+                # Média simples da coluna Nota Geral diretamente
+                grades = pd.to_numeric(df_sub["Nota Geral"].astype(str).str.replace(",", "."), errors="coerce").dropna()
+                mean_val = float(grades.mean()) if len(grades) > 0 else 0.0
                 return mil_sim, mil_nao, mean_val
+
+
                     
             headers = [
                 "Unidade Principal (RPM/UDG)", "Total Avaliações", "Comissão Atual", "Nota Provisória",
