@@ -2417,66 +2417,48 @@ def db_get_users_df():
 
 
 
+def format_log_timestamp(ts_str):
+    if not ts_str:
+        return ts_str
+    try:
+        ts_clean = str(ts_str).strip()
+        if "T" in ts_clean or ts_clean.endswith("Z"):
+            dt = pd.to_datetime(ts_clean)
+            if dt.tzinfo is None:
+                dt = dt.tz_localize("UTC")
+            dt_br = dt.tz_convert(timezone(timedelta(hours=-3)))
+            return dt_br.strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            dt = pd.to_datetime(ts_clean)
+            return dt.strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return ts_str
+
 def refresh_logs_cache():
-
-
     if check_use_cloud():
-
-
         logs = run_sheet_api("get_logs")
-
-
         if logs is None:
-
-
             logs = []
-
-
+        else:
+            for l in logs:
+                if "timestamp" in l:
+                    l["timestamp"] = format_log_timestamp(l["timestamp"])
     else:
-
-
         try:
-
-
             conn = sqlite3.connect(DB_FILE)
-
-
             c = conn.cursor()
-
-
             c.execute("SELECT timestamp, pm, action, details FROM logs ORDER BY id DESC")
-
-
             rows = c.fetchall()
-
-
             conn.close()
-
-
             logs = []
-
-
             for r in rows:
-
-
                 logs.append({
-
-
-                    "timestamp": r[0], "pm": r[1], "action": r[2], "details": r[3]
-
-
+                    "timestamp": format_log_timestamp(r[0]), "pm": r[1], "action": r[2], "details": r[3]
                 })
-
-
         except Exception:
-
-
             logs = []
-
-
+            
     st.session_state.db_logs = logs
-
-
     return logs
 
 
