@@ -374,6 +374,24 @@ def build_audit_data_from_geral(csv_path):
                 return idx
         raise ValueError(f"Coluna contendo '{pattern}' não encontrada no geral.csv.")
 
+    def parse_date(d_str):
+        if is_empty(d_str): return None
+        for fmt in ("%d-%m-%Y", "%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d"):
+            try:
+                return datetime.strptime(str(d_str).strip(), fmt).date()
+            except Exception:
+                continue
+        return None
+
+    def add_business_days(start_date, num_days):
+        curr = start_date
+        added = 0
+        while added < num_days:
+            curr += timedelta(days=1)
+            if curr.weekday() < 5: # Mon-Fri
+                added += 1
+        return curr
+
     pm_evals = {}
     
     with open(csv_path, "r", encoding="cp1252", errors="ignore") as f:
@@ -398,6 +416,10 @@ def build_audit_data_from_geral(csv_path):
         c_n_f2 = find_col(header, "Nota (Fase 2)")
         c_n_f3 = find_col(header, "Nota (Fase 3)")
         c_n_f4 = find_col(header, "Nota (Fase 4)")
+        c_r_f1 = find_col(header, "Recurso Fase 1")
+        c_r_f2 = find_col(header, "Recurso Fase 2")
+        c_r_f3 = find_col(header, "Recurso Fase 3")
+        c_r_f4 = find_col(header, "Recurso Fase 4")
         
         for row in reader:
             if len(row) < len(header):
@@ -420,35 +442,88 @@ def build_audit_data_from_geral(csv_path):
             n_f2 = parse_float(row[c_n_f2])
             n_f1 = parse_float(row[c_n_f1])
             
+            r_f4 = row[c_r_f4].strip()
+            r_f3 = row[c_r_f3].strip()
+            r_f2 = row[c_r_f2].strip()
+            r_f1 = row[c_r_f1].strip()
+            
+            original_grade = parse_float(n) if not is_empty(n) else parse_float(l)
+            
+            # Verificar se houve recurso interposto (Fase 1)
+            has_appeal = (r_f1 not in ("", "-")) or (n_f1 is not None)
+            
+            # Data de referência de hoje
+            ref_date = now_br().date()
+            
             final_grade = None
             houve_recurso = "-"
             fase_recurso = "-"
             nota_recurso = "-"
             
-            if n_f4 is not None:
-                final_grade = n_f4
-                houve_recurso = "SIM"
-                fase_recurso = "FASE 4"
-                nota_recurso = n_f4
-            elif n_f3 is not None:
-                final_grade = n_f3
-                houve_recurso = "SIM"
-                fase_recurso = "FASE 3"
-                nota_recurso = n_f3
-            elif n_f2 is not None:
-                final_grade = n_f2
-                houve_recurso = "SIM"
-                fase_recurso = "FASE 2"
-                nota_recurso = n_f2
-            elif n_f1 is not None:
-                final_grade = n_f1
-                houve_recurso = "SIM"
-                fase_recurso = "FASE 1"
-                nota_recurso = n_f1
-            elif not is_empty(n):
-                final_grade = parse_float(n)
+            if not has_appeal:
+                # Sem recurso. Verificar o prazo de recurso de 5 dias úteis
+                dt_base_str = row[c_dt_hom].strip() if not is_empty(row[c_dt_hom]) else (row[c_dt_av2].strip() if not is_empty(row[c_dt_av2]) else row[c_dt_av1].strip())
+                dt_base = parse_date(dt_base_str)
+                
+                if dt_base is not None:
+                    deadline = add_business_days(dt_base, 5)
+                    if ref_date > deadline:
+                        # Prazo expirado e sem recurso -> Nota definitiva
+                        final_grade = original_grade
+                    else:
+                        # Dentro do prazo de 5 dias úteis -> Ainda pode interpor recurso
+                        final_grade = None
+                        status = "EM PRAZO DE RECURSO"
+                else:
+                    # Sem data para calcular -> Assumimos nota definitiva
+                    final_grade = original_grade
             else:
-                final_grade = parse_float(l)
+                # Houve recurso!
+                houve_recurso = "SIM"
+                
+                # Fase 4
+                if n_f4 is not None:
+                    final_grade = n_f4
+                    fase_recurso = "FASE 4"
+                    nota_recurso = str(n_f4)
+                    status = "ENCERRADA"
+                # Fase 3
+                elif n_f3 is not None:
+                    final_grade = n_f3
+                    fase_recurso = "FASE 3"
+                    nota_recurso = str(n_f3)
+                    status = "ENCERRADA"
+                elif r_f3 not in ("", "-") and n_f3 is None:
+                    # Em tramitação na Fase 3 -> Não encerrado
+                    final_grade = None
+                    fase_recurso = "FASE 3"
+                    nota_recurso = "-"
+                    status = "EM RECURSO (FASE 3)"
+                # Fase 2
+                elif n_f2 is not None:
+                    # Decisão da comissão na Fase 2
+                    fase_recurso = "FASE 2"
+                    nota_recurso = str(n_f2)
+                    # Se a comissão deferiu (acatar a nota almejada da Fase 1)
+                    if n_f1 is not None and abs(n_f2 - n_f1) < 0.001:
+                        final_grade = n_f1
+                    else:
+                        # Se não deferiu ou nota foi diferente, mas não foi para Fase 3
+                        final_grade = n_f2
+                    status = "ENCERRADA"
+                elif r_f2 not in ("", "-") and n_f2 is None:
+                    # Em reconsideração da comissão -> Não encerrado
+                    final_grade = None
+                    fase_recurso = "FASE 2"
+                    nota_recurso = "-"
+                    status = "EM RECURSO (FASE 2)"
+                # Fase 1
+                else:
+                    # Somente Fase 1 ativa e sem decisão da comissão ainda -> Não encerrado
+                    final_grade = None
+                    fase_recurso = "FASE 1"
+                    nota_recurso = str(n_f1) if n_f1 is not None else "-"
+                    status = "EM RECURSO (FASE 1)"
                 
             dt_av = row[c_dt_av2].strip() or row[c_dt_av1].strip() or row[c_dt_hom].strip() or "-"
             
