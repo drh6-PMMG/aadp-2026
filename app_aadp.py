@@ -888,6 +888,7 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 
 
 .kpi-enc      {border-color:#70AD47;} .kpi-enc      .value{color:#7bed9f!important;}
+.kpi-recurso  {border-color:#9B59B6;} .kpi-recurso  .value{color:#d6a2e8!important;}
 .kpi-active-total  { background: #282828 !important; box-shadow: 0 0 15px rgba(155, 138, 92, 0.45) !important; border: 1.5px solid #9b8a5c !important; border-left: 5px solid #9b8a5c !important; }
 .kpi-active-ca     { background: #282828 !important; box-shadow: 0 0 15px rgba(155, 138, 92, 0.45) !important; border: 1.5px solid #9b8a5c !important; border-left: 5px solid #9b8a5c !important; }
 .kpi-active-np     { background: #282828 !important; box-shadow: 0 0 15px rgba(140, 110, 66, 0.45) !important; border: 1.5px solid #8c6e42 !important; border-left: 5px solid #8c6e42 !important; }
@@ -895,6 +896,7 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 .kpi-active-aberta { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 68, 68, 0.45) !important; border: 1.5px solid #FF4444 !important; border-left: 5px solid #FF4444 !important; }
 .kpi-active-parc   { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 140, 0, 0.45) !important; border: 1.5px solid #FF8C00 !important; border-left: 5px solid #FF8C00 !important; }
 .kpi-active-hom    { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 217, 102, 0.45) !important; border: 1.5px solid #FFD966 !important; border-left: 5px solid #FFD966 !important; }
+.kpi-active-recurso { background: #282828 !important; box-shadow: 0 0 15px rgba(155, 89, 182, 0.45) !important; border: 1.5px solid #9B59B6 !important; border-left: 5px solid #9B59B6 !important; }
 
 /* Glassmorphic Crystal Style Button */
 button[aria-label="👁️ Mostrar Encerradas"],
@@ -1507,20 +1509,14 @@ CONCEITO_FAIXA = {
 
 
 STATUS_COLORS = {
-
-
     "Encerrada":             "#70AD47",
-
-
     "Homologação":           "#FFD966",
-
-
     "Parcialmente Encerrada":"#FF8C00",
-
-
     "Aberta":                "#FF4444",
-
-
+    "EM PRAZO DE RECURSO":    "#BDC3C7",
+    "EM RECURSO (FASE 1)":    "#D6A2E8",
+    "EM RECURSO (FASE 2)":    "#AF7AC5",
+    "EM RECURSO (FASE 3)":    "#8E44AD",
 }
 
 
@@ -1530,7 +1526,10 @@ SIT_COLORS = {"Comissão Atual":"#4472C4","Nota Provisória":"#FFC000"}
 # Ordem para empilhamento: Encerradas embaixo, pendentes em cima
 
 
-STACK_ORDER  = ["Encerrada","Aberta","Parcialmente Encerrada","Homologação"]
+STACK_ORDER  = [
+    "Encerrada", "Aberta", "Parcialmente Encerrada", "Homologação",
+    "EM PRAZO DE RECURSO", "EM RECURSO (FASE 1)", "EM RECURSO (FASE 2)", "EM RECURSO (FASE 3)"
+]
 
 
 
@@ -3284,6 +3283,127 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
             if len(row) > 9:
                 sigef[row[0].strip().lstrip("0") or "0"] = row[9].strip()
 
+    # Carregar o geral.csv se disponível para obter as colunas de recursos e calcular o status de recurso
+    geral_f = os.path.join(os.path.dirname(av_f), "geral.csv")
+    recourse_map = {}
+    
+    def find_col_index(header_list, name_pattern):
+        def norm(s):
+            import unicodedata
+            t = unicodedata.normalize("NFD", str(s).lower().replace(" ", "").replace("_", "").replace("-", "").replace("(", "").replace(")", "").replace("/", ""))
+            return "".join(c for c in t if unicodedata.category(c) != "Mn")
+        pat = norm(name_pattern)
+        for i, col in enumerate(header_list):
+            if pat in norm(col):
+                return i
+        raise ValueError(f"Coluna contendo '{name_pattern}' nao encontrada.")
+
+    def normalize_pm_str(pm_val):
+        try:
+            if not pm_val or str(pm_val).strip() in ("", "-", "nan", "none", "None", "<NA>"):
+                return ""
+            return str(int(float(str(pm_val).strip())))
+        except Exception:
+            return str(pm_val).strip()
+
+    def parse_float_val(s_val):
+        if not s_val or str(s_val).strip() in ("", "-", "nan", "none", "None", "<NA>"):
+            return None
+        try:
+            return float(str(s_val).replace(",", "."))
+        except ValueError:
+            return None
+
+    if os.path.exists(geral_f):
+        try:
+            with open(geral_f, "r", encoding="cp1252", errors="ignore") as f:
+                reader = csv.reader(f, delimiter=";")
+                header = next(reader)
+                
+                c_pm_g = find_col_index(header, "nrPM (Avaliado)")
+                c_concept_g = find_col_index(header, "Conceito Geral")
+                c_grade_g = find_col_index(header, "Nota Geral")
+                c_dt_av1_g = find_col_index(header, "Data da Avaliação 1")
+                c_dt_av2_g = find_col_index(header, "Data da Avaliação 2")
+                c_dt_hom_g = find_col_index(header, "Data da Homologação")
+                c_n_hom_g = find_col_index(header, "Nota da Homologação")
+                
+                c_n_f1_g = find_col_index(header, "Nota (Fase 1)")
+                c_n_f2_g = find_col_index(header, "Nota (Fase 2)")
+                c_n_f3_g = find_col_index(header, "Nota (Fase 3)")
+                c_n_f4_g = find_col_index(header, "Nota (Fase 4)")
+                c_r_f1_g = find_col_index(header, "Recurso Fase 1")
+                c_r_f2_g = find_col_index(header, "Recurso Fase 2")
+                c_r_f3_g = find_col_index(header, "Recurso Fase 3")
+                c_r_f4_g = find_col_index(header, "Recurso Fase 4")
+                
+                def parse_date_internal(d_str):
+                    if not d_str or str(d_str).strip() in ("", "-", "nan", "none", "None", "<NA>"): return None
+                    for fmt in ("%d-%m-%Y", "%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d"):
+                        try:
+                            return datetime.strptime(str(d_str).strip(), fmt).date()
+                        except Exception:
+                            continue
+                    return None
+
+                def add_business_days_internal(start_date, num_days):
+                    curr = start_date
+                    added = 0
+                    while added < num_days:
+                        curr += timedelta(days=1)
+                        if curr.weekday() < 5: # Mon-Fri
+                            added += 1
+                    return curr
+
+                for row_g in reader:
+                    if len(row_g) < len(header): continue
+                    pm_g = normalize_pm_str(row_g[c_pm_g])
+                    concept_g = row_g[c_concept_g].strip()
+                    grade_g = row_g[c_grade_g].strip()
+                    n_hom_g = row_g[c_n_hom_g].strip()
+                    
+                    n_f4_val = parse_float_val(row_g[c_n_f4_g])
+                    n_f3_val = parse_float_val(row_g[c_n_f3_g])
+                    n_f2_val = parse_float_val(row_g[c_n_f2_g])
+                    n_f1_val = parse_float_val(row_g[c_n_f1_g])
+                    
+                    r_f4_val = row_g[c_r_f4_g].strip()
+                    r_f3_val = row_g[c_r_f3_g].strip()
+                    r_f2_val = row_g[c_r_f2_g].strip()
+                    r_f1_val = row_g[c_r_f1_g].strip()
+                    
+                    status_base = calc_status(concept_g, grade_g, n_hom_g)
+                    has_appeal_g = (r_f1_val not in ("", "-")) or (n_f1_val is not None)
+                    ref_date_g = now_br().date()
+                    
+                    final_status_g = status_base
+                    
+                    if not has_appeal_g:
+                        dt_base_str = row_g[c_dt_hom_g].strip() if not is_empty(row_g[c_dt_hom_g]) else (row_g[c_dt_av2_g].strip() if not is_empty(row_g[c_dt_av2_g]) else row_g[c_dt_av1_g].strip())
+                        dt_base = parse_date_internal(dt_base_str)
+                        if dt_base is not None:
+                            deadline = add_business_days_internal(dt_base, 5)
+                            if ref_date_g <= deadline:
+                                final_status_g = "EM PRAZO DE RECURSO"
+                    else:
+                        if n_f4_val is not None:
+                            final_status_g = "Encerrada"
+                        elif n_f3_val is not None:
+                            final_status_g = "Encerrada"
+                        elif r_f3_val not in ("", "-") and n_f3_val is None:
+                            final_status_g = "EM RECURSO (FASE 3)"
+                        elif n_f2_val is not None:
+                            final_status_g = "Encerrada"
+                        elif r_f2_val not in ("", "-") and n_f2_val is None:
+                            final_status_g = "EM RECURSO (FASE 2)"
+                        else:
+                            final_status_g = "EM RECURSO (FASE 1)"
+                            
+                    key = (pm_g, concept_g, grade_g)
+                    recourse_map[key] = final_status_g
+        except Exception:
+            pass
+
     # Contagem de instâncias de avaliação ativas por PM
     pm_counts = {}
     with open(av_f, encoding="cp1252", errors="replace") as f:
@@ -3316,6 +3436,13 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
             is_same_location = (local.upper().strip() == sigef.get(nrpm.lstrip("0") or "0", "").upper().strip())
             has_multiple_evals = (pm_counts.get(nrpm, 0) > 1)
             sc = "Comissão Atual" if (is_same_location or not has_multiple_evals) else "Nota Provisória"
+            
+            # Verificar se temos o status do recurso no recourse_map
+            pm_norm = normalize_pm_str(nrpm)
+            key = (pm_norm, j, l)
+            status_av = recourse_map.get(key)
+            if status_av is None:
+                status_av = calc_status(j, l, n)
 
 
             rows.append({
@@ -3438,7 +3565,7 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                 "Situação Comissão": sc,
 
 
-                "Status Avaliação":  calc_status(j, l, n),
+                "Status Avaliação":  status_av,
 
 
             })
@@ -3751,7 +3878,11 @@ def color_status(val):
          "Parcialmente Encerrada":"background-color:#fff0db;color:#7a3d00;font-weight:600",
 
 
-         "Aberta":"background-color:#fde8e8;color:#8b0000;font-weight:600"}
+         "Aberta":"background-color:#fde8e8;color:#8b0000;font-weight:600",
+         "EM PRAZO DE RECURSO":"background-color:#f2f3f4;color:#5d6d7e;font-weight:600",
+         "EM RECURSO (FASE 1)":"background-color:#f4ecf7;color:#6c3483;font-weight:600",
+         "EM RECURSO (FASE 2)":"background-color:#f4ecf7;color:#6c3483;font-weight:600",
+         "EM RECURSO (FASE 3)":"background-color:#f4ecf7;color:#6c3483;font-weight:600"}
 
 
     return m.get(val, "")
@@ -4750,7 +4881,7 @@ if data_ok:
     all_rpm   = sorted(df_full["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key)
 
 
-    all_status= ["Aberta","Parcialmente Encerrada","Homologação","Encerrada"]
+    all_status= ["Aberta", "Parcialmente Encerrada", "Homologação", "Encerrada", "EM PRAZO DE RECURSO", "EM RECURSO (FASE 1)", "EM RECURSO (FASE 2)", "EM RECURSO (FASE 3)"]
 
 
     all_sit   = ["Comissão Atual","Nota Provisória"]
@@ -4919,6 +5050,9 @@ n_enc    = (df["Status Avaliação"]=="Encerrada").sum()
 n_hom    = (df["Status Avaliação"]=="Homologação").sum()
 n_parc   = (df["Status Avaliação"]=="Parcialmente Encerrada").sum()
 n_aberta = (df["Status Avaliação"]=="Aberta").sum()
+n_recurso = df["Status Avaliação"].isin([
+    "EM RECURSO (FASE 1)", "EM RECURSO (FASE 2)", "EM RECURSO (FASE 3)", "EM PRAZO DE RECURSO"
+]).sum()
 n_ca     = (df["Situação Comissão"]=="Comissão Atual").sum()
 n_np     = (df["Situação Comissão"]=="Nota Provisória").sum()
 
@@ -4959,7 +5093,7 @@ if st.session_state.get("active_page", "Análise Gráfica") == "Análise Gráfic
 
         st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
-        cb2_1, cb2_2, cb2_3 = st.columns(3)
+        cb2_1, cb2_2, cb2_3, cb2_4 = st.columns(4)
         with cb2_1:
             st.markdown('<div class="kpi-card kpi-aberta">'
                         '<div class="label">ABERTAS</div>'
@@ -4977,6 +5111,12 @@ if st.session_state.get("active_page", "Análise Gráfica") == "Análise Gráfic
                         '<div class="label">HOMOLOGAÇÃO</div>'
                         f'<div class="value">{fmt_num(n_hom)}</div>'
                         '<div class="sub">HOM pendente</div>'
+                        '</div>', unsafe_allow_html=True)
+        with cb2_4:
+            st.markdown('<div class="kpi-card kpi-recurso">'
+                        '<div class="label">EM RECURSO</div>'
+                        f'<div class="value">{fmt_num(n_recurso)}</div>'
+                        '<div class="sub">Recurso pendente</div>'
                         '</div>', unsafe_allow_html=True)
 
 
@@ -5069,7 +5209,7 @@ if active_page == "Análise Gráfica":
     st.markdown("---")
 
 
-    ordered_labels = ["Aberta","Parcialmente Encerrada","Homologação","Encerrada"]
+    ordered_labels = ["Aberta", "Parcialmente Encerrada", "Homologação", "Encerrada", "EM PRAZO DE RECURSO", "EM RECURSO (FASE 1)", "EM RECURSO (FASE 2)", "EM RECURSO (FASE 3)"]
 
 
     sd = df.groupby("Status Avaliação").size()
@@ -5748,7 +5888,10 @@ if active_page == "Avaliações Pendentes":
     st.markdown("### ⏳ Avaliações Pendentes")
 
 
-    STATUS_PEND = {"Homologação","Parcialmente Encerrada","Aberta"}
+    STATUS_PEND = {
+        "Homologação", "Parcialmente Encerrada", "Aberta",
+        "EM PRAZO DE RECURSO", "EM RECURSO (FASE 1)", "EM RECURSO (FASE 2)", "EM RECURSO (FASE 3)"
+    }
 
 
     df_pend = df[df["Status Avaliação"].isin(STATUS_PEND)].copy()
@@ -5763,10 +5906,10 @@ if active_page == "Avaliações Pendentes":
     with c1:
 
 
-        tipo_pend = st.multiselect("Status:", ["Aberta","Parcialmente Encerrada","Homologação"],
+        tipo_pend = st.multiselect("Status:", ["Aberta", "Parcialmente Encerrada", "Homologação", "EM RECURSO"],
 
 
-                                   default=["Aberta","Parcialmente Encerrada","Homologação"],
+                                   default=["Aberta", "Parcialmente Encerrada", "Homologação", "EM RECURSO"],
 
 
                                    key="tp")
@@ -5783,8 +5926,15 @@ if active_page == "Avaliações Pendentes":
 
 
 
+    # Mapeamento do filtro para os valores reais do dataframe
+    filter_statuses = []
+    for tp in tipo_pend:
+        if tp == "EM RECURSO":
+            filter_statuses.extend(["EM RECURSO (FASE 1)", "EM RECURSO (FASE 2)", "EM RECURSO (FASE 3)", "EM PRAZO DE RECURSO"])
+        else:
+            filter_statuses.append(tp)
 
-    df_pv = df_pend[df_pend["Status Avaliação"].isin(tipo_pend) &
+    df_pv = df_pend[df_pend["Status Avaliação"].isin(filter_statuses) &
 
 
                     df_pend["Situação Comissão"].isin(sc_pend)] if tipo_pend and sc_pend else df_pend
@@ -5793,7 +5943,7 @@ if active_page == "Avaliações Pendentes":
 
 
 
-    k1, k2, k3, k4 = st.columns(4)
+    k1, k2, k3, k4, k5 = st.columns(5)
     with k1:
         st.markdown(f'<div class="kpi-card kpi-aberta">'
                     '<div class="label">🔴 Abertas</div>'
@@ -5813,6 +5963,12 @@ if active_page == "Avaliações Pendentes":
                     '<div class="sub">Homologação pendente</div>'
                     '</div>', unsafe_allow_html=True)
     with k4:
+        st.markdown(f'<div class="kpi-card kpi-recurso">'
+                    '<div class="label">🟣 Em Recurso</div>'
+                    f'<div class="value">{fmt_num(df_pv["Status Avaliação"].isin(["EM RECURSO (FASE 1)", "EM RECURSO (FASE 2)", "EM RECURSO (FASE 3)", "EM PRAZO DE RECURSO"]).sum())}</div>'
+                    '<div class="sub">Recurso pendente</div>'
+                    '</div>', unsafe_allow_html=True)
+    with k5:
         st.markdown(f'<div class="kpi-card kpi-total">'
                     '<div class="label">📊 Total</div>'
                     f'<div class="value">{fmt_num(len(df_pv))}</div>'
