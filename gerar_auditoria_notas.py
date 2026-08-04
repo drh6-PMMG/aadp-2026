@@ -339,20 +339,40 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
         r_f3 = row[81].strip()
         r_f2 = row[77].strip()
         r_f1 = row[73].strip()
-        
+        c_val = concordam(j, l)
         has_appeal = (r_f1 not in ("", "-")) or (n_f1 is not None)
-        
-        # Data de referência de hoje
         ref_date = date.today()
         
-        if not has_appeal:
-            dt_base_str = row[71].strip() if not is_empty(row[71]) else (row[45].strip() if not is_empty(row[45]) else row[36].strip())
-            dt_base = parse_date_safe(dt_base_str)
-            if dt_base is not None:
-                deadline = add_business_days(dt_base, 5)
-                if ref_date <= deadline:
-                    status_av = "EM PRAZO DE RECURSO"
+        if status_av in ("Aberta", "Parcialmente Encerrada"):
+            pass
+        elif not has_appeal:
+            if c_val is False:
+                # Houve discordância: necessita passar para o homologador
+                if is_empty(n):
+                    status_av = "Homologação"
+                else:
+                    dt_base = parse_date_safe(row[71]) # Data Homologação
+                    if dt_base is not None:
+                        deadline = add_business_days(dt_base, 5)
+                        if ref_date <= deadline:
+                            status_av = "EM PRAZO DE RECURSO"
+                        else:
+                            status_av = "Encerrada"
+                    else:
+                        status_av = "Encerrada"
+            else:
+                # Não houve discordância: prazo de 5 dias úteis a partir da data de AV2
+                dt_base = parse_date_safe(row[45]) # Data Avaliação 2
+                if dt_base is not None:
+                    deadline = add_business_days(dt_base, 5)
+                    if ref_date <= deadline:
+                        status_av = "EM PRAZO DE RECURSO"
+                    else:
+                        status_av = "Encerrada"
+                else:
+                    status_av = "Encerrada"
         else:
+            # Houve recurso
             if n_f4 is not None:
                 status_av = "Encerrada"
             elif n_f3 is not None:

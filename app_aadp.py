@@ -456,7 +456,9 @@ def build_audit_data_from_geral(csv_path):
             fase_recurso = "-"
             nota_recurso = "-"
             
-            if not has_appeal:
+            if status in ("Aberta", "Parcialmente Encerrada"):
+                final_grade = None
+            elif not has_appeal:
                 if c is False:
                     # Houve discordância: necessita passar para o homologador
                     if is_empty(n):
@@ -3381,7 +3383,9 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                     
                     final_status_g = calc_status(concept_g, grade_g, n_hom_g)
                     
-                    if not has_appeal_g:
+                    if final_status_g in ("Aberta", "Parcialmente Encerrada"):
+                        pass
+                    elif not has_appeal_g:
                         if c_g is False:
                             # Houve discordância: necessita passar para o homologador
                             if is_empty(n_hom_g):
