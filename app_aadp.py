@@ -448,11 +448,7 @@ def build_audit_data_from_geral(csv_path):
             r_f1 = row[c_r_f1].strip()
             
             original_grade = parse_float(n) if not is_empty(n) else parse_float(l)
-            
-            # Verificar se houve recurso interposto (Fase 1)
             has_appeal = (r_f1 not in ("", "-")) or (n_f1 is not None)
-            
-            # Data de referência de hoje
             ref_date = now_br().date()
             
             final_grade = None
@@ -461,22 +457,38 @@ def build_audit_data_from_geral(csv_path):
             nota_recurso = "-"
             
             if not has_appeal:
-                # Sem recurso. Verificar o prazo de recurso de 5 dias úteis
-                dt_base_str = row[c_dt_hom].strip() if not is_empty(row[c_dt_hom]) else (row[c_dt_av2].strip() if not is_empty(row[c_dt_av2]) else row[c_dt_av1].strip())
-                dt_base = parse_date(dt_base_str)
-                
-                if dt_base is not None:
-                    deadline = add_business_days(dt_base, 5)
-                    if ref_date > deadline:
-                        # Prazo expirado e sem recurso -> Nota definitiva
-                        final_grade = original_grade
-                    else:
-                        # Dentro do prazo de 5 dias úteis -> Ainda pode interpor recurso
+                if c is False:
+                    # Houve discordância: necessita passar para o homologador
+                    if is_empty(n):
+                        status = "Homologação"
                         final_grade = None
-                        status = "EM PRAZO DE RECURSO"
+                    else:
+                        dt_base = parse_date(row[c_dt_hom])
+                        if dt_base is not None:
+                            deadline = add_business_days(dt_base, 5)
+                            if ref_date <= deadline:
+                                status = "EM PRAZO DE RECURSO"
+                                final_grade = None
+                            else:
+                                status = "Encerrada"
+                                final_grade = parse_float(n)
+                        else:
+                            status = "Encerrada"
+                            final_grade = parse_float(n)
                 else:
-                    # Sem data para calcular -> Assumimos nota definitiva
-                    final_grade = original_grade
+                    # Não houve discordância: prazo de 5 dias úteis a partir da data de AV2
+                    dt_base = parse_date(row[c_dt_av2])
+                    if dt_base is not None:
+                        deadline = add_business_days(dt_base, 5)
+                        if ref_date <= deadline:
+                            status = "EM PRAZO DE RECURSO"
+                            final_grade = None
+                        else:
+                            status = "Encerrada"
+                            final_grade = parse_float(l)
+                    else:
+                        status = "Encerrada"
+                        final_grade = parse_float(l)
             else:
                 # Houve recurso!
                 houve_recurso = "SIM"
@@ -486,40 +498,31 @@ def build_audit_data_from_geral(csv_path):
                     final_grade = n_f4
                     fase_recurso = "FASE 4"
                     nota_recurso = str(n_f4)
-                    status = "ENCERRADA"
+                    status = "Encerrada"
                 # Fase 3
                 elif n_f3 is not None:
                     final_grade = n_f3
                     fase_recurso = "FASE 3"
                     nota_recurso = str(n_f3)
-                    status = "ENCERRADA"
+                    status = "Encerrada"
                 elif r_f3 not in ("", "-") and n_f3 is None:
-                    # Em tramitação na Fase 3 -> Não encerrado
                     final_grade = None
                     fase_recurso = "FASE 3"
                     nota_recurso = "-"
                     status = "EM RECURSO (FASE 3)"
                 # Fase 2
                 elif n_f2 is not None:
-                    # Decisão da comissão na Fase 2
+                    final_grade = n_f2
                     fase_recurso = "FASE 2"
                     nota_recurso = str(n_f2)
-                    # Se a comissão deferiu (acatar a nota almejada da Fase 1)
-                    if n_f1 is not None and abs(n_f2 - n_f1) < 0.001:
-                        final_grade = n_f1
-                    else:
-                        # Se não deferiu ou nota foi diferente, mas não foi para Fase 3
-                        final_grade = n_f2
-                    status = "ENCERRADA"
+                    status = "Encerrada"
                 elif r_f2 not in ("", "-") and n_f2 is None:
-                    # Em reconsideração da comissão -> Não encerrado
                     final_grade = None
                     fase_recurso = "FASE 2"
                     nota_recurso = "-"
                     status = "EM RECURSO (FASE 2)"
                 # Fase 1
                 else:
-                    # Somente Fase 1 ativa e sem decisão da comissão ainda -> Não encerrado
                     final_grade = None
                     fase_recurso = "FASE 1"
                     nota_recurso = str(n_f1) if n_f1 is not None else "-"
@@ -3372,20 +3375,40 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                     r_f2_val = row_g[c_r_f2_g].strip()
                     r_f1_val = row_g[c_r_f1_g].strip()
                     
-                    status_base = calc_status(concept_g, grade_g, n_hom_g)
+                    c_g = concordam(concept_g, grade_g)
                     has_appeal_g = (r_f1_val not in ("", "-")) or (n_f1_val is not None)
                     ref_date_g = now_br().date()
                     
-                    final_status_g = status_base
+                    final_status_g = calc_status(concept_g, grade_g, n_hom_g)
                     
                     if not has_appeal_g:
-                        dt_base_str = row_g[c_dt_hom_g].strip() if not is_empty(row_g[c_dt_hom_g]) else (row_g[c_dt_av2_g].strip() if not is_empty(row_g[c_dt_av2_g]) else row_g[c_dt_av1_g].strip())
-                        dt_base = parse_date_internal(dt_base_str)
-                        if dt_base is not None:
-                            deadline = add_business_days_internal(dt_base, 5)
-                            if ref_date_g <= deadline:
-                                final_status_g = "EM PRAZO DE RECURSO"
+                        if c_g is False:
+                            # Houve discordância: necessita passar para o homologador
+                            if is_empty(n_hom_g):
+                                final_status_g = "Homologação"
+                            else:
+                                dt_base = parse_date_internal(row_g[c_dt_hom_g])
+                                if dt_base is not None:
+                                    deadline = add_business_days_internal(dt_base, 5)
+                                    if ref_date_g <= deadline:
+                                        final_status_g = "EM PRAZO DE RECURSO"
+                                    else:
+                                        final_status_g = "Encerrada"
+                                else:
+                                    final_status_g = "Encerrada"
+                        else:
+                            # Não houve discordância: prazo de 5 dias úteis a partir da data de AV2
+                            dt_base = parse_date_internal(row_g[c_dt_av2_g])
+                            if dt_base is not None:
+                                deadline = add_business_days_internal(dt_base, 5)
+                                if ref_date_g <= deadline:
+                                    final_status_g = "EM PRAZO DE RECURSO"
+                                else:
+                                    final_status_g = "Encerrada"
+                            else:
+                                final_status_g = "Encerrada"
                     else:
+                        # Houve recurso
                         if n_f4_val is not None:
                             final_status_g = "Encerrada"
                         elif n_f3_val is not None:
