@@ -3578,7 +3578,7 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
 
 
 @st.cache_resource(show_spinner="⏳ Carregando e processando dados...")
-def load_data(db_path: str, drive_av_id: str = "", drive_si_id: str = ""):
+def load_data(db_path: str, drive_av_id: str = "", drive_si_id: str = "", drive_geral_id: str = ""):
     """Carrega dados de pasta local ou Google Drive e gera o Geral.xlsx automaticamente."""
     if drive_av_id and drive_si_id:
         # ── Modo Google Drive ──────────────────────────────────────────────
@@ -3591,6 +3591,13 @@ def load_data(db_path: str, drive_av_id: str = "", drive_si_id: str = ""):
             _baixar_drive(drive_av_id, av_f)
         if not os.path.exists(si_f) or os.path.getsize(si_f) == 0:
             _baixar_drive(drive_si_id, si_f)
+        if drive_geral_id:
+            geral_f = os.path.join(cache_dir, "geral.csv")
+            if not os.path.exists(geral_f) or os.path.getsize(geral_f) == 0:
+                try:
+                    _baixar_drive(drive_geral_id, geral_f)
+                except Exception:
+                    pass
 
 
     else:
@@ -4837,6 +4844,7 @@ try:
 
 
         drive_si_id = drive_si_id or cfg.get("drive_si_id", ""),
+        drive_geral_id = drive_geral_id or cfg.get("drive_geral_id", ""),
 
 
     )
