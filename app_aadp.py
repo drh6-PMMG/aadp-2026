@@ -436,6 +436,7 @@ def build_audit_data_from_geral(csv_path):
             l = row[c_grade].strip()
             n = row[c_n_hom].strip()
             status = calc_status(j, l, n)
+            c = concordam(j, l)
             
             n_f4 = parse_float(row[c_n_f4])
             n_f3 = parse_float(row[c_n_f3])
