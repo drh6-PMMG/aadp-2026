@@ -3341,6 +3341,8 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                 c_r_f2_g = find_col_index(header, "Recurso Fase 2")
                 c_r_f3_g = find_col_index(header, "Recurso Fase 3")
                 c_r_f4_g = find_col_index(header, "Recurso Fase 4")
+                c_av1_g = find_col_index(header, "nrPM (Avaliador 1)")
+                c_av2_g = find_col_index(header, "nrPM (Avaliador 2)")
                 
                 def parse_date_internal(d_str):
                     if not d_str or str(d_str).strip() in ("", "-", "nan", "none", "None", "<NA>"): return None
@@ -3363,6 +3365,8 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                 for row_g in reader:
                     if len(row_g) < len(header): continue
                     pm_g = normalize_pm_str(row_g[c_pm_g])
+                    av1_g = normalize_pm_str(row_g[c_av1_g])
+                    av2_g = normalize_pm_str(row_g[c_av2_g])
                     concept_g = row_g[c_concept_g].strip()
                     grade_g = row_g[c_grade_g].strip()
                     n_hom_g = row_g[c_n_hom_g].strip()
@@ -3426,7 +3430,7 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                         else:
                             final_status_g = "EM RECURSO (FASE 1)"
                             
-                    key = (pm_g, concept_g, grade_g)
+                    key = (pm_g, av1_g, av2_g)
                     recourse_map[key] = final_status_g
         except Exception:
             pass
@@ -3466,7 +3470,11 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
             
             # Verificar se temos o status do recurso no recourse_map
             pm_norm = normalize_pm_str(nrpm)
-            key = (pm_norm, j, l)
+            av1_val = row[26].strip()
+            av2_val = row[34].strip()
+            av1_norm = normalize_pm_str(av1_val)
+            av2_norm = normalize_pm_str(av2_val)
+            key = (pm_norm, av1_norm, av2_norm)
             status_av = recourse_map.get(key)
             if status_av is None:
                 status_av = calc_status(j, l, n)
