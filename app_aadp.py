@@ -420,6 +420,10 @@ def build_audit_data_from_geral(csv_path):
         c_r_f2 = find_col(header, "Recurso Fase 2")
         c_r_f3 = find_col(header, "Recurso Fase 3")
         c_r_f4 = find_col(header, "Recurso Fase 4")
+        c_dt_f1 = find_col(header, "Data Cadastro (Fase 1)")
+        c_dt_f2 = find_col(header, "Data Cadastro (Fase 2)")
+        c_dt_f3 = find_col(header, "Data Cadastro (Fase 3)")
+        c_dt_f4 = find_col(header, "Data Cadastro (Fase 4)")
         
         for row in reader:
             if len(row) < len(header):
@@ -447,6 +451,11 @@ def build_audit_data_from_geral(csv_path):
             r_f3 = row[c_r_f3].strip()
             r_f2 = row[c_r_f2].strip()
             r_f1 = row[c_r_f1].strip()
+            
+            dt_f4 = row[c_dt_f4].strip()
+            dt_f3 = row[c_dt_f3].strip()
+            dt_f2 = row[c_dt_f2].strip()
+            dt_f1 = row[c_dt_f1].strip()
             
             original_grade = parse_float(n) if not is_empty(n) else parse_float(l)
             has_appeal = (r_f1 not in ("", "-")) or (n_f1 is not None)
@@ -509,10 +518,17 @@ def build_audit_data_from_geral(csv_path):
                     nota_recurso = str(n_f3)
                     status = "Encerrada"
                 elif r_f3 not in ("", "-") and n_f3 is None:
-                    final_grade = None
-                    fase_recurso = "FASE 3"
-                    nota_recurso = "-"
-                    status = "EM RECURSO (FASE 3)"
+                    # Fase 3 com data cadastrada mas sem nota = indeferido = Encerrada c/ nota original
+                    if dt_f3 not in ("", "-"):
+                        fase_recurso = "FASE 3 (INDEFERIDO)"
+                        nota_recurso = "-"
+                        final_grade = original_grade  # mantém nota original da comissão
+                        status = "Encerrada"
+                    else:
+                        final_grade = None
+                        fase_recurso = "FASE 3"
+                        nota_recurso = "-"
+                        status = "EM RECURSO (FASE 3)"
                 # Fase 2
                 elif n_f2 is not None:
                     final_grade = n_f2
@@ -3342,6 +3358,10 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                 c_r_f2_g = find_col_index(header, "Recurso Fase 2")
                 c_r_f3_g = find_col_index(header, "Recurso Fase 3")
                 c_r_f4_g = find_col_index(header, "Recurso Fase 4")
+                c_dt_f1_g = find_col_index(header, "Data Cadastro (Fase 1)")
+                c_dt_f2_g = find_col_index(header, "Data Cadastro (Fase 2)")
+                c_dt_f3_g = find_col_index(header, "Data Cadastro (Fase 3)")
+                c_dt_f4_g = find_col_index(header, "Data Cadastro (Fase 4)")
                 c_av1_g = find_col_index(header, "nrPM (Avaliador 1)")
                 c_av2_g = find_col_index(header, "nrPM (Avaliador 2)")
                 
@@ -3381,6 +3401,11 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                     r_f3_val = row_g[c_r_f3_g].strip()
                     r_f2_val = row_g[c_r_f2_g].strip()
                     r_f1_val = row_g[c_r_f1_g].strip()
+                    
+                    dt_f4_val = row_g[c_dt_f4_g].strip()
+                    dt_f3_val = row_g[c_dt_f3_g].strip()
+                    dt_f2_val = row_g[c_dt_f2_g].strip()
+                    dt_f1_val = row_g[c_dt_f1_g].strip()
                     
                     c_g = concordam(concept_g, grade_g)
                     has_appeal_g = (r_f1_val not in ("", "-")) or (n_f1_val is not None)
@@ -3423,7 +3448,12 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                         elif n_f3_val is not None:
                             final_status_g = "Encerrada"
                         elif r_f3_val not in ("", "-") and n_f3_val is None:
-                            final_status_g = "EM RECURSO (FASE 3)"
+                            # Fase 3 interposta: se há data de cadastro → recurso julgado/indeferido → Encerrada
+                            # Se não há data → ainda em análise
+                            if dt_f3_val not in ("", "-"):
+                                final_status_g = "Encerrada"  # indeferido, nota original da comissão
+                            else:
+                                final_status_g = "EM RECURSO (FASE 3)"
                         elif n_f2_val is not None:
                             final_status_g = "Encerrada"
                         elif r_f2_val not in ("", "-") and n_f2_val is None:

@@ -339,6 +339,15 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
         r_f3 = row[81].strip()
         r_f2 = row[77].strip()
         r_f1 = row[73].strip()
+        
+        dt_f4 = row[88].strip()  # Data Cadastro (Fase 4)
+        dt_f3 = row[84].strip()  # Data Cadastro (Fase 3)
+        dt_f2 = row[80].strip()  # Data Cadastro (Fase 2)
+        dt_f1 = row[76].strip()  # Data Cadastro (Fase 1)
+        
+        # Nota original da comissão (AV2 ou Homologado se houve divergência)
+        original_grade_str = n if not is_empty(n) else l
+        
         c_val = concordam(j, l)
         has_appeal = (r_f1 not in ("", "-")) or (n_f1 is not None)
         ref_date = date.today()
@@ -378,7 +387,11 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
             elif n_f3 is not None:
                 status_av = "Encerrada"
             elif r_f3 not in ("", "-") and n_f3 is None:
-                status_av = "EM RECURSO (FASE 3)"
+                # Fase 3 com data cadastrada mas sem nota = indeferido = Encerrada c/ nota original
+                if dt_f3 not in ("", "-"):
+                    status_av = "Encerrada"  # recurso indeferido, mantém nota original da comissão
+                else:
+                    status_av = "EM RECURSO (FASE 3)"
             elif n_f2 is not None:
                 status_av = "Encerrada"
             elif r_f2 not in ("", "-") and n_f2 is None:
