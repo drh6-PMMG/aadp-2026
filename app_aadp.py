@@ -2308,18 +2308,23 @@ def db_get_pending_users():
 
 
     users = get_cached_users()
+    
+    # Mapeia PMs que já possuem um status resolvido (Ativo, Recusado, Bloqueado)
+    non_pending_pms = {str(u["pm"]).strip() for u in users if u["status"] != "Pendente"}
 
 
     pend_users = []
+    seen = set()
 
 
     for u in users:
-
-
-        if u["status"] == "Pendente":
+        pm = str(u["pm"]).strip()
+        # Se o PM não tem status resolvido e ainda não foi listado nas pendências
+        if u["status"] == "Pendente" and pm not in non_pending_pms and pm not in seen:
 
 
             pend_users.append((u["pm"], u["name"], u["rank"], u["rpm"], u["unit"], u["function"], u["created_at"]))
+            seen.add(pm)
 
 
     return pend_users
@@ -4461,41 +4466,54 @@ if not st.session_state.authenticated:
                         else:
 
 
-                            try:
+                            if st.session_state.get(f"registered_{data['pm']}", False):
+                                st.error("❌ Solicitação já processada. Por favor, retorne à tela de Login.")
+                            else:
+                                st.session_state[f"registered_{data['pm']}"] = True
+                                try:
 
 
-                                current_status = db_check_user_status(data["pm"])
+                                    current_status = db_check_user_status(data["pm"])
 
 
-                                if current_status:
+                                    if current_status:
 
 
-                                    if current_status in ("Pendente", "Ativo"):
+                                        if current_status in ("Pendente", "Ativo"):
 
 
-                                        st.error("❌ Este Nº PM já possui solicitação de acesso ativa ou pendente no sistema!")
+                                            st.error("❌ Este Nº PM já possui solicitação de acesso ativa ou pendente no sistema!")
 
 
+                                        else:
+                                            # Usuário Bloqueado ou Recusado - pode solicitar novamente
+                                            h_pass = hashlib.sha256(spass.encode()).hexdigest()
+                                            db_re_request_access(data["pm"], data["name"], data["rank"], data["rpm"], data["unit"], data["sector"], h_pass)
+                                            log_action(data["pm"], "RE_CADASTRO_SOLICITADO", f"Nome: {data['name']}, Posto: {data['rank']}")
+                                            auto_role_check = _auto_detect_role(data["sector"])
+                                            if auto_role_check:
+                                                st.success(f"✅ Cadastro aprovado automaticamente! Seu perfil **{auto_role_check}** foi liberado. Você já pode fazer login.")
+                                            else:
+                                                st.success("✅ Nova solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
+                                            st.session_state.sigef_data = None
+                                            st.session_state.sigef_verified = False
                                     else:
-
-
-                                        # Usuário Bloqueado ou Recusado - pode solicitar novamente
 
 
                                         h_pass = hashlib.sha256(spass.encode()).hexdigest()
 
 
-                                        db_re_request_access(data["pm"], data["name"], data["rank"], data["rpm"], data["unit"], data["sector"], h_pass)
+                                        db_create_new_request(data["pm"], data["name"], data["rank"], data["rpm"], data["unit"], data["sector"], h_pass)
 
 
-                                        log_action(data["pm"], "RE_CADASTRO_SOLICITADO", f"Nome: {data['name']}, Posto: {data['rank']}")
+                                        log_action(data["pm"], "CADASTRO_SOLICITADO", f"Nome: {data['name']}, Posto: {data['rank']}, UDI/UDG: {data['rpm']}")
 
 
                                         auto_role_check = _auto_detect_role(data["sector"])
                                         if auto_role_check:
                                             st.success(f"✅ Cadastro aprovado automaticamente! Seu perfil **{auto_role_check}** foi liberado. Você já pode fazer login.")
                                         else:
-                                            st.success("✅ Nova solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
+                                            st.success("✅ Solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
 
 
                                         st.session_state.sigef_data = None
@@ -4504,38 +4522,10 @@ if not st.session_state.authenticated:
                                         st.session_state.sigef_verified = False
 
 
-                                else:
+                                except Exception as e:
 
 
-                                    h_pass = hashlib.sha256(spass.encode()).hexdigest()
-
-
-                                    db_create_new_request(data["pm"], data["name"], data["rank"], data["rpm"], data["unit"], data["sector"], h_pass)
-
-
-                                    log_action(data["pm"], "CADASTRO_SOLICITADO", f"Nome: {data['name']}, Posto: {data['rank']}, UDI/UDG: {data['rpm']}")
-
-
-                                    auto_role_check = _auto_detect_role(data["sector"])
-                                    if auto_role_check:
-                                        st.success(f"✅ Cadastro aprovado automaticamente! Seu perfil **{auto_role_check}** foi liberado. Você já pode fazer login.")
-                                    else:
-                                        st.success("✅ Solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
-
-
-                                    st.session_state.sigef_data = None
-
-
-                                    st.session_state.sigef_verified = False
-
-
-                                    st.session_state.sigef_verified = False
-
-
-                            except Exception as e:
-
-
-                                st.error(f"Erro ao salvar cadastro: {str(e)}")
+                                    st.error(f"Erro ao salvar cadastro: {str(e)}")
 
     st.stop()
 
