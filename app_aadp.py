@@ -502,50 +502,55 @@ def build_audit_data_from_geral(csv_path):
                         status = "Encerrada"
                         final_grade = parse_float(l)
             else:
-                # Houve recurso!
+                # Houve recurso! (r_f1 registrado = militar interpôs recurso)
                 houve_recurso = "SIM"
-                
-                # Fase 4
+
                 if n_f4 is not None:
+                    # Fase 4 (encerra definitivamente)
                     final_grade = n_f4
                     fase_recurso = "FASE 4"
                     nota_recurso = str(n_f4)
                     status = "Encerrada"
-                # Fase 3
-                elif n_f3 is not None:
-                    final_grade = n_f3
+
+                elif r_f3 not in ("", "-") or n_f3 is not None:
+                    # Fase 3 registrada = Autoridade Recursal DECIDIU → Encerrada
+                    # (com nota → nova nota; sem nota + com data → indeferido c/ nota original)
                     fase_recurso = "FASE 3"
-                    nota_recurso = str(n_f3)
-                    status = "Encerrada"
-                elif r_f3 not in ("", "-") and n_f3 is None:
-                    # Fase 3 com data cadastrada mas sem nota = indeferido = Encerrada c/ nota original
-                    if dt_f3 not in ("", "-"):
-                        fase_recurso = "FASE 3 (INDEFERIDO)"
+                    if n_f3 is not None:
+                        final_grade = n_f3
+                        nota_recurso = str(n_f3)
+                    else:
+                        final_grade = original_grade   # indeferido: mantém nota da comissão
                         nota_recurso = "-"
-                        final_grade = original_grade  # mantém nota original da comissão
+                    status = "Encerrada"
+
+                elif r_f2 not in ("", "-"):
+                    # Fase 2 registrada = comissão promoveu para Autoridade Recursal
+                    fase_recurso = "FASE 2"
+                    if n_f2 is not None:
+                        # Autoridade deferiu com nova nota (sem Fase 3 explícita)
+                        final_grade = n_f2
+                        nota_recurso = str(n_f2)
                         status = "Encerrada"
                     else:
+                        # Autoridade ainda não decidiu
                         final_grade = None
-                        fase_recurso = "FASE 3"
                         nota_recurso = "-"
                         status = "AUTORIDADE RECURSAL"
-                # Fase 2
-                elif n_f2 is not None:
-                    final_grade = n_f2
-                    fase_recurso = "FASE 2"
-                    nota_recurso = str(n_f2)
-                    status = "Encerrada"
-                elif r_f2 not in ("", "-") and n_f2 is None:
-                    final_grade = None
-                    fase_recurso = "FASE 2"
-                    nota_recurso = "-"
-                    status = "AUTORIDADE RECURSAL"
-                # Fase 1
+
                 else:
-                    final_grade = None
+                    # Só Fase 1 registrada = comissão analisando (Reconsideração)
                     fase_recurso = "FASE 1"
-                    nota_recurso = str(n_f1) if n_f1 is not None else "-"
-                    status = "RECONSIDERAÇÃO COMISSÃO"
+                    if n_f1 is not None:
+                        # Comissão deferiu com nova nota
+                        final_grade = n_f1
+                        nota_recurso = str(n_f1)
+                        status = "Encerrada"
+                    else:
+                        # Comissão ainda analisando
+                        final_grade = None
+                        nota_recurso = "-"
+                        status = "RECONSIDERAÇÃO COMISSÃO"
                 
             dt_av = row[c_dt_av2].strip() or row[c_dt_av1].strip() or row[c_dt_hom].strip() or "-"
             
@@ -3472,25 +3477,25 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                             else:
                                 final_status_g = "Encerrada"
                     else:
-                        # Houve recurso
+                        # Houve recurso (r_f1 registrado = militar interpôs recurso)
                         if n_f4_val is not None:
+                            # Fase 4: encerra definitivamente
                             final_status_g = "Encerrada"
-                        elif n_f3_val is not None:
+                        elif r_f3_val not in ("", "-") or n_f3_val is not None:
+                            # Fase 3 registrada = Autoridade Recursal DECIDIU → Encerrada
                             final_status_g = "Encerrada"
-                        elif r_f3_val not in ("", "-") and n_f3_val is None:
-                            # Fase 3 interposta: se há data de cadastro → recurso julgado/indeferido → Encerrada
-                            # Se não há data → ainda em análise
-                            if dt_f3_val not in ("", "-"):
-                                final_status_g = "Encerrada"  # indeferido, nota original da comissão
+                        elif r_f2_val not in ("", "-"):
+                            # Fase 2 registrada = comissão promoveu para Autoridade Recursal
+                            if n_f2_val is not None:
+                                final_status_g = "Encerrada"
                             else:
                                 final_status_g = "AUTORIDADE RECURSAL"
-                        elif n_f2_val is not None:
-                            final_status_g = "Encerrada"
-                        elif r_f2_val not in ("", "-") and n_f2_val is None:
-                            final_status_g = "AUTORIDADE RECURSAL"
                         else:
-                            final_status_g = "RECONSIDERAÇÃO COMISSÃO"
-                            
+                            # Só Fase 1 registrada = comissão analisando (Reconsideração)
+                            if n_f1_val is not None:
+                                final_status_g = "Encerrada"
+                            else:
+                                final_status_g = "RECONSIDERAÇÃO COMISSÃO"
                     key = (pm_g, av1_g, av2_g)
                     recourse_map[key] = final_status_g
         except Exception:

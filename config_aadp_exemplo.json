@@ -1,0 +1,15 @@
+{
+  "db_path": "C:\\Caminho\\Para\\Sua\\Pasta",
+  "drive_av_id": "COLOQUE_O_ID_DA_PLANILHA_AQUI",
+  "drive_si_id": "COLOQUE_O_ID_DA_PLANILHA_AQUI",
+  "drive_geral_id": "COLOQUE_O_ID_DA_PLANILHA_AQUI",
+  "drive_master_xlsx_id": "COLOQUE_O_ID_DA_PLANILHA_AQUI",
+  "sheet_api_url": "https://script.google.com/macros/s/COLOQUE_SUA_URL_AQUI/exec",
+  "fonte_dados": "☁️ Google Drive",
+  "smtp_host": "smtp.gmail.com",
+  "smtp_port": "587",
+  "smtp_user": "seu_email@gmail.com",
+  "smtp_pass": "sua_senha_de_app_aqui",
+  "alert_receiver_email": "seu_email_alerta@gmail.com",
+  "alert_webhook_url": ""
+}
