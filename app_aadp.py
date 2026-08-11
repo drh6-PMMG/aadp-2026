@@ -5175,20 +5175,20 @@ if st.session_state.get("active_page", "Análise Gráfica") == "Análise Gráfic
             st.markdown('<div class="kpi-card kpi-ca">'
                         '<div class="label">COMISSÃO ATUAL</div>'
                         f'<div class="value">{fmt_num(n_ca)}</div>'
-                        f'<div class="sub">{n_ca/max(n_total,1)*100:.1f}%</div>'
+                        f'<div class="sub">{n_ca/max(n_total,1)*100:.2f}%</div>'
                         '</div>', unsafe_allow_html=True)
         with cb1_2:
             st.markdown('<div class="kpi-card kpi-np">'
                         '<div class="label">NOTA PROVISÓRIA</div>'
                         f'<div class="value">{fmt_num(n_np)}</div>'
-                        f'<div class="sub">{n_np/max(n_total,1)*100:.1f}%</div>'
+                        f'<div class="sub">{n_np/max(n_total,1)*100:.2f}%</div>'
                         '</div>', unsafe_allow_html=True)
 
     with col_block2:
         st.markdown('<div class="kpi-card kpi-enc">'
                     '<div class="label">ENCERRADAS</div>'
                     f'<div class="value">{fmt_num(n_enc)}</div>'
-                    f'<div class="sub">{n_enc/max(n_total,1)*100:.1f}%</div>'
+                    f'<div class="sub">{n_enc/max(n_total,1)*100:.2f}%</div>'
                     '</div>', unsafe_allow_html=True)
 
         st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
@@ -5346,88 +5346,34 @@ if active_page == "Análise Gráfica":
 
 
     fig_status.add_trace(go.Pie(
-
-
         labels=ordered_labels, values=vals_pizza,
-
-
         hole=0.54,
-        
-        domain=dict(x=[0.0, 0.55]),
-
-
-        pull=[0.09, 0.06, 0.04, 0, 0.04, 0.06, 0.09],
-
-
-        texttemplate="<b>%{label}</b><br>%{value:,} (%{percent})",
-
-
+        pull=[0.09, 0.06, 0.04, 0],
+        texttemplate="<b>%{label}</b><br>%{value:,} (%{percent:.2%})",
         textposition="outside",
-
-
-        rotation=200,  # Rotacionado para as fatias menores apontarem diretamente para o espaço vazio na direita
-
-
-        textfont=dict(size=14, family="Inter, sans-serif"),
-
-
+        rotation=90,  # Solicitado pelo usuário
+        textfont=dict(size=13, family="Inter, sans-serif"),
         insidetextorientation="radial",
-
-
         marker=dict(colors=cols_pizza, line=dict(color="#121212", width=3)),
-
-
-        hovertemplate="<b>%{label}</b><br>Avaliações: <b>%{value:,}</b><br>%{percent}<extra></extra>",
-
-
+        hovertemplate="<b>%{label}</b><br>Avaliações: <b>%{value:,}</b><br>%{percent:.2%}<extra></extra>",
         sort=False,
-
-
     ))
 
-
     fig_status.add_annotation(
-
-
         text=f"<b>{fmt_num(n_total)}</b><br><span style='font-size:11px;color:#a0a0a0'>avaliações</span>",
-
-
-        x=0.275, y=0.5, showarrow=False,
-
-
-        font=dict(size=24, color="#9b8a5c", family="Inter"),
-
-
+        x=0.5, y=0.5, showarrow=False,
+        font=dict(size=22, color="#9b8a5c", family="Inter"),
         align="center",
-
-
     )
 
-
     fig_status.update_layout(
-
-
         template="plotly_dark",
-
-
         title=dict(text="<b>Status das Avaliações — AADP 2026</b>",
-
-
-                   font=dict(size=22, color="#9b8a5c"), x=0.5, y=0.96),
-
-
-        height=550, showlegend=False,
-
-
+                   font=dict(size=20, color="#9b8a5c"), x=0.5, y=0.96),
+        height=500, showlegend=False,
         paper_bgcolor="rgba(0,0,0,0)",
-
-
         plot_bgcolor="rgba(0,0,0,0)",
-
-
-        margin=dict(t=60, b=30, l=10, r=10),
-
-
+        margin=dict(t=60, b=80, l=120, r=120),
     )
 
 
@@ -5464,7 +5410,7 @@ if active_page == "Análise Gráfica":
             hole=0.50, pull=[0.05,0],
 
 
-            texttemplate="<b>%{label}</b><br>%{value:,} (%{percent})", textposition="outside",
+            texttemplate="<b>%{label}</b><br>%{value:,} (%{percent:.2%})", textposition="outside",
 
 
             textfont=dict(size=12), sort=False,
@@ -5476,7 +5422,7 @@ if active_page == "Análise Gráfica":
                         line=dict(color="#121212", width=3)),
 
 
-            hovertemplate="<b>%{label}</b><br>%{value:,} avaliações (%{percent})<extra></extra>",
+            hovertemplate="<b>%{label}</b><br>%{value:,} avaliações (%{percent:.2%})<extra></extra>",
 
 
         ))
@@ -7927,7 +7873,7 @@ def _write_resumo_sheet(ws, df, titulo, s):
         tot_n = ca_n + np_n
 
 
-        pct   = f"{tot_n/total*100:.1f}%" if total > 0 else "0%"
+        pct   = f"{tot_n/total*100:.2f}%" if total > 0 else "0%"
 
 
 
@@ -8203,7 +8149,7 @@ def _write_analise_sheet(ws, df, titulo, s):
         tot_n = ca_n + np_n
 
 
-        pct   = f"{tot_n/total*100:.1f}%" if total > 0 else "0%"
+        pct   = f"{tot_n/total*100:.2f}%" if total > 0 else "0%"
 
 
 
