@@ -2690,6 +2690,23 @@ def db_check_user_status(pm):
 
 
 
+def _auto_detect_role(sector: str):
+    """
+    Determina automaticamente o perfil do usuário com base no NOME UNIDADE (col J do SIGEF).
+    Regras:
+      - Se contiver 'SADM' → perfil 'SADM' (liberação automática)
+      - Se contiver 'P1'   → perfil 'P1'   (liberação automática)
+      - Qualquer outro valor → None (cadastro fica PENDENTE para o administrador)
+    NOTA: Perfis GESTOR e ADMINISTRADOR NUNCA são liberados automaticamente.
+    """
+    s = str(sector).strip().upper()
+    if "SADM" in s:
+        return "SADM"
+    if "P1" in s:
+        return "P1"
+    return None
+
+
 def db_re_request_access(pm, name, rank, rpm, unit, sector, password_hash):
 
 
@@ -2697,6 +2714,11 @@ def db_re_request_access(pm, name, rank, rpm, unit, sector, password_hash):
 
 
     success = False
+
+    # Detecta perfil automático pelo NOME UNIDADE (col J SIGEF)
+    auto_role = _auto_detect_role(sector)
+    final_role   = auto_role if auto_role else "PENDENTE"
+    final_status = "Ativo"   if auto_role else "Pendente"
 
 
     if check_use_cloud():
@@ -2708,7 +2730,7 @@ def db_re_request_access(pm, name, rank, rpm, unit, sector, password_hash):
             "name": name, "rank": rank, "rpm": rpm, "unit": unit, "function": sector,
 
 
-            "role": "PENDENTE", "status": "Pendente", "password": password_hash, "created_at": created_at
+            "role": final_role, "status": final_status, "password": password_hash, "created_at": created_at
 
 
         }
@@ -2738,13 +2760,13 @@ def db_re_request_access(pm, name, rank, rpm, unit, sector, password_hash):
                 UPDATE users 
 
 
-                SET name = ?, rank = ?, rpm = ?, unit = ?, function = ?, role = 'PENDENTE', status = 'Pendente', password = ?, created_at = ?
+                SET name = ?, rank = ?, rpm = ?, unit = ?, function = ?, role = ?, status = ?, password = ?, created_at = ?
 
 
                 WHERE pm = ?
 
 
-            """, (name, rank, rpm, unit, sector, password_hash, created_at, pm))
+            """, (name, rank, rpm, unit, sector, final_role, final_status, password_hash, created_at, pm))
 
 
             conn.commit()
@@ -2764,10 +2786,12 @@ def db_re_request_access(pm, name, rank, rpm, unit, sector, password_hash):
 
     if success:
         refresh_db_cache()
-        try:
-            send_new_user_alert(pm, name, rank, rpm, unit, sector)
-        except Exception:
-            pass
+        if not auto_role:
+            # Só envia alerta quando não há liberação automática
+            try:
+                send_new_user_alert(pm, name, rank, rpm, unit, sector)
+            except Exception:
+                pass
 
     return success
 
@@ -2783,6 +2807,11 @@ def db_create_new_request(pm, name, rank, rpm, unit, sector, password_hash):
 
     success = False
 
+    # Detecta perfil automático pelo NOME UNIDADE (col J SIGEF)
+    auto_role = _auto_detect_role(sector)
+    final_role   = auto_role if auto_role else "PENDENTE"
+    final_status = "Ativo"   if auto_role else "Pendente"
+
 
     if check_use_cloud():
 
@@ -2793,7 +2822,7 @@ def db_create_new_request(pm, name, rank, rpm, unit, sector, password_hash):
             "pm": pm, "name": name, "rank": rank, "rpm": rpm, "unit": unit, "function": sector,
 
 
-            "role": "PENDENTE", "status": "Pendente", "password": password_hash, "created_at": created_at
+            "role": final_role, "status": final_status, "password": password_hash, "created_at": created_at
 
 
         }
@@ -2823,10 +2852,10 @@ def db_create_new_request(pm, name, rank, rpm, unit, sector, password_hash):
                 INSERT INTO users (pm, name, rank, rpm, unit, function, role, status, password, created_at)
 
 
-                VALUES (?, ?, ?, ?, ?, ?, 'PENDENTE', 'Pendente', ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
 
-            """, (pm, name, rank, rpm, unit, sector, password_hash, created_at))
+            """, (pm, name, rank, rpm, unit, sector, final_role, final_status, password_hash, created_at))
 
 
             conn.commit()
@@ -2846,10 +2875,12 @@ def db_create_new_request(pm, name, rank, rpm, unit, sector, password_hash):
 
     if success:
         refresh_db_cache()
-        try:
-            send_new_user_alert(pm, name, rank, rpm, unit, sector)
-        except Exception:
-            pass
+        if not auto_role:
+            # Só envia alerta quando não há liberação automática
+            try:
+                send_new_user_alert(pm, name, rank, rpm, unit, sector)
+            except Exception:
+                pass
 
     return success
 
@@ -4457,7 +4488,11 @@ if not st.session_state.authenticated:
                                         log_action(data["pm"], "RE_CADASTRO_SOLICITADO", f"Nome: {data['name']}, Posto: {data['rank']}")
 
 
-                                        st.success("✅ Nova solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
+                                        auto_role_check = _auto_detect_role(data["sector"])
+                                        if auto_role_check:
+                                            st.success(f"✅ Cadastro aprovado automaticamente! Seu perfil **{auto_role_check}** foi liberado. Você já pode fazer login.")
+                                        else:
+                                            st.success("✅ Nova solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
 
 
                                         st.session_state.sigef_data = None
@@ -4478,7 +4513,11 @@ if not st.session_state.authenticated:
                                     log_action(data["pm"], "CADASTRO_SOLICITADO", f"Nome: {data['name']}, Posto: {data['rank']}, UDI/UDG: {data['rpm']}")
 
 
-                                    st.success("✅ Solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
+                                    auto_role_check = _auto_detect_role(data["sector"])
+                                    if auto_role_check:
+                                        st.success(f"✅ Cadastro aprovado automaticamente! Seu perfil **{auto_role_check}** foi liberado. Você já pode fazer login.")
+                                    else:
+                                        st.success("✅ Solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
 
 
                                     st.session_state.sigef_data = None
