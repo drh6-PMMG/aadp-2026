@@ -528,7 +528,7 @@ def build_audit_data_from_geral(csv_path):
                         final_grade = None
                         fase_recurso = "FASE 3"
                         nota_recurso = "-"
-                        status = "EM RECURSO (FASE 3)"
+                        status = "AUTORIDADE RECURSAL"
                 # Fase 2
                 elif n_f2 is not None:
                     final_grade = n_f2
@@ -539,13 +539,13 @@ def build_audit_data_from_geral(csv_path):
                     final_grade = None
                     fase_recurso = "FASE 2"
                     nota_recurso = "-"
-                    status = "EM RECURSO (FASE 2)"
+                    status = "AUTORIDADE RECURSAL"
                 # Fase 1
                 else:
                     final_grade = None
                     fase_recurso = "FASE 1"
                     nota_recurso = str(n_f1) if n_f1 is not None else "-"
-                    status = "EM RECURSO (FASE 1)"
+                    status = "RECONSIDERAÇÃO COMISSÃO"
                 
             dt_av = row[c_dt_av2].strip() or row[c_dt_av1].strip() or row[c_dt_hom].strip() or "-"
             
@@ -1531,14 +1531,13 @@ CONCEITO_FAIXA = {
 
 
 STATUS_COLORS = {
-    "Encerrada":             "#70AD47",
-    "Homologação":           "#FFD966",
-    "Parcialmente Encerrada":"#FF8C00",
-    "Aberta":                "#FF4444",
-    "EM PRAZO DE RECURSO":    "#BDC3C7",
-    "EM RECURSO (FASE 1)":    "#D6A2E8",
-    "EM RECURSO (FASE 2)":    "#AF7AC5",
-    "EM RECURSO (FASE 3)":    "#8E44AD",
+    "Encerrada":                  "#70AD47",
+    "Homologação":              "#FFD966",
+    "Parcialmente Encerrada":     "#FF8C00",
+    "Aberta":                     "#FF4444",
+    "EM PRAZO DE RECURSO":         "#BDC3C7",
+    "RECONSIDERAÇÃO COMISSÃO":    "#D6A2E8",
+    "AUTORIDADE RECURSAL":        "#AF7AC5",
 }
 
 
@@ -1550,7 +1549,7 @@ SIT_COLORS = {"Comissão Atual":"#4472C4","Nota Provisória":"#FFC000"}
 
 STACK_ORDER  = [
     "Encerrada", "Aberta", "Parcialmente Encerrada", "Homologação",
-    "EM PRAZO DE RECURSO", "EM RECURSO (FASE 1)", "EM RECURSO (FASE 2)", "EM RECURSO (FASE 3)"
+    "EM PRAZO DE RECURSO", "RECONSIDERAÇÃO COMISSÃO", "AUTORIDADE RECURSAL"
 ]
 
 
@@ -3484,13 +3483,13 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                             if dt_f3_val not in ("", "-"):
                                 final_status_g = "Encerrada"  # indeferido, nota original da comissão
                             else:
-                                final_status_g = "EM RECURSO (FASE 3)"
+                                final_status_g = "AUTORIDADE RECURSAL"
                         elif n_f2_val is not None:
                             final_status_g = "Encerrada"
                         elif r_f2_val not in ("", "-") and n_f2_val is None:
-                            final_status_g = "EM RECURSO (FASE 2)"
+                            final_status_g = "AUTORIDADE RECURSAL"
                         else:
-                            final_status_g = "EM RECURSO (FASE 1)"
+                            final_status_g = "RECONSIDERAÇÃO COMISSÃO"
                             
                     key = (pm_g, av1_g, av2_g)
                     recourse_map[key] = final_status_g
@@ -3984,9 +3983,8 @@ def color_status(val):
 
          "Aberta":"background-color:#fde8e8;color:#8b0000;font-weight:600",
          "EM PRAZO DE RECURSO":"background-color:#f2f3f4;color:#5d6d7e;font-weight:600",
-         "EM RECURSO (FASE 1)":"background-color:#f4ecf7;color:#6c3483;font-weight:600",
-         "EM RECURSO (FASE 2)":"background-color:#f4ecf7;color:#6c3483;font-weight:600",
-         "EM RECURSO (FASE 3)":"background-color:#f4ecf7;color:#6c3483;font-weight:600"}
+         "RECONSIDERAÇÃO COMISSÃO":"background-color:#f4ecf7;color:#6c3483;font-weight:600",
+         "AUTORIDADE RECURSAL":"background-color:#f4ecf7;color:#6c3483;font-weight:600"}
 
 
     return m.get(val, "")
@@ -4994,7 +4992,7 @@ if data_ok:
     all_rpm   = sorted(df_full["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key)
 
 
-    all_status= ["Aberta", "Parcialmente Encerrada", "Homologação", "Encerrada", "EM PRAZO DE RECURSO", "EM RECURSO (FASE 1)", "EM RECURSO (FASE 2)", "EM RECURSO (FASE 3)"]
+    all_status= ["Aberta", "Parcialmente Encerrada", "Homologação", "Encerrada", "EM PRAZO DE RECURSO", "RECONSIDERAÇÃO COMISSÃO", "AUTORIDADE RECURSAL"]
 
 
     all_sit   = ["Comissão Atual","Nota Provisória"]
@@ -5164,7 +5162,7 @@ n_hom    = (df["Status Avaliação"]=="Homologação").sum()
 n_parc   = (df["Status Avaliação"]=="Parcialmente Encerrada").sum()
 n_aberta = (df["Status Avaliação"]=="Aberta").sum()
 n_recurso = df["Status Avaliação"].isin([
-    "EM RECURSO (FASE 1)", "EM RECURSO (FASE 2)", "EM RECURSO (FASE 3)", "EM PRAZO DE RECURSO"
+    "RECONSIDERAÇÃO COMISSÃO", "AUTORIDADE RECURSAL", "EM PRAZO DE RECURSO"
 ]).sum()
 n_ca     = (df["Situação Comissão"]=="Comissão Atual").sum()
 n_np     = (df["Situação Comissão"]=="Nota Provisória").sum()
@@ -5322,7 +5320,7 @@ if active_page == "Análise Gráfica":
     st.markdown("---")
 
 
-    ordered_labels = ["Aberta", "Parcialmente Encerrada", "Homologação", "Encerrada", "EM PRAZO DE RECURSO", "EM RECURSO (FASE 1)", "EM RECURSO (FASE 2)", "EM RECURSO (FASE 3)"]
+    ordered_labels = ["Aberta", "Parcialmente Encerrada", "Homologação", "Encerrada", "EM PRAZO DE RECURSO", "RECONSIDERAÇÃO COMISSÃO", "AUTORIDADE RECURSAL"]
 
 
     sd = df.groupby("Status Avaliação").size()
@@ -6003,7 +6001,7 @@ if active_page == "Avaliações Pendentes":
 
     STATUS_PEND = {
         "Homologação", "Parcialmente Encerrada", "Aberta",
-        "EM PRAZO DE RECURSO", "EM RECURSO (FASE 1)", "EM RECURSO (FASE 2)", "EM RECURSO (FASE 3)"
+        "EM PRAZO DE RECURSO", "RECONSIDERAÇÃO COMISSÃO", "AUTORIDADE RECURSAL"
     }
 
 
@@ -6043,7 +6041,7 @@ if active_page == "Avaliações Pendentes":
     filter_statuses = []
     for tp in tipo_pend:
         if tp == "EM RECURSO":
-            filter_statuses.extend(["EM RECURSO (FASE 1)", "EM RECURSO (FASE 2)", "EM RECURSO (FASE 3)", "EM PRAZO DE RECURSO"])
+            filter_statuses.extend(["RECONSIDERAÇÃO COMISSÃO", "AUTORIDADE RECURSAL", "EM PRAZO DE RECURSO"])
         else:
             filter_statuses.append(tp)
 
@@ -6078,7 +6076,7 @@ if active_page == "Avaliações Pendentes":
     with k4:
         st.markdown(f'<div class="kpi-card kpi-recurso">'
                     '<div class="label">🟣 Em Recurso</div>'
-                    f'<div class="value">{fmt_num(df_pv["Status Avaliação"].isin(["EM RECURSO (FASE 1)", "EM RECURSO (FASE 2)", "EM RECURSO (FASE 3)", "EM PRAZO DE RECURSO"]).sum())}</div>'
+                    f'<div class="value">{fmt_num(df_pv["Status Avaliação"].isin(["RECONSIDERAÇÃO COMISSÃO", "AUTORIDADE RECURSAL", "EM PRAZO DE RECURSO"]).sum())}</div>'
                     '<div class="sub">Recurso pendente</div>'
                     '</div>', unsafe_allow_html=True)
     with k5:

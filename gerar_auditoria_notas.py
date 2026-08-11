@@ -391,13 +391,13 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
                 if dt_f3 not in ("", "-"):
                     status_av = "Encerrada"  # recurso indeferido, mantém nota original da comissão
                 else:
-                    status_av = "EM RECURSO (FASE 3)"
+                    status_av = "AUTORIDADE RECURSAL"
             elif n_f2 is not None:
                 status_av = "Encerrada"
             elif r_f2 not in ("", "-") and n_f2 is None:
-                status_av = "EM RECURSO (FASE 2)"
+                status_av = "AUTORIDADE RECURSAL"
             else:
-                status_av = "EM RECURSO (FASE 1)"
+                status_av = "RECONSIDERAÇÃO COMISSÃO"
 
         rows.append({
             "nrPM (Avaliado)":              nrpm,
