@@ -1,0 +1,22 @@
+# Arquivos de ambiente e seguranca
+.env
+config_aadp.json
+aadp_secure.db
+aadp_secure.db-journal
+
+# Arquivos temporarios e de cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Arquivos de dados pesados e temporarios
+dados/
+scratch/
+*.xlsx
+*.csv
+*.pdf
+*.docx
+
+# Arquivos e pastas do sistema operacional
+.DS_Store
+Thumbs.db
