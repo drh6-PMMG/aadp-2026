@@ -339,16 +339,16 @@ def generate_word_report(df_source: pd.DataFrame, report_mode: str, selected_rpm
     # ──────────────────────────────────────────────────────────────────────────
     # SEÇÃO: VISÃO GERAL — ESTADO (Pular para P1 e SADM)
     # ──────────────────────────────────────────────────────────────────────────
-    show_state_summary = (user_role not in ("P1", "SADM"))
+    show_state_summary = (user_role != "SADM")
     
     if show_state_summary:
         h1 = doc.add_paragraph()
-        r_h1 = h1.add_run("1. Visão Geral — Estado")
+        r_h1 = h1.add_run(f"1. Visão Geral — {unique_rpms[0]}" if user_role == "P1" and unique_rpms else "1. Visão Geral — Estado")
         r_h1.font.size = Pt(20)
         r_h1.font.bold = True
         r_h1.font.color.rgb = RGBColor(0x1F, 0x38, 0x64)
         
-        doc.add_paragraph("Esta seção apresenta o panorama geral consolidado do estado de Minas Gerais com base em todos os registros válidos do AADP 2026.")
+        doc.add_paragraph(f"Esta seção apresenta o panorama geral consolidado de {unique_rpms[0]} com base nos registros do AADP 2026." if user_role == "P1" and unique_rpms else "Esta seção apresenta o panorama geral consolidado do estado de Minas Gerais com base em todos os registros válidos do AADP 2026.")
         
         # Gerar gráficos estaduais em arquivos temporários
         fd_pie, temp_pie = tempfile.mkstemp(suffix=".png")
@@ -360,7 +360,12 @@ def generate_word_report(df_source: pd.DataFrame, report_mode: str, selected_rpm
         
         create_status_pie(df_context, temp_pie)
         create_comissao_bar(df_context, temp_bar)
-        create_pending_units_bar(df_context, units_to_render, temp_pend)
+        if user_role == "P1":
+            # Para P1, renderizar o gráfico por Subunidades da RPM
+            sub_units = df_context["Unidade Principal (Avaliado)"].dropna().unique().tolist()
+            create_pending_subunits_bar(df_context, sub_units, temp_pend)
+        else:
+            create_pending_units_bar(df_context, units_to_render, temp_pend)
         
         # Inserir par de gráficos lado a lado em uma tabela sem bordas
         table_graphs = doc.add_table(rows=1, cols=2)

@@ -928,23 +928,23 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 /* Glassmorphic Crystal Style Button */
 button[aria-label="👁️ Mostrar Encerradas"],
 button[aria-label="🙈 Ocultar Encerradas"] {
-    background: rgba(128, 128, 128, 0.06) !important;
+    background: rgba(155, 138, 92, 0.15) !important;
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
-    border: 1px solid rgba(128, 128, 128, 0.2) !important;
+    border: 1px solid rgba(155, 138, 92, 0.4) !important;
     border-radius: 30px !important;
     color: var(--text-color) !important;
     font-weight: 600 !important;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.1) !important;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+    box-shadow: 0 4px 20px rgba(155, 138, 92, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.1) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
     transition: all 0.3s ease !important;
 }
 
 button[aria-label="👁️ Mostrar Encerradas"]:hover,
 button[aria-label="🙈 Ocultar Encerradas"]:hover {
-    background: rgba(128, 128, 128, 0.12) !important;
-    border-color: rgba(128, 128, 128, 0.3) !important;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2), inset 0 1px 3px rgba(255, 255, 255, 0.2) !important;
+    background: rgba(155, 138, 92, 0.25) !important;
+    border-color: rgba(155, 138, 92, 0.6) !important;
+    box-shadow: 0 6px 25px rgba(155, 138, 92, 0.4), inset 0 1px 3px rgba(255, 255, 255, 0.2) !important;
     transform: translateY(-1px) !important;
 }
 
@@ -3895,7 +3895,7 @@ def style_audit_dataframe(df):
     return styler
 
 
-def safe_df(styled_or_df, height=520, key_prefix=None):
+def safe_df(styled_or_df, height=520, key_prefix=None, show_download=False, download_name="dados_filtrados", download_type="csv", download_label="Baixar dados"): 
     """Exibe um DataFrame com st.dataframe nativo.
     - Ordenacao crescente/decrescente: clique no cabecalho de qualquer coluna.
     - Filtro rapido: campo de busca global acima da tabela.
@@ -3928,13 +3928,15 @@ def safe_df(styled_or_df, height=520, key_prefix=None):
             "".join(str(c) for c in raw_df.columns).encode()
         ).hexdigest()[:8]
 
-    # Campo de busca rapida global
-    busca = st.text_input(
-        "\U0001f50d Busca r\u00e1pida (filtra qualquer coluna)",
-        key=f"{key_prefix}_busca",
-        placeholder="Digite para filtrar\u2026",
-        label_visibility="collapsed",
-    )
+    # Layout para campo de busca e botão de download
+    col_search, col_space, col_dl = st.columns([2.5, 0.5, 1])
+    with col_search:
+        busca = st.text_input(
+            "🔍 Busca rápida (filtra qualquer coluna)",
+            key=f"{key_prefix}_busca",
+            placeholder="Digite o nr PM, Nome ou Unidade para filtrar",
+            label_visibility="collapsed",
+        )
 
     df_filtered = raw_df.copy()
     if busca and busca.strip():
@@ -3943,6 +3945,26 @@ def safe_df(styled_or_df, height=520, key_prefix=None):
             lambda col: col.astype(str).str.lower().str.contains(termo, na=False)
         ).any(axis=1)
         df_filtered = df_filtered[mask]
+
+    if show_download:
+        with col_dl:
+            if download_type == "csv":
+                d_file = df_filtered.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+                d_ext = "csv"
+                d_mime = "text/csv"
+            else:
+                d_file = df_to_xlsx(df_filtered)
+                d_ext = "xlsx"
+                d_mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            
+            st.download_button(
+                f"⬇️ {download_label}",
+                d_file,
+                f"{download_name}.{d_ext}",
+                mime=d_mime,
+                type="primary",
+                use_container_width=True
+            )
 
     total = len(raw_df)
     shown = len(df_filtered)
@@ -4662,6 +4684,7 @@ with st.sidebar:
 
     if sidebar_active_role not in ("P1", "SADM"):
         pages.append(("📥 Gerar Relatório", "Gerar Relatório"))
+    if sidebar_active_role not in ("SADM",):
         pages.append(("📄 Relatório Word", "Relatório Word"))
 
     # Auditoria de Notas: visível para ADMINISTRADOR, GESTOR, P1 e SADM
@@ -4716,9 +4739,9 @@ with st.sidebar:
         
 
 
-    if st.session_state.active_page in ("Gerar Relatório", "Relatório Word") and sidebar_active_role in ("P1", "SADM"):
-
-
+    if st.session_state.active_page == "Gerar Relatório" and sidebar_active_role in ("P1", "SADM"):
+        st.session_state.active_page = "Análise Gráfica"
+    elif st.session_state.active_page == "Relatório Word" and sidebar_active_role in ("SADM",):
         st.session_state.active_page = "Análise Gráfica"
 
 
@@ -5456,7 +5479,7 @@ if active_page == "Análise Gráfica":
 
     with c2:
         if "hide_enc_chart" not in st.session_state:
-            st.session_state.hide_enc_chart = False
+            st.session_state.hide_enc_chart = True
             
         btn_label = "👁️ Mostrar Encerradas" if st.session_state.hide_enc_chart else "🙈 Ocultar Encerradas"
         if st.button(btn_label, key="btn_toggle_enc_chart", use_container_width=True):
@@ -5739,15 +5762,41 @@ if active_page == "Análise Gráfica":
 
 
         if timeline_frames:
-
-
             df_time = pd.concat(timeline_frames, ignore_index=True)
-
+            
+            # Filtro de datas
+            min_date = df_time["Data"].min().date() if not df_time.empty else datetime.date.today()
+            max_date = df_time["Data"].max().date() if not df_time.empty else datetime.date.today()
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            col_d1, col_d2 = st.columns(2)
+            with col_d1:
+                dt_ini = st.date_input("📅 Data Início da Pesquisa", value=min_date, min_value=min_date, max_value=max_date, key="dt_ini_timechart")
+            with col_d2:
+                dt_fim = st.date_input("📅 Data Fim da Pesquisa", value=max_date, min_value=min_date, max_value=max_date, key="dt_fim_timechart")
+            # Seletores de Filtros de Função (Cards)
+            for k in ["sh_av1", "sh_av2", "sh_hom"]:
+                if k not in st.session_state: st.session_state[k] = True
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            cb1, cb2, cb3 = st.columns(3)
+            with cb1:
+                if st.button("🔵 AV1" if st.session_state.sh_av1 else "⚪ AV1", use_container_width=True): st.session_state.sh_av1 = not st.session_state.sh_av1
+            with cb2:
+                if st.button("🟠 AV2" if st.session_state.sh_av2 else "⚪ AV2", use_container_width=True): st.session_state.sh_av2 = not st.session_state.sh_av2
+            with cb3:
+                if st.button("🟢 HOM" if st.session_state.sh_hom else "⚪ HOM", use_container_width=True): st.session_state.sh_hom = not st.session_state.sh_hom
+                
+            allowed = []
+            if st.session_state.sh_av1: allowed.append("AV1 — Avaliador 1")
+            if st.session_state.sh_av2: allowed.append("AV2 — Avaliador 2")
+            if st.session_state.sh_hom: allowed.append("HOM — Homologador")
+            
+            mask = (df_time["Data"].dt.date >= dt_ini) & (df_time["Data"].dt.date <= dt_fim) & (df_time["Função"].isin(allowed))
+            df_time_filtered = df_time[mask]
 
             fig_time = px.line(
-
-
-                df_time, x="Data", y="Qtd", color="Função",
+                df_time_filtered, x="Data", y="Qtd", color="Função",
 
 
                 title="<b>Avaliações por Data e Função</b>",
@@ -5798,7 +5847,7 @@ if active_page == "Análise Gráfica":
             fig_time.update_layout(
                 height=380, title_x=0.5, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                 xaxis_title="", yaxis_title="Avaliações encerradas",
-                showlegend=True,
+                showlegend=False,
                 legend=dict(
                     orientation="h",
                     yanchor="top",
@@ -5901,21 +5950,8 @@ if active_page == "Dados Gerais":
 
 
     safe_df(df[cols_d].style.map(color_status,subset=["Status Avaliação"])
-
-
-                            .map(color_sit,   subset=["Situação Comissão"]), height=540)
-
-
-    csv_d = df[cols_d].to_csv(index=False, sep=";", encoding="utf-8-sig")
-
-
-    st.download_button("⬇️ Baixar dados filtrados (CSV)", csv_d.encode("utf-8-sig"),
-
-
-                        f"avaliacoes_filtradas_{now_br().strftime('%Y%m%d_%H%M')}.csv",
-
-
-                        mime="text/csv")
+                            .map(color_sit,   subset=["Situação Comissão"]), height=540,
+            show_download=True, download_name=f"avaliacoes_filtradas_{now_br().strftime('%Y%m%d_%H%M')}")
 
 
 
@@ -6091,39 +6127,11 @@ if active_page == "Avaliações Pendentes":
 
 
     safe_df(df_pv[cols_pend]
-
-
             .sort_values(["Unidade RPM (Avaliado)", "Status Avaliação", "Nome (Avaliado)"])
-
-
             .reset_index(drop=True)
-
-
             .style.map(color_status, subset=["Status Avaliação"])
-
-
             .map(color_sit,          subset=["Situação Comissão"]),
-
-
-            height=520)
-
-
-    csv_p = df_pv[cols_pend].sort_values(
-
-
-        ["Unidade RPM (Avaliado)", "Status Avaliação", "Nome (Avaliado)"]
-
-
-    ).to_csv(index=False, sep=";", encoding="utf-8-sig")
-
-
-    st.download_button("⬇️ Baixar pendentes (CSV)", csv_p.encode("utf-8-sig"),
-
-
-                        f"avaliacoes_pendentes_{now_br().strftime('%Y%m%d_%H%M')}.csv",
-
-
-                        mime="text/csv")
+            height=520, show_download=True, download_name=f"avaliacoes_pendentes_{now_br().strftime('%Y%m%d_%H%M')}", download_label="Baixar pendentes")
 
 
 
@@ -6289,13 +6297,13 @@ if active_page == "Avaliadores Pendentes":
            if tb1_rows else pd.DataFrame())
 
 
-    k1,k2 = st.columns(2)
-
-
+    k1,k2,k3 = st.columns([2,2,1])
     k1.metric("Avaliadores pendentes (AV1)", len(tb1))
-
-
     k2.metric("Total avaliações Em Aberto", tb1["Total AV1"].sum() if not tb1.empty else 0)
+    with k3:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if not tb1.empty:
+            st.download_button("⬇️ AV1 (CSV)", tb1.to_csv(index=False,sep=";",encoding="utf-8-sig").encode("utf-8-sig"), f"av1_{now_br().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv", type="primary", use_container_width=True)
 
 
     if not tb1.empty:
@@ -6483,11 +6491,6 @@ if active_page == "Avaliadores Pendentes":
             
 
 
-        st.download_button("⬇️ AV1 (CSV)", tb1.to_csv(index=False,sep=";",encoding="utf-8-sig").encode("utf-8-sig"),
-
-
-                            f"av1_{now_br().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
-
 
     else: st.success("✅ Nenhum AV1 com pendências!")
 
@@ -6522,13 +6525,13 @@ if active_page == "Avaliadores Pendentes":
            if tb2_rows else pd.DataFrame())
 
 
-    k1,k2 = st.columns(2)
-
-
+    k1,k2,k3 = st.columns([2,2,1])
     k1.metric("Avaliadores pendentes (AV2)", len(tb2))
-
-
     k2.metric("Total pendências AV2", tb2["Total AV2"].sum() if not tb2.empty else 0)
+    with k3:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if not tb2.empty:
+            st.download_button("⬇️ AV2 (CSV)", tb2.to_csv(index=False,sep=";",encoding="utf-8-sig").encode("utf-8-sig"), f"av2_{now_br().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv", type="primary", use_container_width=True)
 
 
     if not tb2.empty:
@@ -6716,10 +6719,8 @@ if active_page == "Avaliadores Pendentes":
             
 
 
-        st.download_button("⬇️ AV2 (CSV)", tb2.to_csv(index=False,sep=";",encoding="utf-8-sig").encode("utf-8-sig"),
 
 
-                            f"av2_{now_br().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
 
 
     else: st.success("✅ Nenhum AV2 com pendências!")
@@ -6809,22 +6810,16 @@ if active_page == "Avaliadores Pendentes":
 
 
 
-    k1, k2, k3 = st.columns(3)
-
-
+    k1, k2, k3, k4 = st.columns([1,1,1,1])
     k1.metric("Homologadores com pendência", len(tb3))
-
-
     k2.metric("Total aguardando HOM", len(df_hom))
-
-
     k3.metric("CA / NP pendentes",
-
-
               f"{(df_hom['Situação Comissão']=='Comissão Atual').sum()} / "
-
-
               f"{(df_hom['Situação Comissão']=='Nota Provisória').sum()}")
+    with k4:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if not tb3.empty:
+            st.download_button("⬇️ Homologadores (CSV)", tb3.to_csv(index=False,sep=";",encoding="utf-8-sig").encode("utf-8-sig"), f"homologadores_{now_br().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv", type="primary", use_container_width=True)
 
 
 
@@ -8638,44 +8633,50 @@ if active_page == "Relatório Word":
     if df_word is not None:
         st.markdown("---")
         
-        if active_role in ("P1", "SADM"):
+        if active_role in ("SADM",):
             st.warning("⚠️ Você não possui permissão para acessar esta funcionalidade.")
         else:
             st.markdown("<h4 style='font-size: 1.35rem; font-weight: bold; margin-bottom: 12px; color: #9b8a5c;'>Configurações do Relatório</h4>", unsafe_allow_html=True)
             
             if "rel_scope" not in st.session_state:
-                st.session_state.rel_scope = "Geral RPM"
+                st.session_state.rel_scope = "Geral RPM" if active_role in ("ADMINISTRADOR", "GESTOR") else f"Geral Subordinadas da {active_rpm}"
                 
             st.markdown("<p style='font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; color: #9b8a5c;'>Escopo do Relatório:</p>", unsafe_allow_html=True)
             st.markdown("<div class='report-scope-marker'></div>", unsafe_allow_html=True)
             
-            col_sc1, col_sc2, col_sc3 = st.columns(3)
-            with col_sc1:
-                is_sc1 = (st.session_state.rel_scope == "Geral RPM")
-                btn_sc1_type = "primary" if is_sc1 else "secondary"
-                if st.button("🏢\nGeral RPM\n(UDI/UDG Principais)", key="btn_scope_geral_rpm", use_container_width=True, type=btn_sc1_type):
-                    st.session_state.rel_scope = "Geral RPM"
-                    st.rerun()
-            with col_sc2:
-                is_sc2 = (st.session_state.rel_scope == "Geral Subordinadas")
-                btn_sc2_type = "primary" if is_sc2 else "secondary"
-                if st.button("🌐\nGeral Subordinadas\n(UDI/UDG + Subordinadas)", key="btn_scope_geral_sub", use_container_width=True, type=btn_sc2_type):
-                    st.session_state.rel_scope = "Geral Subordinadas"
-                    st.rerun()
-            with col_sc3:
-                is_sc3 = (st.session_state.rel_scope == "Por RPM específica")
-                btn_sc3_type = "primary" if is_sc3 else "secondary"
-                if st.button("🎯\nPor RPM específica\n(Filtrar por Unidades)", key="btn_scope_especifica", use_container_width=True, type=btn_sc3_type):
-                    st.session_state.rel_scope = "Por RPM específica"
-                    st.rerun()
-                    
-            rel_scope = st.session_state.rel_scope
-            
             selected_rpms = []
-            if "específica" in rel_scope:
-                unique_rpms = sorted(df_word["Unidade RPM (Avaliado)"].dropna().unique().tolist(), key=rpm_sort_key)
-                selected_rpms = st.multiselect("Selecione as Unidades UDI/UDG para o relatório:", unique_rpms)
-                
+            
+            if active_role in ("ADMINISTRADOR", "GESTOR"):
+                col_sc1, col_sc2, col_sc3 = st.columns(3)
+                with col_sc1:
+                    is_sc1 = (st.session_state.rel_scope == "Geral RPM")
+                    btn_sc1_type = "primary" if is_sc1 else "secondary"
+                    if st.button("🏢\nGeral RPM\n(UDI/UDG Principais)", key="btn_scope_geral_rpm", use_container_width=True, type=btn_sc1_type):
+                        st.session_state.rel_scope = "Geral RPM"
+                        st.rerun()
+                with col_sc2:
+                    is_sc2 = (st.session_state.rel_scope == "Geral Subordinadas")
+                    btn_sc2_type = "primary" if is_sc2 else "secondary"
+                    if st.button("🌐\nGeral Subordinadas\n(UDI/UDG + Subordinadas)", key="btn_scope_geral_sub", use_container_width=True, type=btn_sc2_type):
+                        st.session_state.rel_scope = "Geral Subordinadas"
+                        st.rerun()
+                with col_sc3:
+                    is_sc3 = (st.session_state.rel_scope == "Por RPM específica")
+                    btn_sc3_type = "primary" if is_sc3 else "secondary"
+                    if st.button("🎯\nPor RPM específica\n(Filtrar por Unidades)", key="btn_scope_especifica", use_container_width=True, type=btn_sc3_type):
+                        st.session_state.rel_scope = "Por RPM específica"
+                        st.rerun()
+                        
+                rel_scope = st.session_state.rel_scope
+                if "específica" in rel_scope:
+                    unique_rpms = sorted(df_word["Unidade RPM (Avaliado)"].dropna().unique().tolist(), key=rpm_sort_key)
+                    selected_rpms = st.multiselect("Selecione as Unidades UDI/UDG para o relatório:", unique_rpms)
+                    
+            elif active_role == "P1":
+                # For P1, we force general subordinates and hide the UI
+                st.session_state.rel_scope = f"Geral Subordinadas da {active_rpm}"
+                rel_scope = st.session_state.rel_scope
+
             # 🚀 Botão de Geração em Destaque no Início da Página
             if "específica" in rel_scope and not selected_rpms:
                 st.warning("⚠️ Selecione ao menos uma unidade para gerar o relatório.")
@@ -8729,11 +8730,17 @@ if active_page == "Relatório Word":
                     units_to_render = sorted(df_word_clean["Unidade RPM (Avaliado)"].dropna().unique().tolist(), key=rpm_sort_key)
                 
                 # Tipo de pré-visualização
-                prev_type = st.selectbox(
-                    "Selecione o nível de detalhamento dos gráficos para visualização:",
-                    ["🌍 Geral (Toda a PMMG + Gráficos de cada UDI/UDG)", "🏢 Por UDI/UDG específica (RPM + Gráficos das Subunidades)"],
-                    key="word_prev_type"
-                )
+                if active_role == "P1":
+                    st.info("💡 **Nota:** O botão de download acima sempre gerará o relatório completo com **TODAS** as unidades subordinadas da sua RPM.")
+                    sub_units_available = sorted(df_escopo["Unidade Principal (Avaliado)"].dropna().unique().tolist())
+                    selected_subs = st.multiselect("Filtrar pré-visualização por Subunidade(s) específica(s) (Opcional):", sub_units_available, key="p1_prev_sub_filter")
+                    prev_type = "P1_Custom"
+                else:
+                    prev_type = st.selectbox(
+                        "Selecione o nível de detalhamento dos gráficos para visualização:",
+                        ["🌍 Geral (Toda a PMMG + Gráficos de cada UDI/UDG)", "🏢 Por UDI/UDG específica (RPM + Gráficos das Subunidades)"],
+                        key="word_prev_type"
+                    )
                 
                 from gerar_relatorio_word import create_status_pie, create_comissao_bar, create_pending_units_bar
                 import tempfile
@@ -8755,12 +8762,15 @@ if active_page == "Relatório Word":
                             create_comissao_bar(df_escopo, t_bar)
                             create_pending_units_bar(df_escopo, units_to_render, t_pend)
                             
-                            c1, c2 = st.columns(2)
+                            c_sp1, c1, c2, c_sp2 = st.columns([1, 2, 2, 1])
                             with c1:
                                 st.image(t_pie, caption="Status das Avaliações - Geral", use_container_width=True)
                             with c2:
                                 st.image(t_bar, caption="Situação da Comissão - Geral", use_container_width=True)
-                            st.image(t_pend, caption="Pendências Acumuladas por UDI/UDG", use_container_width=True)
+                            
+                            c_p_sp1, c_p, c_p_sp2 = st.columns([1, 2, 1])
+                            with c_p:
+                                st.image(t_pend, caption="Pendências Acumuladas por UDI/UDG", use_container_width=True)
                         finally:
                             for p in [t_pie, t_bar, t_pend]:
                                 try:
@@ -8788,7 +8798,7 @@ if active_page == "Relatório Word":
                                 try:
                                     create_status_pie(df_rpm, t_pie)
                                     create_comissao_bar(df_rpm, t_bar)
-                                    c1, c2 = st.columns(2)
+                                    c_sp1, c1, c2, c_sp2 = st.columns([1, 2, 2, 1])
                                     with c1:
                                         st.image(t_pie, use_container_width=True)
                                     with c2:
@@ -8799,7 +8809,7 @@ if active_page == "Relatório Word":
                                             if os.path.exists(p): os.remove(p)
                                         except Exception: pass
                                         
-                else:
+                elif prev_type == "🏢 Por UDI/UDG específica (RPM + Gráficos das Subunidades)":
                     # Por UDI/UDG específica (RPM + Gráficos das Subunidades)
                     rpms_available = sorted(df_escopo["Unidade RPM (Avaliado)"].dropna().unique().tolist(), key=rpm_sort_key)
                     if rpms_available:
@@ -8827,7 +8837,7 @@ if active_page == "Relatório Word":
                                 try:
                                     create_status_pie(df_rpm, t_pie)
                                     create_comissao_bar(df_rpm, t_bar)
-                                    c1, c2 = st.columns(2)
+                                    c_sp1, c1, c2, c_sp2 = st.columns([1, 2, 2, 1])
                                     with c1:
                                         st.image(t_pie, use_container_width=True)
                                     with c2:
@@ -8874,6 +8884,48 @@ if active_page == "Relatório Word":
                             st.info("Sem dados disponíveis para a unidade selecionada.")
                     else:
                         st.info("Nenhuma UDI/UDG disponível no escopo atual.")
+                
+                elif prev_type == "P1_Custom":
+                    df_rpm = df_escopo[df_escopo["Unidade RPM (Avaliado)"] == active_rpm]
+                    if not df_rpm.empty:
+                        with st.spinner(f"⏳ Gerando gráficos das subordinadas de {active_rpm}..."):
+                            unique_subs = sorted(df_rpm["Unidade Principal (Avaliado)"].dropna().unique().tolist())
+                            if selected_subs:
+                                unique_subs = [s for s in unique_subs if s in selected_subs]
+                                
+                            st.markdown(f"<h5 style='font-size: 1.15rem; font-weight: bold; color: #9b8a5c; margin-top: 10px; margin-bottom: 10px;'>Gráficos das Unidades Subordinadas</h5>", unsafe_allow_html=True)
+                            
+                            for sub in unique_subs:
+                                df_sub = df_rpm[df_rpm["Unidade Principal (Avaliado)"] == sub]
+                                if len(df_sub) > 0:
+                                    st.markdown(
+                                        f"""
+                                        <div style='background-color: #26231b; padding: 6px 10px; border-left: 3px solid #ff9f43; border-radius: 4px; margin-top: 15px; margin-bottom: 8px;'>
+                                            <span style='font-size: 1.05rem; font-weight: bold; color: #f5f5f5;'>■ Subunidade: {sub}</span>
+                                            <span style='font-size: 0.9rem; color: #ff9f43; margin-left: 10px;'>({len(df_sub):,} avaliações)</span>
+                                        </div>
+                                        """,
+                                        unsafe_allow_html=True
+                                    )
+                                    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f_pie:
+                                        t_pie = f_pie.name
+                                    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f_bar:
+                                        t_bar = f_bar.name
+                                    try:
+                                        create_status_pie(df_sub, t_pie)
+                                        create_comissao_bar(df_sub, t_bar)
+                                        c_sp1, c1, c2, c_sp2 = st.columns([1, 2, 2, 1])
+                                        with c1:
+                                            st.image(t_pie, use_container_width=True)
+                                        with c2:
+                                            st.image(t_bar, use_container_width=True)
+                                    finally:
+                                        for p in [t_pie, t_bar]:
+                                            try:
+                                                if os.path.exists(p): os.remove(p)
+                                            except Exception: pass
+                    else:
+                        st.info("Sem dados disponíveis.")
             st.markdown("---")
             
             # O botão foi reposicionado no início da página
@@ -8889,7 +8941,7 @@ if active_page == "Relatório Word":
 if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
     st.markdown("### 📊 Auditoria de Notas")
     _role_audit = sidebar_active_role
-    _user_rpm   = st.session_state.get("simulated_rpm", st.session_state.get("user_rpm", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_rpm", "")
+    active_rpm   = st.session_state.get("simulated_rpm", st.session_state.get("user_rpm", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_rpm", "")
     _user_unit  = st.session_state.get("simulated_unit", st.session_state.get("user_unit", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_unit", "")
 
     # Obter caminhos dos arquivos locais e Drive
@@ -8925,11 +8977,11 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
 
     if _role_audit == "P1":
         # P1 enxerga apenas os avaliados da sua UDI/UDG (RPM)
-        if _user_rpm and "Nome RPM" in df_audit_disp.columns:
+        if active_rpm and "Nome RPM" in df_audit_disp.columns:
             df_audit_disp = df_audit_disp[
-                df_audit_disp["Nome RPM"].astype(str).str.upper() == str(_user_rpm).upper()
+                df_audit_disp["Nome RPM"].astype(str).str.upper() == str(active_rpm).upper()
             ]
-            st.info(f"🔒 Exibindo apenas registros da sua UDI/UDG: **{_user_rpm}**")
+            st.info(f"🔒 Exibindo apenas registros da sua UDI/UDG: **{active_rpm}**")
         else:
             st.warning("⚠️ RPM do usuário não identificado. Contate o administrador.")
             st.stop()
@@ -8973,8 +9025,8 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
     # 3. Média da Nota da Unidade (média aritmética de todas as notas finais já encerradas do banco geral)
     df_evals_audit = df_full.copy()
     if _role_audit == "P1":
-        if _user_rpm:
-            df_evals_audit = df_evals_audit[df_evals_audit["Unidade RPM (Avaliado)"].astype(str).str.upper() == str(_user_rpm).upper()]
+        if active_rpm:
+            df_evals_audit = df_evals_audit[df_evals_audit["Unidade RPM (Avaliado)"].astype(str).str.upper() == str(active_rpm).upper()]
     elif _role_audit == "SADM":
         if _user_unit:
             df_evals_audit = df_evals_audit[df_evals_audit["Unidade Principal (Avaliado)"].astype(str).str.upper() == str(_user_unit).upper()]
@@ -9024,18 +9076,8 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
     st.markdown(f"##### Conteúdo da Planilha Mestre Consolidada ({fmt_num(len(df_audit_disp))} registros)")
     
     # Exibir a planilha de auditoria diretamente!
-    safe_df(df_audit_disp, height=540)
-    
-    # Baixar relatório Excel
-    dl_xlsx = df_to_xlsx(df_audit_disp)
-    st.download_button(
-        "📥 Baixar Resultados Filtrados (Excel .xlsx)",
-        dl_xlsx,
-        f"Auditoria_Notas_Consolidado_{now_br().strftime('%Y%m%d_%H%M')}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key="dl_audit_notes_xlsx",
-        use_container_width=True
-    )
+    safe_df(df_audit_disp, height=540,
+            show_download=True, download_type="excel", download_name=f"Auditoria_Notas_Consolidado_{now_br().strftime('%Y%m%d_%H%M')}", download_label="Baixar Resultados Filtrados")
 
 
 if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
@@ -9126,7 +9168,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
             
     # Obter variáveis de perfil do usuário (considerando simulação)
     _role_consol = sidebar_active_role.upper()
-    _user_rpm = st.session_state.get("simulated_rpm", st.session_state.get("user_rpm", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_rpm", "")
+    active_rpm = st.session_state.get("simulated_rpm", st.session_state.get("user_rpm", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_rpm", "")
     _user_unit = st.session_state.get("simulated_unit", st.session_state.get("user_unit", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_unit", "")
 
     # Aplicar filtragem de escopo de dados conforme o perfil
@@ -9134,7 +9176,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
     df_audit_source = None
 
     if _role_consol == "P1":
-        df_evals_source = df_evals_source[df_evals_source["Unidade RPM (Avaliado)"] == _user_rpm]
+        df_evals_source = df_evals_source[df_evals_source["Unidade RPM (Avaliado)"] == active_rpm]
     elif _role_consol == "SADM":
         df_evals_source = df_evals_source[df_evals_source["Unidade Principal (Avaliado)"] == _user_unit]
 
@@ -9192,7 +9234,10 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
     all_rpms = sorted(df_evals_source["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key)
     
     # ── PAINEL DE EXPORTAÇÃO CONSOLIDADA POR PERFIL ──────────────────────────
-    st.markdown("<h4 style='font-size: 1.2rem; color: #9b8a5c; margin-bottom: 8px;'>📥 Exportar Relatório Consolidado</h4>", unsafe_allow_html=True)
+    col_title_consol, col_btn_consol = st.columns([3, 1])
+    with col_title_consol:
+        st.markdown("<h4 style='font-size: 1.2rem; color: #9b8a5c; margin-bottom: 8px;'>📥 Exportar Relatório Consolidado</h4>", unsafe_allow_html=True)
+    btn_container_consol = col_btn_consol.empty()
     
     enable_export = True
     selected_rpms_rel = all_rpms
@@ -9207,7 +9252,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                 enable_export = False
                 
     elif _role_consol == "P1":
-        escopo_rel = st.radio("Selecione o escopo da exportação:", [f"🌐 Geral (Todas as Subordinadas da {_user_rpm})", "🏢 Por Unidade subordinada específica"], horizontal=True, key="escopo_rel_consolidado")
+        escopo_rel = st.radio("Selecione o escopo da exportação:", [f"🌐 Geral (Todas as Subordinadas da {active_rpm})", "🏢 Por Unidade subordinada específica"], horizontal=True, key="escopo_rel_consolidado")
         
         all_subs_in_rpm = sorted(df_evals_source["Unidade Principal (Avaliado)"].dropna().unique())
         selected_subs_rel = all_subs_in_rpm
@@ -9384,14 +9429,16 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
             return buf.read()
             
         xlsx_consolidated = export_consolidated_xlsx(df_evals_source, df_audit_source, selected_rpms_rel)
-        st.download_button(
-            label="📥 Baixar Planilha Consolidada (Excel .xlsx)",
-            data=xlsx_consolidated,
-            file_name=f"Relatorio_Consolidado_AADP_{now_br().strftime('%Y%m%d_%H%M%S')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
-            key="btn_download_consolidado"
-        )
+        with btn_container_consol:
+            st.download_button(
+                label="📥 Baixar Planilha Consolidada (Excel .xlsx)",
+                data=xlsx_consolidated,
+                file_name=f"Relatorio_Consolidado_AADP_{now_br().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                type="primary",
+                use_container_width=True,
+                key="btn_download_consolidado"
+            )
         
     st.markdown("---")
     
