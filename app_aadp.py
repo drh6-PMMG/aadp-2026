@@ -2669,10 +2669,7 @@ def db_get_logs_df(sel_log_user, start_str, end_str):
 def db_get_pending_count():
 
 
-    users = get_cached_users()
-
-
-    return sum(1 for u in users if u["status"] == "Pendente")
+    return len(db_get_pending_users())
 
 
 
