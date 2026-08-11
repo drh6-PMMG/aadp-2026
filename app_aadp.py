@@ -5352,9 +5352,11 @@ if active_page == "Análise Gráfica":
 
 
         hole=0.54,
+        
+        domain=dict(x=[0.0, 0.55]),
 
 
-        pull=[0.09, 0.06, 0.04, 0],
+        pull=[0.09, 0.06, 0.04, 0, 0.04, 0.06, 0.09],
 
 
         texttemplate="<b>%{label}</b><br>%{value:,} (%{percent})",
@@ -5363,10 +5365,10 @@ if active_page == "Análise Gráfica":
         textposition="outside",
 
 
-        rotation=135,  # Inclinado (tilted starting angle) para mover valores do topo mais para o lado!
+        rotation=200,  # Rotacionado para as fatias menores apontarem diretamente para o espaço vazio na direita
 
 
-        textfont=dict(size=13, family="Inter, sans-serif"),
+        textfont=dict(size=14, family="Inter, sans-serif"),
 
 
         insidetextorientation="radial",
@@ -5390,10 +5392,10 @@ if active_page == "Análise Gráfica":
         text=f"<b>{fmt_num(n_total)}</b><br><span style='font-size:11px;color:#a0a0a0'>avaliações</span>",
 
 
-        x=0.5, y=0.5, showarrow=False,
+        x=0.275, y=0.5, showarrow=False,
 
 
-        font=dict(size=22, color="#9b8a5c", family="Inter"),
+        font=dict(size=24, color="#9b8a5c", family="Inter"),
 
 
         align="center",
@@ -5411,10 +5413,10 @@ if active_page == "Análise Gráfica":
         title=dict(text="<b>Status das Avaliações — AADP 2026</b>",
 
 
-                   font=dict(size=20, color="#9b8a5c"), x=0.5, y=0.96),
+                   font=dict(size=22, color="#9b8a5c"), x=0.5, y=0.96),
 
 
-        height=500, showlegend=False,
+        height=550, showlegend=False,
 
 
         paper_bgcolor="rgba(0,0,0,0)",
@@ -5423,7 +5425,7 @@ if active_page == "Análise Gráfica":
         plot_bgcolor="rgba(0,0,0,0)",
 
 
-        margin=dict(t=60, b=80, l=120, r=120),
+        margin=dict(t=60, b=30, l=10, r=10),
 
 
     )
