@@ -3494,10 +3494,7 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                                 final_status_g = "AUTORIDADE RECURSAL"
                         else:
                             # Só Fase 1 registrada = comissão analisando (Reconsideração)
-                            if n_f1_val is not None:
-                                final_status_g = "Encerrada"
-                            else:
-                                final_status_g = "RECONSIDERAÇÃO COMISSÃO"
+                            final_status_g = "RECONSIDERAÇÃO COMISSÃO"
                     key = (pm_g, av1_g, av2_g)
                     recourse_map[key] = final_status_g
         except Exception:
