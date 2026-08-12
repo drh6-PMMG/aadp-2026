@@ -3929,7 +3929,8 @@ def safe_df(styled_or_df, height=520, key_prefix=None, show_download=False, down
         ).hexdigest()[:8]
 
     # Layout para campo de busca e botão de download
-    col_search, col_space, col_dl = st.columns([2.5, 0.5, 1])
+    st.markdown("<div style='margin-top: -15px; margin-bottom: -15px;'></div>", unsafe_allow_html=True)
+    col_search, col_space, col_dl = st.columns([2.5, 0.1, 1], vertical_alignment="bottom")
     with col_search:
         busca = st.text_input(
             "🔍 Busca rápida (filtra qualquer coluna)",
