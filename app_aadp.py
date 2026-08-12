@@ -5592,10 +5592,13 @@ if active_page == "Análise Gráfica":
     # Filtrar o DataFrame pelos status selecionados
     df_filtered = df[df["Status Avaliação"].isin(active_statuses)]
 
+    grp_col = "Unidade RPM (Avaliado)" if main_active_role != "P1" else "Unidade Principal (Avaliado)"
+    title_text = "<b>Distribuição por Unidade RPM e Status</b>" if main_active_role != "P1" else f"<b>Distribuição por Subunidade ({active_rpm}) e Status</b>"
+    
     # Obter lista de unidades presentes
-    all_units = df_filtered["Unidade RPM (Avaliado)"].dropna().unique()
+    all_units = df_filtered[grp_col].dropna().unique()
     if len(all_units) == 0:
-        all_units = df["Unidade RPM (Avaliado)"].dropna().unique()
+        all_units = df[grp_col].dropna().unique()
 
     # Ordenar as unidades com base na opção selecionada e nos status ativos
     if sort_option == "Crescente por Unidade":
@@ -5603,30 +5606,30 @@ if active_page == "Análise Gráfica":
     elif sort_option == "Decrescente por Unidade":
         all_units_sorted = sorted(all_units, key=rpm_sort_key, reverse=True)
     elif sort_option == "Crescente por Quantidade":
-        unit_totals = df_filtered.groupby("Unidade RPM (Avaliado)").size().reset_index(name="Total")
+        unit_totals = df_filtered.groupby(grp_col).size().reset_index(name="Total")
         unit_totals_sorted = unit_totals.sort_values("Total", ascending=True)
-        all_units_sorted = list(unit_totals_sorted["Unidade RPM (Avaliado)"])
+        all_units_sorted = list(unit_totals_sorted[grp_col])
         for u in all_units:
             if u not in all_units_sorted:
                 all_units_sorted.append(u)
     else: # Decrescente por Quantidade
-        unit_totals = df_filtered.groupby("Unidade RPM (Avaliado)").size().reset_index(name="Total")
+        unit_totals = df_filtered.groupby(grp_col).size().reset_index(name="Total")
         unit_totals_sorted = unit_totals.sort_values("Total", ascending=False)
-        all_units_sorted = list(unit_totals_sorted["Unidade RPM (Avaliado)"])
+        all_units_sorted = list(unit_totals_sorted[grp_col])
         for u in all_units:
             if u not in all_units_sorted:
                 all_units_sorted.append(u)
 
-    rpm_cross = df_filtered.groupby(["Unidade RPM (Avaliado)","Status Avaliação"]).size().reset_index(name="Qtd")
+    rpm_cross = df_filtered.groupby([grp_col,"Status Avaliação"]).size().reset_index(name="Qtd")
     
     fig_rpm = px.bar(
-        rpm_cross, x="Unidade RPM (Avaliado)", y="Qtd",
+        rpm_cross, x=grp_col, y="Qtd",
         color="Status Avaliação", color_discrete_map=STATUS_COLORS,
         barmode="stack", text_auto=True,
         template="plotly_dark",
-        title="<b>Distribuição por Unidade RPM e Status</b>",
+        title=title_text,
         category_orders={
-            "Unidade RPM (Avaliado)": all_units_sorted,
+            grp_col: all_units_sorted,
             "Status Avaliação": STACK_ORDER,
         },
     )
