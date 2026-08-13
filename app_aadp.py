@@ -628,6 +628,99 @@ def build_audit_data_from_geral(csv_path):
 
 
 @st.cache_resource(show_spinner=False)
+def append_sigef_to_audit(df):
+    import os, csv
+    import pandas as pd
+    
+    si_path = os.path.join("dados", "SIGEF.csv")
+    if not os.path.exists(si_path):
+        si_path = "SIGEF.csv"
+        
+    if not os.path.exists(si_path):
+        return df  # If SIGEF not found, return original df
+        
+    sigef_map = {}
+    try:
+        with open(si_path, encoding="cp1252", errors="replace") as f:
+            reader = csv.reader(f, delimiter=";")
+            header = next(reader)
+            
+            for row in reader:
+                if len(row) > 35:
+                    pm_clean = row[0].strip().lstrip("0")
+                    if not pm_clean: continue
+                    
+                    # T = 19 (Número de Quinquênio)
+                    # X = 23 (Data ADE)
+                    # AF = 31 (Ano Base)
+                    # AG = 32 (Ord. Almanaque)
+                    # AH = 33, AI = 34, AJ = 35 (Conceito)
+                    
+                    num_quinquenio = row[19].strip()
+                    data_ade = row[23].strip()
+                    ano_base = row[31].strip()
+                    ord_almanaque = row[32].strip()
+                    ah = row[33].strip()
+                    ai = row[34].strip()
+                    aj = row[35].strip()
+                    
+                    # Reg Adicional: Se X (Data ADE) tem dado válido -> ADE. Se não, T -> QQ. Se ambos -> ADE.
+                    reg_adicional = ""
+                    if data_ade and str(data_ade).strip() not in ("-", "", "nan", "None"):
+                        reg_adicional = "ADE"
+                    elif num_quinquenio and str(num_quinquenio).strip() not in ("-", "", "nan", "None", "0"):
+                        reg_adicional = "QQ"
+                        
+                    # Conceito
+                    conceito = f"{ah} {ai}{aj}".strip()
+                    
+                    sigef_map[pm_clean] = {
+                        "Conceito": conceito,
+                        "Reg. Adicional": reg_adicional,
+                        "Ano Base": ano_base,
+                        "Ord. Almanaque": ord_almanaque
+                    }
+    except Exception:
+        pass
+        
+    if not sigef_map:
+        return df
+        
+    # Apply to df
+    def get_sigef_val(pm, key):
+        if pd.isna(pm): return ""
+        pm_str = str(pm).strip().lstrip("0")
+        if pm_str.endswith(".0"):
+            pm_str = pm_str[:-2]
+        return sigef_map.get(pm_str, {}).get(key, "")
+
+    df["Conceito"] = df["nrPM (Avaliado)"].apply(lambda x: get_sigef_val(x, "Conceito"))
+    df["Reg. Adicional"] = df["nrPM (Avaliado)"].apply(lambda x: get_sigef_val(x, "Reg. Adicional"))
+    df["Ano Base"] = df["nrPM (Avaliado)"].apply(lambda x: get_sigef_val(x, "Ano Base"))
+    df["Ord. Almanaque"] = df["nrPM (Avaliado)"].apply(lambda x: get_sigef_val(x, "Ord. Almanaque"))
+    
+    # Reorder columns
+    cols = list(df.columns)
+    
+    # Find "Situação Funcional"
+    if "Situação Funcional" in cols:
+        idx = cols.index("Situação Funcional") + 1
+        
+        # Remove the newly added cols from their current end position
+        for c in ["Conceito", "Reg. Adicional", "Ano Base", "Ord. Almanaque"]:
+            if c in cols:
+                cols.remove(c)
+                
+        # Insert them right after Situação Funcional
+        cols.insert(idx, "Conceito")
+        cols.insert(idx + 1, "Reg. Adicional")
+        cols.insert(idx + 2, "Ano Base")
+        cols.insert(idx + 3, "Ord. Almanaque")
+        
+        df = df[cols]
+        
+    return df
+
 def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
     import pandas as pd
     import os
@@ -687,6 +780,7 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
                     return x
             df[col_media] = df[col_media].apply(round_half_up_2)
             
+        df = append_sigef_to_audit(df)
         return df, None
     except Exception as e:
         return None, f"Erro ao ler planilha consolidada: {str(e)}"
