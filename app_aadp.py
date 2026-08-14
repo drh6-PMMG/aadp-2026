@@ -3909,23 +3909,22 @@ def fmt_num(n): return f"{n:,}".replace(",",".")
 
 
 def df_to_xlsx(df: pd.DataFrame) -> bytes:
-
-
     import io
-
-
     output = io.BytesIO()
-
-
+    
+    is_audit_df = any("Aritm" in str(c) for c in df.columns) and any(str(c).endswith(" 1") for c in df.columns)
+    
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-
-
-        df.to_excel(writer, index=False, sheet_name='Planilha')
-
-
+        if is_audit_df:
+            try:
+                styled_df = style_audit_dataframe(df)
+                styled_df.to_excel(writer, index=False, sheet_name='Auditoria')
+            except Exception:
+                df.to_excel(writer, index=False, sheet_name='Planilha')
+        else:
+            df.to_excel(writer, index=False, sheet_name='Planilha')
+            
     output.seek(0)
-
-
     return output.read()
 
 
