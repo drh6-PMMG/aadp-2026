@@ -312,8 +312,8 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
             row.append("")
 
         sit = row[11].strip()
-        # if sit not in SITUACOES_ALVO:
-        #     continue
+        if sit not in SITUACOES_ALVO:
+            continue
 
         nrpm  = row[1].strip()
         local = row[9].strip()

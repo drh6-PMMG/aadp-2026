@@ -404,7 +404,7 @@ def build_audit_data_from_geral(csv_path):
         c_rpm = find_col(header, "Unidade RPM (Avaliado)")
         c_unit = find_col(header, "Unidade Principal (Avaliado)")
         c_quadro = find_col(header, "Quadro Atual (Avaliado)")
-        c_sit = find_col(header, "Situação Funcional")
+        c_sit = find_col(header, "Sit. Funcional")
         c_dt_av1 = find_col(header, "Data da Avaliação 1")
         c_dt_av2 = find_col(header, "Data da Avaliação 2")
         c_concept = find_col(header, "Conceito Geral")
@@ -429,8 +429,8 @@ def build_audit_data_from_geral(csv_path):
             if len(row) < len(header):
                 continue
             sit = row[c_sit].strip()
-            # if sit not in SITUACOES_ALVO:
-            #     continue
+            if sit not in SITUACOES_ALVO:
+                continue
                 
             pm = normalize_pm(row[c_pm])
             if not pm:
@@ -694,17 +694,17 @@ def append_sigef_to_audit(df):
             pm_str = pm_str[:-2]
         return sigef_map.get(pm_str, {}).get(key, "")
 
-    df["Conceito"] = df["nrPM (Avaliado)"].apply(lambda x: get_sigef_val(x, "Conceito"))
-    df["Reg. Adicional"] = df["nrPM (Avaliado)"].apply(lambda x: get_sigef_val(x, "Reg. Adicional"))
-    df["Ano Base"] = df["nrPM (Avaliado)"].apply(lambda x: get_sigef_val(x, "Ano Base"))
-    df["Ord. Almanaque"] = df["nrPM (Avaliado)"].apply(lambda x: get_sigef_val(x, "Ord. Almanaque"))
+    df["Conceito"] = df["NR PM"].apply(lambda x: get_sigef_val(x, "Conceito"))
+    df["Reg. Adicional"] = df["NR PM"].apply(lambda x: get_sigef_val(x, "Reg. Adicional"))
+    df["Ano Base"] = df["NR PM"].apply(lambda x: get_sigef_val(x, "Ano Base"))
+    df["Ord. Almanaque"] = df["NR PM"].apply(lambda x: get_sigef_val(x, "Ord. Almanaque"))
     
     # Reorder columns
     cols = list(df.columns)
     
-    # Find "Situação Funcional"
-    if "Situação Funcional" in cols:
-        idx = cols.index("Situação Funcional") + 1
+    # Find "Sit. Funcional"
+    if "Sit. Funcional" in cols:
+        idx = cols.index("Sit. Funcional") + 1
         
         # Remove the newly added cols from their current end position
         for c in ["Conceito", "Reg. Adicional", "Ano Base", "Ord. Almanaque"]:
@@ -3663,7 +3663,7 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                 "Quadro Atual (Avaliado)":   row[6].strip(),
 
 
-                "Situação Funcional":        sit,
+                "Sit. Funcional":        sit,
 
 
                 "Data AV1":                  row[8].strip(),
@@ -6008,7 +6008,7 @@ if active_page == "Dados Gerais":
         "Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)", "Local/Unidade (Avaliado)",
 
 
-        "Situação Funcional",
+        "Sit. Funcional",
 
 
         # Datas e Certificação (sem notas/conceitos)
@@ -6173,7 +6173,7 @@ if active_page == "Avaliações Pendentes":
         "Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)",
 
 
-        "Situação Funcional",
+        "Sit. Funcional",
 
 
         # ── Status e Datas (sem notas/conceitos) ─────────────────────────────
@@ -7243,7 +7243,7 @@ COLS_XLS = [
     "Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)", "Local/Unidade (Avaliado)",
 
 
-    "Situação Funcional",
+    "Sit. Funcional",
 
 
     "Data AV1", "Data AV2", "Data HOM", "Certificação Homologador",
@@ -9152,13 +9152,13 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
     col_k1, col_k2, col_k3 = st.columns(3)
     with col_k1:
         st.markdown('<div class="kpi-card kpi-aberta">'
-                    '<div class="label">AVALIAÇÕES ABERTAS / SEM NOTA FINAL</div>'
+                    '<div class="label">MILITARES COM PENDÊNCIAS / AVALIAÇÕES ABERTAS</div>'
                     f'<div class="value">{fmt_num(card1_count)}</div>'
                     '<div class="sub">Militares com pendências de encerramento</div>'
                     '</div>', unsafe_allow_html=True)
     with col_k2:
         st.markdown('<div class="kpi-card kpi-enc">'
-                    '<div class="label">AVALIAÇÕES ENCERRADAS COM NOTA</div>'
+                    '<div class="label">MILITARES 100% ENCERRADOS COM NOTA</div>'
                     f'<div class="value">{fmt_num(card2_count)}</div>'
                     '<div class="sub">Militares com nota final encerrada</div>'
                     '</div>', unsafe_allow_html=True)
