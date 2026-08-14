@@ -429,8 +429,8 @@ def build_audit_data_from_geral(csv_path):
             if len(row) < len(header):
                 continue
             sit = row[c_sit].strip()
-            if sit not in SITUACOES_ALVO:
-                continue
+            # if sit not in SITUACOES_ALVO:
+            #     continue
                 
             pm = normalize_pm(row[c_pm])
             if not pm:
