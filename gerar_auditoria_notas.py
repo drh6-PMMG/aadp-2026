@@ -312,8 +312,8 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
             row.append("")
 
         sit = row[11].strip()
-        if sit not in SITUACOES_ALVO:
-            continue
+        # if sit not in SITUACOES_ALVO:
+        #     continue
 
         nrpm  = row[1].strip()
         local = row[9].strip()
@@ -384,18 +384,13 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
             # Houve recurso
             if n_f4 is not None:
                 status_av = "Encerrada"
-            elif n_f3 is not None:
+            elif r_f3 not in ("", "-") or n_f3 is not None:
                 status_av = "Encerrada"
-            elif r_f3 not in ("", "-") and n_f3 is None:
-                # Fase 3 com data cadastrada mas sem nota = indeferido = Encerrada c/ nota original
-                if dt_f3 not in ("", "-"):
-                    status_av = "Encerrada"  # recurso indeferido, mantém nota original da comissão
+            elif r_f2 not in ("", "-"):
+                if n_f2 is not None:
+                    status_av = "Encerrada"
                 else:
                     status_av = "AUTORIDADE RECURSAL"
-            elif n_f2 is not None:
-                status_av = "Encerrada"
-            elif r_f2 not in ("", "-") and n_f2 is None:
-                status_av = "AUTORIDADE RECURSAL"
             else:
                 status_av = "RECONSIDERAÇÃO COMISSÃO"
 
@@ -809,7 +804,7 @@ def escreve_resumo(ws, df):
     total = len(df)
     for st in STATUS_ORDEM:
         cnt = int((df["Status Avaliação"] == st).sum())
-        pct = f"{cnt/total*100:.1f}%" if total > 0 else "0%"
+        pct = f"{cnt/total*100:.2f}%" if total > 0 else "0%"
         cor = STATUS_CORES.get(st, "FFFFFF")
         for ci, val in enumerate([st, cnt, pct], 1):
             c = ws.cell(r, ci, val)
@@ -850,7 +845,7 @@ def escreve_resumo(ws, df):
 
     for sit_c, cor in [("Comissão Atual", "4472C4"), ("Nota Provisória", "FFC000")]:
         cnt = int((df["Situação Comissão"] == sit_c).sum())
-        pct = f"{cnt/total*100:.1f}%" if total > 0 else "0%"
+        pct = f"{cnt/total*100:.2f}%" if total > 0 else "0%"
         for ci, val in enumerate([sit_c, cnt, pct], 1):
             c = ws.cell(r, ci, val)
             c.fill = PatternFill("solid", fgColor=cor)
