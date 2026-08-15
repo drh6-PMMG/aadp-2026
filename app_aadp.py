@@ -404,7 +404,7 @@ def build_audit_data_from_geral(csv_path):
         c_rpm = find_col(header, "Unidade RPM (Avaliado)")
         c_unit = find_col(header, "Unidade Principal (Avaliado)")
         c_quadro = find_col(header, "Quadro Atual (Avaliado)")
-        c_sit = find_col(header, "Sit. Funcional")
+        c_sit = find_col(header, "Situação Funcional")
         c_dt_av1 = find_col(header, "Data da Avaliação 1")
         c_dt_av2 = find_col(header, "Data da Avaliação 2")
         c_concept = find_col(header, "Conceito Geral")
@@ -9070,7 +9070,17 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
     # ADMINISTRADOR / GESTOR → acesso integral (visão de toda a PMMG)
     # P1                     → filtrado pelo RPM do usuário (UDI / UDG)
     # SADM                   → filtrado pela Unidade Principal do usuário
-    df_audit_disp = df_audit.copy()
+    
+    # Garantir que as colunas SIGEF não sejam perdidas e que colunas não se dupliquem
+    base_cols = [
+        "NR PM", "Posto/Graduação", "Nome Completo", "Quadro",
+        "Sit. Funcional", "Conceito", "Reg. Adicional", "Ano Base", "Ord. Almanaque",
+        "Nome RPM", "Nome Unidade Principal",
+        "Qtd Avaliações", "Todas Avaliações Foram Encerradas?", "Nota Final - Média Aritmética"
+    ]
+    actual_base = [c for c in base_cols if c in df_audit.columns]
+    other_cols = [c for c in df_audit.columns if c not in actual_base]
+    df_audit_disp = df_audit[actual_base + other_cols].copy()
 
     if _role_audit == "P1":
         # P1 enxerga apenas os avaliados da sua UDI/UDG (RPM)
