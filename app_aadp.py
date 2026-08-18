@@ -148,6 +148,15 @@ def normalize_pm(v):
         s = s[:-2]
     return s.lstrip("0")
 
+def _c_aadp_type(sit):
+    sit = str(sit).strip().upper()
+    if sit in ["OF. QOR RECONDUZIDO", "OFICIAL QOR DESIGNAD", "PRACA QPR RECONDUZID", "PRACA QPR DESIGNADO"]:
+        return "Reconduzido"
+    if sit in ["MATRICULADO EM CURSO"]:
+        return "Discente"
+    return "Ativa"
+
+
 def parse_float(v):
     if pd.isna(v): return None
     s = str(v).strip().replace(",", ".")
@@ -4705,6 +4714,10 @@ with st.sidebar:
 
 
     st.markdown("---")
+    # Funcionalidade suspensa temporariamente:
+    # global_aadp = st.radio("Grupo AADP", ["Ativa", "Reconduzido", "Discente"], index=0, key="global_aadp")
+    global_aadp = "Ativa"
+    st.markdown("---")
 
 
 
@@ -4755,27 +4768,19 @@ with st.sidebar:
     st.markdown("#### 🧭 Páginas")
 
 
-    pages = [
+    pages = []
+    
+    if sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
+        pages.append(("🚨 Análise de Comissões :red[(NOVO)]", "Comissões"))
 
-
+    pages.extend([
         ("📊 Análise Gráfica", "Análise Gráfica"),
-
-
         ("📋 Dados Gerais", "Dados Gerais"),
-
-
         ("⏳ Avaliações Pendentes", "Avaliações Pendentes"),
-
-
         ("👥 Avaliadores Pendentes", "Avaliadores Pendentes"),
-
-
-    ]
-
+    ])
 
     # P1 e SADM não possuem acesso às opções de exportação/relatórios
-
-
     if sidebar_active_role not in ("P1", "SADM"):
         pages.append(("📥 Gerar Relatório", "Gerar Relatório"))
     if sidebar_active_role not in ("SADM",):
@@ -5347,12 +5352,17 @@ st.markdown("<div class='main-nav-marker' style='margin-bottom: 15px;'></div>", 
 # ─────────────────────── HORIZONTAL NAVIGATION TABS ──────────────────────────
 main_active_role = st.session_state.get("simulated_role", st.session_state.user_role) if st.session_state.get("simulation_active", False) else st.session_state.user_role
 
-main_nav_pages = [
+main_nav_pages = []
+
+if main_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
+    main_nav_pages.append(("🚨\nAnálise de Comissões :red[(NOVO)]", "Comissões"))
+
+main_nav_pages.extend([
     ("📊\nAnálise Gráfica", "Análise Gráfica"),
     ("📋\nDados Gerais", "Dados Gerais"),
     ("⏳\nAvaliações Pendentes", "Avaliações Pendentes"),
     ("👥\nAvaliadores Pendentes", "Avaliadores Pendentes"),
-]
+])
 
 if main_active_role not in ("P1", "SADM"):
     main_nav_pages.append(("📥\nGerar Relatório", "Gerar Relatório"))
@@ -9061,7 +9071,11 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
             
     with st.spinner("Carregando dados da Planilha Mestre de Auditoria..."):
         df_audit, err = load_audit_excel(master_xlsx_path, drive_master_xlsx_id)
-        
+        if not err and not df_audit.empty:
+            df_audit['Tipo AADP'] = df_audit['Sit. Funcional'].apply(_c_aadp_type)
+            df_audit = df_audit[df_audit['Tipo AADP'] == global_aadp]
+            df_audit.drop(columns=['Tipo AADP'], inplace=True)
+            
     if err:
         st.error(f"Erro ao carregar auditoria: {err}")
         st.stop()
@@ -10135,6 +10149,364 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                 mime="text/csv",
                 key="dl_logs_csv"
             )
+
+    # ── 4) Comissões ─────────────────────────────────────────────────────────
+if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
+    st.markdown("### ⚖️ Análise de Comissões")
+    
+    @st.cache_data(show_spinner=False)
+    def load_comissoes_tab_data():
+        import pandas as pd
+        
+        def get_gdrive_url(url):
+            if 'drive.google.com' in url and '/view' in url:
+                try:
+                    return f"https://drive.google.com/uc?export=download&id={url.split('/d/')[1].split('/view')[0]}"
+                except Exception:
+                    pass
+            return url
+            
+        # Para usar o Google Drive (Caminho B), substitua os nomes de arquivo abaixo 
+        # pelos links de compartilhamento gerados ("Qualquer pessoa com o link pode ver").
+        # Ex: comissao_path = get_gdrive_url('https://drive.google.com/file/d/1234.../view?usp=sharing')
+        sigef_path = get_gdrive_url('https://drive.google.com/file/d/10Ld_4XEz9b4kI_T6TC9W19tQdtBJCz5F/view?usp=sharing')
+        comissao_path = get_gdrive_url('https://drive.google.com/file/d/12Ba_czEzw-eae1jShXpASn3WzJjZe2Wx/view?usp=sharing')
+        try:
+            df_sigef = pd.read_csv(sigef_path, sep=';', encoding='cp1252', dtype=str, on_bad_lines='skip', index_col=False)
+        except Exception:
+            return pd.DataFrame(), pd.DataFrame()
+        try:
+            df_com = pd.read_csv(comissao_path, sep=';', encoding='cp1252', dtype=str, on_bad_lines='skip', index_col=False)
+        except Exception:
+            df_com = pd.DataFrame()
+        return df_sigef, df_com
+
+    with st.spinner("Carregando bases de dados (SIGEF e Comissões)..."):
+        df_sigef, df_com = load_comissoes_tab_data()
+
+    if df_sigef.empty:
+        st.error("Erro: SIGEF.csv não encontrado ou ilegível.")
+    else:
+        def _c_get_pm(val):
+            if pd.isna(val): return ""
+            s = str(val).strip().lstrip('0')
+            if s.endswith('.0'): s = s[:-2]
+            return s if s not in ("", "nan", "None", "-") else ""
+
+        def _c_classify_com(row):
+            av1 = _c_get_pm(row.get('nrPM (Avaliador1)', ''))
+            av2 = _c_get_pm(row.get('nrPM (Avaliador2)', ''))
+            hom = _c_get_pm(row.get('nrPM (Homologador)', ''))
+            
+            missing = []
+            if not av1: missing.append("AV1")
+            if not av2: missing.append("AV2")
+            if not hom: missing.append("HOM")
+            
+            if missing:
+                if len(missing) == 3: 
+                    return "INCOMPLETA (FALTA TODOS)"
+                return f"INCOMPLETA (FALTA {', '.join(missing)})"
+                
+            pms = {av1, av2, hom}
+            if len(pms) == 1:
+                return "COMPLETA (COMISSÃO ÚNICA)"
+            elif len(pms) == 2:
+                return "COMPLETA (2 MEMBROS)"
+            elif len(pms) == 3:
+                return "COMPLETA (3 MEMBROS)"
+                
+            return "COMPLETA (PADRÃO INCORRETO)"
+
+        def _c_aadp_category(sit):
+            sit = str(sit).strip().upper()
+            if sit in ["ATIV. DIRECAO GERAL", "ATIVIDADE MEIO", "ATIV. FIM NA SEDE", "ATIV. FIM DESTACADO", "QUADRO ESPECIALISTA", "DISP MED DEFINITIVA"]:
+                return "AADP Regular"
+            return "AADP SF. Restrito"
+
+        df_sigef['NUMERO_CLEAN'] = df_sigef['NUMERO'].apply(_c_get_pm)
+        df_sigef = df_sigef[df_sigef['NUMERO_CLEAN'] != ""]
+
+        if not df_com.empty:
+            df_com['nrPM_Avaliado_CLEAN'] = df_com['nrPM (Avaliado)'].apply(_c_get_pm)
+            df_com = df_com[df_com['nrPM_Avaliado_CLEAN'] != ""]
+            df_com = df_com.drop_duplicates(subset=['nrPM_Avaliado_CLEAN'], keep='first')
+            df_merge = pd.merge(df_sigef, df_com, left_on='NUMERO_CLEAN', right_on='nrPM_Avaliado_CLEAN', how='left')
+        else:
+            df_merge = df_sigef.copy()
+            for col in ['nrPM (Avaliador1)', 'nrPM (Avaliador2)', 'nrPM (Homologador)']:
+                df_merge[col] = ""
+
+        df_merge['Status da Comissão'] = df_merge.apply(_c_classify_com, axis=1)
+        df_merge['Tipo AADP'] = df_merge['SIT. FUNCIONAL'].apply(_c_aadp_type)
+        df_merge['Categoria AADP'] = df_merge['SIT. FUNCIONAL'].apply(_c_aadp_category)
+
+        df_merge['RPM Final'] = df_merge['Unidade RPM Atual (Avaliado)'].fillna(df_merge['NOME RPM'])
+        df_merge['RPM Final'] = df_merge['RPM Final'].replace({'NÃO': 'DINT', 'AUDI SET': 'AUD SET'})
+        df_merge['Unidade Principal Final'] = df_merge['Unidade Principal Atual (Avaliado)'].fillna(df_merge['NOME UNIDADE PRINCIPAL'])
+        df_merge['Posto/Graduação Final'] = df_merge['Posto/Graduação (Avaliado)'].fillna(df_merge['POSTO/GRADUACAO'])
+        df_merge = df_merge[df_merge['SIT. FUNCIONAL'] != 'JUIZ/TJM']
+        df_merge['Situação AADP'] = df_merge['Status da Comissão'].apply(lambda x: 'Completa' if str(x).upper().startswith('COMPLETA') else 'Incompleta')
+        
+        # Alerta de Praça em Função de Avaliador 2 e Homologador
+        pracas_regex = r"(SOLDADO|CABO|3 SARGENTO|2 SARGENTO|1 SARGENTO|SUBTENENTE)"
+        av2_praca = df_merge['Posto/Graduação (Avaliador2)'].str.upper().str.contains(pracas_regex, na=False)
+        hom_praca = df_merge['Posto/Graduação (Homologador)'].str.upper().str.contains(pracas_regex, na=False)
+        df_merge['Alerta Praça AV2/HOM'] = av2_praca | hom_praca
+
+        # Alerta Hierarquia (AV1 > AV2 > HOM)
+        HIERARQUIA = {
+            "SOLDADO DE 2 CLASSE": 1, "SOLDADO DE 1 CLASSE": 2, "CABO": 3,
+            "3 SARGENTO": 4, "2 SARGENTO": 5, "1 SARGENTO": 6, "SUBTENENTE": 7,
+            "CADETE": 8, "ALUNO": 8, "ASPIRANTE A OFICIAL": 9,
+            "2 TENENTE": 10, "1 TENENTE": 11, "CAPITAO": 12, "CAPITÃO": 12,
+            "MAJOR": 13, "TENENTE CORONEL": 14, "CORONEL": 15
+        }
+        h1 = df_merge['Posto/Graduação (Avaliador1)'].str.upper().str.strip().map(HIERARQUIA).fillna(-1)
+        h2 = df_merge['Posto/Graduação (Avaliador2)'].str.upper().str.strip().map(HIERARQUIA).fillna(-1)
+        hh = df_merge['Posto/Graduação (Homologador)'].str.upper().str.strip().map(HIERARQUIA).fillna(-1)
+
+        c1 = (h1 > -1) & (h2 > -1) & (h1 > h2)
+        c2 = (h2 > -1) & (hh > -1) & (h2 > hh)
+        c3 = (h2 == -1) & (h1 > -1) & (hh > -1) & (h1 > hh)
+        df_merge['Alerta Hierarquia'] = c1 | c2 | c3
+
+        df_merge['Alerta Geral'] = 'Sem Alerta'
+        df_merge.loc[df_merge['Alerta Hierarquia'], 'Alerta Geral'] = '⚠️ ALERTA HIERARQUIA'
+        df_merge.loc[df_merge['Alerta Praça AV2/HOM'], 'Alerta Geral'] = '🚨 ALERTA PRAÇA'
+
+        # Configuração da UI de Filtros e Aplicação Simultânea (Cascata)
+        df_f = df_merge[df_merge['Tipo AADP'] == global_aadp].copy()
+        
+        with st.expander("🔍 Filtros de Comissões", expanded=True):
+            # Linha 1
+            r1c1, r1c2, r1c3 = st.columns(3)
+            with r1c1:
+                import re
+                def sort_rpm(rpm_name):
+                    m = re.match(r'^(\d+)\s*RPM', str(rpm_name))
+                    if m:
+                        return (0, int(m.group(1)), str(rpm_name))
+                    return (1, 0, str(rpm_name))
+                
+                curr_rpm = st.session_state.get('rpm_key', [])
+                rpm_list = sorted(list(set(df_f['RPM Final'].dropna().unique()) | set(curr_rpm)), key=sort_rpm)
+                if sidebar_active_role in ("P1", "SADM") and active_rpm:
+                    rpm_filter = [active_rpm]
+                    st.info(f"RPM Fixa: {active_rpm}")
+                else:
+                    rpm_filter = st.multiselect("Unidade de Direção (RPM)", rpm_list, key='rpm_key')
+                    
+            if rpm_filter: df_f = df_f[df_f['RPM Final'].isin(rpm_filter)]
+                    
+            with r1c2:
+                curr_unid = st.session_state.get('unid_key', [])
+                unidades = sorted(list(set(df_f['Unidade Principal Final'].dropna().unique()) | set(curr_unid)))
+                if sidebar_active_role == "SADM" and active_unit:
+                    unid_filter = [active_unit]
+                    st.info(f"Unidade Fixa: {active_unit}")
+                else:
+                    unid_filter = st.multiselect("Unidade Principal", unidades, key='unid_key')
+
+            if unid_filter: df_f = df_f[df_f['Unidade Principal Final'].isin(unid_filter)]
+
+            with r1c3:
+                curr_posto = st.session_state.get('posto_key', [])
+                postos = sorted(list(set(df_f['Posto/Graduação Final'].dropna().unique()) | set(curr_posto)), key=lambda x: (-HIERARQUIA.get(str(x).strip().upper(), 0), str(x)))
+                posto_filter = st.multiselect("Posto/Graduação Avaliado", postos, key='posto_key')
+
+            if posto_filter: df_f = df_f[df_f['Posto/Graduação Final'].isin(posto_filter)]
+
+            # Linha 2
+            r2c1, r2c2, r2c3 = st.columns(3)
+            sub_ativa_filter = []
+            sit_especifica = []
+            
+            with r2c1:
+                if global_aadp == "Ativa":
+                    sub_ativa_filter = st.multiselect("Categoria AADP", ["AADP Regular", "AADP SF. Restrito"], default=["AADP Regular", "AADP SF. Restrito"])
+            
+            if sub_ativa_filter:
+                df_f = df_f[df_f['Categoria AADP'].isin(sub_ativa_filter)]
+            elif global_aadp == "Ativa":
+                df_f = df_f.iloc[0:0] # Se apagou tudo no filtro que tem default, não mostra nada.
+            
+            with r2c2:
+                curr_sit = st.session_state.get('sit_aadp_key', [])
+                situacao_aadp_list = sorted(list(set(df_f['Situação AADP'].unique()) | set(curr_sit)))
+                situacao_aadp_filter = st.multiselect("Situação AADP", situacao_aadp_list, key='sit_aadp_key')
+
+            if situacao_aadp_filter: df_f = df_f[df_f['Situação AADP'].isin(situacao_aadp_filter)]
+
+            with r2c3:
+                curr_tipo = st.session_state.get('tipo_aadp_key', [])
+                tipo_aadp_list = sorted(list(set(df_f['Status da Comissão'].unique()) | set(curr_tipo)))
+                tipo_aadp_filter = st.multiselect("Tipo AADP", tipo_aadp_list, key='tipo_aadp_key')
+
+            if tipo_aadp_filter: df_f = df_f[df_f['Status da Comissão'].isin(tipo_aadp_filter)]
+
+            # Linha 3
+            if "AADP SF. Restrito" in sub_ativa_filter:
+                r3c1, r3c2, r3c3 = st.columns(3)
+                with r3c1:
+                    curr_rest = st.session_state.get('sit_rest_key', [])
+                    valid_rests = set(df_f[df_f['Categoria AADP'] == 'AADP SF. Restrito']['SIT. FUNCIONAL'].dropna().unique())
+                    sits_restritivas = sorted(list(valid_rests | set(curr_rest)))
+                    sit_especifica = st.multiselect("Situação Funcional (Restritiva)", sits_restritivas, key='sit_rest_key')
+                with r3c2:
+                    OPCOES_ALERTA = ["Todas as Comissões", "Com Qualquer Alerta", "🚨 ALERTA PRAÇA", "⚠️ ALERTA HIERARQUIA"]
+                    alerta_filter = st.selectbox("Alertas de Comissão", OPCOES_ALERTA, key='alerta_geral')
+            else:
+                r3c1, r3c2, r3c3 = st.columns(3)
+                with r3c1:
+                    OPCOES_ALERTA = ["Todas as Comissões", "Com Qualquer Alerta", "🚨 ALERTA PRAÇA", "⚠️ ALERTA HIERARQUIA"]
+                    alerta_filter = st.selectbox("Alertas de Comissão", OPCOES_ALERTA, key='alerta_geral')
+
+            if "AADP SF. Restrito" in sub_ativa_filter and sit_especifica:
+                mask_restritiva = (df_f['Categoria AADP'] == 'AADP SF. Restrito') & (df_f['SIT. FUNCIONAL'].isin(sit_especifica))
+                mask_not_restritiva = (df_f['Categoria AADP'] != 'AADP SF. Restrito')
+                df_f = df_f[mask_restritiva | mask_not_restritiva]
+                
+            if alerta_filter == "Com Qualquer Alerta":
+                df_f = df_f[df_f['Alerta Geral'] != 'Sem Alerta']
+            elif alerta_filter in ["🚨 ALERTA PRAÇA", "⚠️ ALERTA HIERARQUIA"]:
+                df_f = df_f[df_f['Alerta Geral'] == alerta_filter]
+
+        # KPIs
+        total_mil = len(df_f)
+        com_compl = len(df_f[df_f['Status da Comissão'].str.upper().str.startswith("COMPLETA")])
+        com_pend = total_mil - com_compl
+
+        k1, k2, k3 = st.columns(3)
+        k1.metric("Total Filtrados", f"{total_mil:,}".replace(',', '.'))
+        k2.metric("Comissões Completas", f"{com_compl:,}".replace(',', '.'))
+        k3.metric("Comissões Incompletas/Ausentes", f"{com_pend:,}".replace(',', '.'))
+
+        st.markdown("---")
+        
+
+
+        # Tabela Detalhada
+        st.markdown("---")
+        st.markdown("### 📋 Tabela Detalhada de Comissões")
+        cols_disp = [
+            'NUMERO', 'Posto/Graduação Final', 'NOME SERVIDOR', 'RPM Final', 'Unidade Principal Final', 
+            'SIT. FUNCIONAL', 'Tipo AADP', 'Categoria AADP', 'Status da Comissão', 'Alerta Geral',
+            'nrPM (Avaliador1)', 'Posto/Graduação (Avaliador1)', 'Nome Completo (Avaliador1)',
+            'nrPM (Avaliador2)', 'Posto/Graduação (Avaliador2)', 'Nome Completo (Avaliador2)',
+            'nrPM (Homologador)', 'Posto/Graduação (Homologador)', 'Nome Completo (Homologador)'
+        ]
+        cols_presentes = [c for c in cols_disp if c in df_f.columns]
+        df_export = df_f[cols_presentes].copy()
+        
+        dl_xlsx = df_to_xlsx(df_export)
+        st.download_button(
+            "⬇️ Baixar Auditoria de Comissões (Excel)",
+            dl_xlsx,
+            f"Auditoria_Comissoes_{now_br().strftime('%Y%m%d_%H%M')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            type="primary"
+        )
+        
+        def highlight_alert(row):
+            alerta = row.get('Alerta Geral', '')
+            if alerta == '🚨 ALERTA PRAÇA':
+                return ['background-color: rgba(255, 0, 0, 0.3)'] * len(row)
+            elif alerta == '⚠️ ALERTA HIERARQUIA':
+                return ['background-color: rgba(255, 255, 0, 0.3); color: black'] * len(row)
+            return [''] * len(row)
+
+        if not df_export.empty:
+            styled_df = df_export.style.apply(highlight_alert, axis=1)
+            st.dataframe(styled_df, use_container_width=True, hide_index=True)
+        else:
+            st.dataframe(df_export, use_container_width=True, hide_index=True)
+
+        # Novo Ranking de Membros
+        st.markdown("---")
+        st.markdown("### 🏆 Ranking de Membros de Comissão")
+        
+        # Preparar dados dos membros
+        df_av1 = df_f[['nrPM (Avaliador1)', 'Nome Completo (Avaliador1)', 'Posto/Graduação (Avaliador1)']].copy()
+        df_av1.columns = ['nrPM', 'Nome Completo', 'Posto/Graduação']
+        df_av1['Função'] = 'Avaliador 1'
+        
+        df_av2 = df_f[['nrPM (Avaliador2)', 'Nome Completo (Avaliador2)', 'Posto/Graduação (Avaliador2)']].copy()
+        df_av2.columns = ['nrPM', 'Nome Completo', 'Posto/Graduação']
+        df_av2['Função'] = 'Avaliador 2'
+        
+        df_hom = df_f[['nrPM (Homologador)', 'Nome Completo (Homologador)', 'Posto/Graduação (Homologador)']].copy()
+        df_hom.columns = ['nrPM', 'Nome Completo', 'Posto/Graduação']
+        df_hom['Função'] = 'Homologador'
+        
+        df_members = pd.concat([df_av1, df_av2, df_hom], ignore_index=True)
+        # Limpar vazios
+        df_members = df_members.dropna(subset=['nrPM'])
+        df_members = df_members[df_members['nrPM'].str.strip() != '']
+        df_members = df_members[df_members['nrPM'].str.strip() != '-']
+        
+        r1c1, r1c2 = st.columns(2)
+        with r1c1:
+            postos_membros = sorted(list(set(df_members['Posto/Graduação'].dropna().unique())), key=lambda x: (-HIERARQUIA.get(str(x).strip().upper(), 0), str(x)))
+            filtro_posto_membro = st.multiselect("Posto/Graduação do Membro", postos_membros, key='filtro_posto_ranking')
+
+        with r1c2:
+            filtro_funcao = st.multiselect("Função Exercida", ['Avaliador 1', 'Avaliador 2', 'Homologador'], key='filtro_funcao_ranking')
+
+        if filtro_posto_membro:
+            df_members = df_members[df_members['Posto/Graduação'].isin(filtro_posto_membro)]
+
+        if filtro_funcao:
+            df_members = df_members[df_members['Função'].isin(filtro_funcao)]
+            
+        if not df_members.empty:
+            counts = df_members.groupby(['nrPM', 'Posto/Graduação', 'Nome Completo', 'Função']).size().unstack(fill_value=0).reset_index()
+            
+            for c in ['Avaliador 1', 'Avaliador 2', 'Homologador']:
+                if c not in counts.columns:
+                    counts[c] = 0
+                    
+            counts['Total'] = counts['Avaliador 1'] + counts['Avaliador 2'] + counts['Homologador']
+            counts = counts[['nrPM', 'Posto/Graduação', 'Nome Completo', 'Avaliador 1', 'Avaliador 2', 'Homologador', 'Total']]
+            counts = counts.sort_values('Total', ascending=False)
+            
+            st.dataframe(counts, use_container_width=True, hide_index=True)
+        else:
+            st.info("Nenhum membro encontrado com os filtros atuais.")
+            
+        st.markdown("---")
+        st.markdown("### 📊 Gráficos de Distribuição")
+        
+        c_graf1, c_graf2 = st.columns(2)
+        
+        with c_graf1:
+            st.markdown("**Distribuição por Status da Comissão**")
+            import plotly.express as px
+            rotacao_grafico = st.slider("Ajuste de Rotação (°)", min_value=0, max_value=360, value=115, step=5, key="rot_pizza")
+            sc_df = df_f['Status da Comissão'].value_counts().reset_index()
+            sc_df.columns = ['Status', 'Quantidade']
+            if not sc_df.empty:
+                fig_pizza = px.pie(sc_df, values='Quantidade', names='Status', hole=0.3,
+                                   color_discrete_sequence=px.colors.qualitative.Pastel)
+                fig_pizza.update_traces(textposition='outside', textinfo='label+value+percent', rotation=rotacao_grafico)
+                fig_pizza.update_layout(showlegend=False, margin=dict(r=350, l=200, t=150, b=100), height=650)
+                st.plotly_chart(fig_pizza, use_container_width=True)
+            else:
+                st.info("Sem dados.")
+                
+        with c_graf2:
+            st.markdown("**Resumo por Situação Funcional**")
+            sf_df = df_f['SIT. FUNCIONAL'].value_counts().reset_index()
+            sf_df.columns = ['Situação Funcional', 'Quantidade']
+            if not sf_df.empty:
+                fig_bar = px.bar(sf_df, x='Situação Funcional', y='Quantidade', text='Quantidade',
+                                 color='Situação Funcional', color_discrete_sequence=px.colors.qualitative.Set2)
+                fig_bar.update_traces(textposition='outside')
+                fig_bar.update_layout(showlegend=False, xaxis_title="", yaxis_title="Quantidade")
+                st.plotly_chart(fig_bar, use_container_width=True)
+            else:
+                st.info("Sem dados.")
+
 
 st.markdown("---")
 st.markdown(f"<center><small>AADP 2026 · Polícia Militar de Minas Gerais · "
