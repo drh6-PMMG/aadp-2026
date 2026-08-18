@@ -5740,6 +5740,14 @@ if active_page == "Análise Gráfica":
     
     fig_rpm.update_traces(textposition="auto")
     
+    num_cols = len(all_units_sorted)
+    if num_cols == 1:
+        fig_rpm.update_traces(width=0.2)
+    elif num_cols <= 3:
+        fig_rpm.update_traces(width=0.4)
+    elif num_cols <= 5:
+        fig_rpm.update_traces(width=0.6)
+    
     fig_rpm.update_layout(
         uirevision="constant_value",
         height=480, title_font_size=15, title_x=0.5,
