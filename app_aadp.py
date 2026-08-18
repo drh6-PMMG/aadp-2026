@@ -10445,6 +10445,18 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
         df_members = df_members[df_members['nrPM'].str.strip() != '']
         df_members = df_members[df_members['nrPM'].str.strip() != '-']
         
+        df_members['nrPM_CLEAN'] = df_members['nrPM'].apply(_c_get_pm)
+        if 'NUMERO_CLEAN' in df_sigef.columns and 'NOME RPM' in df_sigef.columns and 'NOME UNIDADE PRINCIPAL' in df_sigef.columns:
+            df_sigef_u = df_sigef[['NUMERO_CLEAN', 'NOME RPM', 'NOME UNIDADE PRINCIPAL']].drop_duplicates(subset=['NUMERO_CLEAN'])
+            df_members = pd.merge(df_members, df_sigef_u, left_on='nrPM_CLEAN', right_on='NUMERO_CLEAN', how='left')
+            df_members.rename(columns={'NOME RPM': 'RPM', 'NOME UNIDADE PRINCIPAL': 'Unidade Principal'}, inplace=True)
+        else:
+            df_members['RPM'] = '-'
+            df_members['Unidade Principal'] = '-'
+            
+        df_members['RPM'] = df_members['RPM'].fillna('-')
+        df_members['Unidade Principal'] = df_members['Unidade Principal'].fillna('-')
+        
         r1c1, r1c2 = st.columns(2)
         with r1c1:
             postos_membros = sorted(list(set(df_members['Posto/Graduação'].dropna().unique())), key=lambda x: (-HIERARQUIA.get(str(x).strip().upper(), 0), str(x)))
@@ -10460,14 +10472,14 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
             df_members = df_members[df_members['Função'].isin(filtro_funcao)]
             
         if not df_members.empty:
-            counts = df_members.groupby(['nrPM', 'Posto/Graduação', 'Nome Completo', 'Função']).size().unstack(fill_value=0).reset_index()
+            counts = df_members.groupby(['nrPM', 'Posto/Graduação', 'Nome Completo', 'RPM', 'Unidade Principal', 'Função']).size().unstack(fill_value=0).reset_index()
             
             for c in ['Avaliador 1', 'Avaliador 2', 'Homologador']:
                 if c not in counts.columns:
                     counts[c] = 0
                     
             counts['Total'] = counts['Avaliador 1'] + counts['Avaliador 2'] + counts['Homologador']
-            counts = counts[['nrPM', 'Posto/Graduação', 'Nome Completo', 'Avaliador 1', 'Avaliador 2', 'Homologador', 'Total']]
+            counts = counts[['nrPM', 'Posto/Graduação', 'Nome Completo', 'RPM', 'Unidade Principal', 'Avaliador 1', 'Avaliador 2', 'Homologador', 'Total']]
             counts = counts.sort_values('Total', ascending=False)
             
             st.dataframe(counts, use_container_width=True, hide_index=True)
