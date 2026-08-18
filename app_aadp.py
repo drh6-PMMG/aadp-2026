@@ -10324,7 +10324,7 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
             
             with r2c1:
                 if global_aadp == "Ativa":
-                    sub_ativa_filter = st.multiselect("Categoria AADP", ["AADP Regular", "AADP SF. Restrito"], default=["AADP Regular", "AADP SF. Restrito"])
+                    sub_ativa_filter = st.multiselect("Categoria AADP", ["AADP Regular", "AADP SF. Restrito"], default=["AADP Regular", "AADP SF. Restrito"], help="AADP REGULAR: Militares cuja situação funcional não possui restrição.\nAADP SF. RESTRITO: Militares cuja situação funcional gera alerta/restrição para avaliação regular.")
             
             if sub_ativa_filter:
                 df_f = df_f[df_f['Categoria AADP'].isin(sub_ativa_filter)]
@@ -10355,12 +10355,12 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
                     sit_especifica = st.multiselect("Situação Funcional (Restritiva)", sits_restritivas, key='sit_rest_key')
                 with r3c2:
                     OPCOES_ALERTA = ["Todas as Comissões", "Com Qualquer Alerta", "🚨 ALERTA PRAÇA", "⚠️ ALERTA HIERARQUIA"]
-                    alerta_filter = st.selectbox("Alertas de Comissão", OPCOES_ALERTA, key='alerta_geral')
+                    alerta_filter = st.selectbox("Alertas de Comissão", OPCOES_ALERTA, key='alerta_geral', help="ALERTA PRAÇA: Comissões que possuem praças na função de Avaliador 2 ou Homologador de forma incorreta.\nALERTA HIERARQUIA: Membro da comissão exercendo função hierarquicamente de superior de forma indevida.")
             else:
                 r3c1, r3c2, r3c3 = st.columns(3)
                 with r3c1:
                     OPCOES_ALERTA = ["Todas as Comissões", "Com Qualquer Alerta", "🚨 ALERTA PRAÇA", "⚠️ ALERTA HIERARQUIA"]
-                    alerta_filter = st.selectbox("Alertas de Comissão", OPCOES_ALERTA, key='alerta_geral')
+                    alerta_filter = st.selectbox("Alertas de Comissão", OPCOES_ALERTA, key='alerta_geral', help="ALERTA PRAÇA: Comissões que possuem praças na função de Avaliador 2 ou Homologador de forma incorreta.\nALERTA HIERARQUIA: Membro da comissão exercendo função hierarquicamente de superior de forma indevida.")
 
             if "AADP SF. Restrito" in sub_ativa_filter and sit_especifica:
                 mask_restritiva = (df_f['Categoria AADP'] == 'AADP SF. Restrito') & (df_f['SIT. FUNCIONAL'].isin(sit_especifica))
@@ -10514,6 +10514,12 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
                 fig_bar = px.bar(sf_df, x='Situação Funcional', y='Quantidade', text='Quantidade',
                                  color='Situação Funcional', color_discrete_sequence=px.colors.qualitative.Set2)
                 fig_bar.update_traces(textposition='outside')
+                if len(sf_df) == 1:
+                    fig_bar.update_traces(width=0.2)
+                elif len(sf_df) <= 3:
+                    fig_bar.update_traces(width=0.4)
+                elif len(sf_df) <= 5:
+                    fig_bar.update_traces(width=0.6)
                 fig_bar.update_layout(showlegend=False, xaxis_title="", yaxis_title="Quantidade")
                 st.plotly_chart(fig_bar, use_container_width=True)
             else:
