@@ -5742,7 +5742,7 @@ if active_page == "Análise Gráfica":
     
     num_cols = len(all_units_sorted)
     if num_cols <= 6:
-        fig_rpm.update_traces(width=0.1 * num_cols)
+        fig_rpm.update_traces(width=0.05 * num_cols)
     
     fig_rpm.update_layout(
         uirevision="constant_value",
@@ -10240,6 +10240,8 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
             df_merge = df_sigef.copy()
             for col in ['nrPM (Avaliador1)', 'nrPM (Avaliador2)', 'nrPM (Homologador)']:
                 df_merge[col] = ""
+            for col in ['Unidade RPM Atual (Avaliado)', 'Unidade Principal Atual (Avaliado)', 'Posto/Graduação (Avaliado)']:
+                df_merge[col] = None
 
         df_merge['Status da Comissão'] = df_merge.apply(_c_classify_com, axis=1)
         df_merge['Tipo AADP'] = df_merge['SIT. FUNCIONAL'].apply(_c_aadp_type)
@@ -10519,7 +10521,7 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
                                  color='Situação Funcional', color_discrete_sequence=px.colors.qualitative.Set2)
                 fig_bar.update_traces(textposition='outside')
                 if len(sf_df) <= 6:
-                    fig_bar.update_traces(width=0.1 * len(sf_df))
+                    fig_bar.update_traces(width=0.05 * len(sf_df))
                 fig_bar.update_layout(showlegend=False, xaxis_title="", yaxis_title="Quantidade")
                 st.plotly_chart(fig_bar, use_container_width=True)
             else:
