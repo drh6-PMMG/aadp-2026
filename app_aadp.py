@@ -758,6 +758,7 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
     if csv_to_use:
         try:
             df = build_audit_data_from_geral(csv_to_use)
+            df = append_sigef_to_audit(df)
             return df, None
         except Exception:
             pass
@@ -3681,10 +3682,10 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                 "Conceito Geral":            j,
 
 
-                "Data AV2":                  row[10].strip(),
+                "Data AV2":                  row[12].strip() if not is_empty(n) else row[10].strip(),
 
 
-                "Nota Geral":                l,
+                "Nota Geral":                n if not is_empty(n) else l,
 
 
                 "Certificação Homologador":  calc_cert(j, l),

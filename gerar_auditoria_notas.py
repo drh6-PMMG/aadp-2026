@@ -407,8 +407,8 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
             "Data Avaliação 1":             row[36].strip(),
             "Conceito Geral":               j,
             # Avaliação 2
-            "Data Avaliação 2":             row[45].strip(),
-            "Nota Geral":                   l,
+            "Data Avaliação 2":             row[71].strip() if not is_empty(n) else row[45].strip(),
+            "Nota Geral":                   n if not is_empty(n) else l,
             "Certificação Homologador":     calc_cert_hom(j, l),
             # Homologação
             "Data Homologação":             row[71].strip(),
