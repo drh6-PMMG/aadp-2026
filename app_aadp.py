@@ -561,12 +561,12 @@ def build_audit_data_from_geral(csv_path):
                         nota_recurso = "-"
                         status = "RECONSIDERAÇÃO COMISSÃO"
                 
-            dt_av = row[c_dt_av2].strip() or row[c_dt_av1].strip() or row[c_dt_hom].strip() or "-"
+            dt_av = row[c_dt_hom].strip() if not is_empty(n) and row[c_dt_hom].strip() else (row[c_dt_av2].strip() or row[c_dt_av1].strip() or "-")
             
             eval_data = {
                 "date": dt_av,
                 "status": status.upper(),
-                "grade": parse_float(l) if not is_empty(l) else "-",
+                "grade": parse_float(n) if not is_empty(n) else (parse_float(l) if not is_empty(l) else "-"),
                 "houve_recurso": houve_recurso,
                 "fase_recurso": fase_recurso,
                 "nota_recurso": nota_recurso,
