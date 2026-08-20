@@ -3449,6 +3449,8 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
     # Carregar o geral.csv se disponível para obter as colunas de recursos e calcular o status de recurso
     geral_f = os.path.join(os.path.dirname(av_f), "geral.csv")
     recourse_map = {}
+    cdp_map = {}
+    pm_max_cdp = {}
     
     def find_col_index(header_list, name_pattern):
         def norm(s):
@@ -3484,6 +3486,10 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                 header = next(reader)
                 
                 c_pm_g = find_col_index(header, "nrPM (Avaliado)")
+                try:
+                    c_dt_cdp_g = find_col_index(header, "Data do CDP")
+                except ValueError:
+                    c_dt_cdp_g = -1
                 c_concept_g = find_col_index(header, "Conceito Geral")
                 c_grade_g = find_col_index(header, "Nota Geral")
                 c_dt_av1_g = find_col_index(header, "Data da Avaliação 1")
@@ -3530,6 +3536,14 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                     av1_g = normalize_pm_str(row_g[c_av1_g])
                     av2_g = normalize_pm_str(row_g[c_av2_g])
                     concept_g = row_g[c_concept_g].strip()
+                    
+                    if c_dt_cdp_g != -1:
+                        dt_cdp_val = parse_date_internal(row_g[c_dt_cdp_g])
+                        if dt_cdp_val:
+                            cdp_map[(pm_g, av1_g, av2_g)] = dt_cdp_val
+                            if pm_g not in pm_max_cdp or dt_cdp_val > pm_max_cdp[pm_g]:
+                                pm_max_cdp[pm_g] = dt_cdp_val
+
                     grade_g = row_g[c_grade_g].strip()
                     n_hom_g = row_g[c_n_hom_g].strip()
                     
@@ -3635,7 +3649,19 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
             
             is_same_location = (local.upper().strip() == sigef.get(nrpm.lstrip("0") or "0", "").upper().strip())
             has_multiple_evals = (pm_counts.get(nrpm, 0) > 1)
-            sc = "Comissão Atual" if (is_same_location or not has_multiple_evals) else "Nota Provisória"
+            
+            pm_norm = normalize_pm_str(nrpm)
+            av1_val = row[26].strip()
+            av2_val = row[34].strip()
+            av1_norm = normalize_pm_str(av1_val)
+            av2_norm = normalize_pm_str(av2_val)
+            key = (pm_norm, av1_norm, av2_norm)
+            
+            dt_cdp = cdp_map.get(key)
+            if dt_cdp is not None and pm_norm in pm_max_cdp:
+                sc = "Comissão Atual" if dt_cdp >= pm_max_cdp[pm_norm] else "Nota Provisória"
+            else:
+                sc = "Comissão Atual" if (is_same_location or not has_multiple_evals) else "Nota Provisória"
             
             # Verificar se temos o status do recurso no recourse_map
             pm_norm = normalize_pm_str(nrpm)

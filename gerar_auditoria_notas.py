@@ -140,6 +140,21 @@ def parse_float(s):
         return None
 
 # ─── 1. SIGEF — mapeia nrPM → unidade ────────────────────────────────────────
+print("Processando Data do CDP para Situação Comissão...")
+pm_max_cdp = {}
+with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
+    reader = csv.reader(f, delimiter=";")
+    next(reader)
+    for row in reader:
+        if len(row) > 11:
+            sit = row[11].strip()
+            if sit in SITUACOES_ALVO:
+                nrpm = row[1].strip().lstrip("0") or "0"
+                dt_cdp = parse_date_safe(row[5].strip())
+                if dt_cdp:
+                    if nrpm not in pm_max_cdp or dt_cdp > pm_max_cdp[nrpm]:
+                        pm_max_cdp[nrpm] = dt_cdp
+
 print("Carregando SIGEF.csv ...")
 sigef_unidade = {}
 with open(SIGEF_FILE, encoding="cp1252", errors="replace") as f:
@@ -326,7 +341,11 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
 
         # Situação Comissão
         sigef_unit = sigef_unidade.get(nrpm_key, "")
-        sc = "Comissão Atual" if local.upper().strip() == sigef_unit.upper().strip() else "Nota Provisória"
+        dt_cdp = parse_date_safe(row[5].strip())
+        if dt_cdp and nrpm_key in pm_max_cdp:
+            sc = "Comissão Atual" if dt_cdp >= pm_max_cdp[nrpm_key] else "Nota Provisória"
+        else:
+            sc = "Comissão Atual" if local.upper().strip() == sigef_unit.upper().strip() else "Nota Provisória"
 
         # Lógica de Recurso para o Status da Avaliação
         status_av = calc_status(j, l, n)

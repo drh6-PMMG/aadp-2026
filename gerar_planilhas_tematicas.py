@@ -146,6 +146,21 @@ with open(SIGEF_FILE, encoding="cp1252", errors="replace") as f:
             nrpm = row[0].strip().lstrip("0") or "0"
             sigef_unidade[nrpm] = row[9].strip()
 
+print("Processando Data do CDP para Situação Comissão...")
+pm_max_cdp = {}
+with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
+    reader = csv.reader(f, delimiter=";")
+    next(reader)
+    for row in reader:
+        if len(row) > 11:
+            sit = row[11].strip()
+            if sit in SITUACOES_ALVO:
+                nrpm = row[1].strip().lstrip("0") or "0"
+                dt_cdp = parse_date_safe(row[5].strip())
+                if dt_cdp:
+                    if nrpm not in pm_max_cdp or dt_cdp > pm_max_cdp[nrpm]:
+                        pm_max_cdp[nrpm] = dt_cdp
+
 # ─── 2. MOVIMENTAÇÕES ────────────────────────────────────────────────────────
 print("Carregando MOVIMENTAÇÕES.xlsx ...")
 df_mov = pd.read_excel(MOV_FILE, dtype=str)
@@ -226,7 +241,11 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
         l = row[47].strip()
         n = row[70].strip()
         sigef_unit = sigef_unidade.get(nrpm_key, "")
-        sc = "Comissão Atual" if local.upper().strip() == sigef_unit.upper().strip() else "Nota Provisória"
+        dt_cdp = parse_date_safe(row[5].strip())
+        if dt_cdp and nrpm_key in pm_max_cdp:
+            sc = "Comissão Atual" if dt_cdp >= pm_max_cdp[nrpm_key] else "Nota Provisória"
+        else:
+            sc = "Comissão Atual" if local.upper().strip() == sigef_unit.upper().strip() else "Nota Provisória"
 
         # Enriquecimento — Movimentação
         mov = mov_mais_recente.get(nrpm_key)
