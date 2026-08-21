@@ -82,7 +82,7 @@ def calc_status(j: str, l: str, n: str) -> str:
         return "Encerrada"
     elif c is False:
         return "Encerrada" if not is_empty(n) else "Homologação"
-    return "Parcialmente Encerrada"
+    return "Encerrada"
 
 def fmt_date(val) -> str:
     """Formata datetime/date para string dd/mm/aaaa."""

@@ -85,7 +85,7 @@ def calc_status(j, l, n):
         return "Encerrada"
     elif c is False:
         return "Encerrada" if not is_empty(n) else "Homologação"
-    return "Parcialmente Encerrada"
+    return "Encerrada"
 
 def fmt_date(val):
     if val is None or (isinstance(val, float) and pd.isna(val)):
