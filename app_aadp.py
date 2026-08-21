@@ -638,7 +638,6 @@ def build_audit_data_from_geral(csv_path):
     return pd.DataFrame(rows_audit)
 
 
-@st.cache_resource(show_spinner=False)
 def append_sigef_to_audit(df):
     import os, csv
     import pandas as pd
@@ -9117,8 +9116,9 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
     # Garantir que as colunas SIGEF não sejam perdidas e que colunas não se dupliquem
     base_cols = [
         "NR PM", "Posto/Graduação", "Nome Completo", "Quadro",
-        "Sit. Funcional", "Conceito", "Reg. Adicional", "Ano Base", "Ord. Almanaque",
+        "Sit. Funcional",
         "Nome RPM", "Nome Unidade Principal",
+        "Conceito", "Reg. Adicional", "Ano Base", "Ord. Almanaque",
         "Qtd Avaliações", "Todas Avaliações Foram Encerradas?", "Nota Final - Média Aritmética"
     ]
     actual_base = [c for c in base_cols if c in df_audit.columns]
