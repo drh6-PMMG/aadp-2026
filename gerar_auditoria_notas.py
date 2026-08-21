@@ -323,6 +323,8 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
     # [71] Data da Homologação
 
     for row in reader:
+        if len(row) > 38 and row[38] == "Disciplina":
+            row = row[:18] + [""] * 10 + row[18:]
         while len(row) < 198:
             row.append("")
 

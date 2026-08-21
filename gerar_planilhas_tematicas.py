@@ -229,6 +229,8 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
     reader = csv.reader(f, delimiter=";")
     next(reader)
     for row in reader:
+        if len(row) > 38 and row[38] == "Disciplina":
+            row = row[:18] + [""] * 10 + row[18:]
         while len(row) < 198:
             row.append("")
         sit = row[11].strip()
