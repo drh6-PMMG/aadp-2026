@@ -157,13 +157,24 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
 
 print("Carregando SIGEF.csv ...")
 sigef_unidade = {}
+sigef_extra = {}
 with open(SIGEF_FILE, encoding="cp1252", errors="replace") as f:
     reader = csv.reader(f, delimiter=";")
-    next(reader)
+    header = next(reader)
+    c_idx = next((i for i, c in enumerate(header) if "Conceito" in c), -1)
+    r_idx = next((i for i, c in enumerate(header) if "Reg" in c and "Adicional" in c), -1)
+    a_idx = next((i for i, c in enumerate(header) if "Ano Base" in c), -1)
+    o_idx = next((i for i, c in enumerate(header) if "Almanaque" in c), -1)
     for row in reader:
         if len(row) > 9:
             nrpm = row[0].strip().lstrip("0") or "0"
             sigef_unidade[nrpm] = row[9].strip()
+            sigef_extra[nrpm] = {
+                "Conceito": row[c_idx].strip() if c_idx >= 0 and c_idx < len(row) else "",
+                "Reg. Adicional": row[r_idx].strip() if r_idx >= 0 and r_idx < len(row) else "",
+                "Ano Base": row[a_idx].strip() if a_idx >= 0 and a_idx < len(row) else "",
+                "Ord. Almanaque": row[o_idx].strip() if o_idx >= 0 and o_idx < len(row) else ""
+            }
 
 # ─── 2. MOVIMENTAÇÕES — mapeia nrPM → lista de movimentações ─────────────────
 print("Carregando MOVIMENTAÇÕES.xlsx ...")
@@ -415,6 +426,7 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
             else:
                 status_av = "RECONSIDERAÇÃO COMISSÃO"
 
+        s_extra = sigef_extra.get(nrpm_key, {})
         rows.append({
             "nrPM (Avaliado)":              nrpm,
             "Nome Completo (Avaliado)":     row[2].strip(),
@@ -424,6 +436,10 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
             "Local/Unidade (Avaliado)":     local,
             "Quadro Atual (Avaliado)":      row[10].strip(),
             "Situação Funcional Atual":     sit,
+            "Conceito":                     s_extra.get("Conceito", ""),
+            "Reg. Adicional":               s_extra.get("Reg. Adicional", ""),
+            "Ano Base":                     s_extra.get("Ano Base", ""),
+            "Ord. Almanaque":               s_extra.get("Ord. Almanaque", ""),
             # Avaliação 1
             "Data Avaliação 1":             row[36].strip(),
             "Conceito Geral":               j,
@@ -581,6 +597,10 @@ COLS_EXPORT = [
     "Local/Unidade (Avaliado)",
     "Quadro Atual (Avaliado)",
     "Situação Funcional Atual",
+    "Conceito",
+    "Reg. Adicional",
+    "Ano Base",
+    "Ord. Almanaque",
     # Avaliação
     "Data Avaliação 1",
     "Conceito Geral",

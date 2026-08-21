@@ -736,7 +736,7 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
     drive_geral_id = cfg_to_use.get("drive_geral_id", "")
     cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
     drive_geral_path = os.path.join(cache_dir, "geral.csv")
-    local_geral_path = os.path.join(str(Path(xlsx_path).parent), "geral.csv")
+    local_geral_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "geral.csv")
     
     csv_to_use = None
     if drive_geral_id:
