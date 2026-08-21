@@ -367,7 +367,7 @@ def build_audit_data_from_geral(csv_path):
             return "Encerrada"
         elif c is False:
             return "Encerrada" if not is_empty(n) else "Homologação"
-        return "Parcialmente Encerrada"
+        return "Encerrada"
 
     def normalize_pm(pm):
         try:
@@ -695,18 +695,12 @@ def append_sigef_to_audit(df):
     if not sigef_map:
         return df
         
-    # Apply to df
-    def get_sigef_val(pm, key):
-        if pd.isna(pm): return ""
-        pm_str = str(pm).strip().lstrip("0")
-        if pm_str.endswith(".0"):
-            pm_str = pm_str[:-2]
-        return sigef_map.get(pm_str, {}).get(key, "")
-
-    df["Conceito"] = df["NR PM"].apply(lambda x: get_sigef_val(x, "Conceito"))
-    df["Reg. Adicional"] = df["NR PM"].apply(lambda x: get_sigef_val(x, "Reg. Adicional"))
-    df["Ano Base"] = df["NR PM"].apply(lambda x: get_sigef_val(x, "Ano Base"))
-    df["Ord. Almanaque"] = df["NR PM"].apply(lambda x: get_sigef_val(x, "Ord. Almanaque"))
+    col_pm = "NR PM" if "NR PM" in df.columns else "nrPM (Avaliado)"
+    if col_pm in df.columns:
+        df["Conceito"] = df[col_pm].apply(lambda x: sigef_map.get(str(x).strip().lstrip("0"), {}).get("Conceito", "-") if pd.notnull(x) else "-")
+        df["Reg. Adicional"] = df[col_pm].apply(lambda x: sigef_map.get(str(x).strip().lstrip("0"), {}).get("Reg. Adicional", "-") if pd.notnull(x) else "-")
+        df["Ano Base"] = df[col_pm].apply(lambda x: sigef_map.get(str(x).strip().lstrip("0"), {}).get("Ano Base", "-") if pd.notnull(x) else "-")
+        df["Ord. Almanaque"] = df[col_pm].apply(lambda x: sigef_map.get(str(x).strip().lstrip("0"), {}).get("Ord. Almanaque", "-") if pd.notnull(x) else "-")
     
     # Reorder columns
     cols = list(df.columns)
