@@ -435,8 +435,8 @@ def build_audit_data_from_geral(csv_path):
         c_dt_f4 = find_col(header, "Data Cadastro (Fase 4)")
         
         for row in reader:
-            if len(row) < len(header):
-                continue
+            while len(row) < len(header):
+                row.append("")
             sit = row[c_sit].strip()
             if sit not in SITUACOES_ALVO:
                 continue
@@ -3531,7 +3531,7 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                     return curr
 
                 for row_g in reader:
-                    if len(row_g) < len(header): continue
+                    while len(row_g) < len(header): row_g.append("")
                     pm_g = normalize_pm_str(row_g[c_pm_g])
                     av1_g = normalize_pm_str(row_g[c_av1_g])
                     av2_g = normalize_pm_str(row_g[c_av2_g])
