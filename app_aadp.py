@@ -641,12 +641,20 @@ def build_audit_data_from_geral(csv_path):
 def append_sigef_to_audit(df):
     import os, csv
     import pandas as pd
+    import tempfile
     
-    si_path = os.path.join("dados", "SIGEF.csv")
-    if not os.path.exists(si_path):
-        si_path = "SIGEF.csv"
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
+    
+    possible_paths = [
+        os.path.join(base_dir, "dados", "SIGEF.csv"),
+        os.path.join(base_dir, "SIGEF.csv"),
+        os.path.join(cache_dir, "SIGEF.csv")
+    ]
+    
+    si_path = next((p for p in possible_paths if os.path.exists(p) and os.path.getsize(p) > 0), None)
         
-    if not os.path.exists(si_path):
+    if not si_path:
         return df  # If SIGEF not found, return original df
         
     sigef_map = {}
