@@ -684,6 +684,15 @@ def build_audit_data_from_geral(csv_path):
                 r_audit[f"Nota Fase 2 ou 3 {i}"] = np.nan
         
         r_audit["Observação"] = data["Observação"]
+        
+        obs_lower = str(data["Observação"]).lower()
+        motivo = "-"
+        if "artigo 17" in obs_lower or "art 17" in obs_lower or "art. 17" in obs_lower or "art.17" in obs_lower:
+            motivo = "ARTIGO 17"
+        elif "artigo 20" in obs_lower or "art 20" in obs_lower or "art. 20" in obs_lower or "art.20" in obs_lower or "revis" in obs_lower:
+            motivo = "ARTIGO 20"
+        r_audit["Motivo"] = motivo
+
         rows_audit.append(r_audit)
         
     return pd.DataFrame(rows_audit)

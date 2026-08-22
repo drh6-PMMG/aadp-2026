@@ -463,6 +463,13 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
         else:
             auditoria = "DIVERGENTE"
 
+        motivo = "-"
+        obs_lower = obs_sirh.lower()
+        if "artigo 17" in obs_lower or "art 17" in obs_lower or "art. 17" in obs_lower or "art.17" in obs_lower:
+            motivo = "ARTIGO 17"
+        elif "artigo 20" in obs_lower or "art 20" in obs_lower or "art. 20" in obs_lower or "art.20" in obs_lower or "revis" in obs_lower:
+            motivo = "ARTIGO 20"
+
         s_extra = sigef_extra.get(nrpm_key, {})
         rows.append({
             "nrPM (Avaliado)":              nrpm,
@@ -546,6 +553,7 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
             "Nota (Fase 4)":                row[86].strip(),
             "Data Recurso 4":               row[88].strip(),
             "Observação":                   obs_sirh,
+            "Motivo":                       motivo,
         })
 
 df_full = pd.DataFrame(rows)
@@ -677,6 +685,7 @@ COLS_EXPORT = [
     "Recurso Fase 3", "Nota (Fase 3)", "Data Recurso 3",
     "Recurso Fase 4", "Nota (Fase 4)", "Data Recurso 4",
     "Observação",
+    "Motivo",
     # ── NOVAS COLUNAS ──
     "DATA DA TRANSFERÊNCIA",
     "MOTIVO DA TRANSFERÊNCIA",
