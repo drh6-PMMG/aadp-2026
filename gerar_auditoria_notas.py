@@ -818,7 +818,7 @@ print(f"  Aba 'Geral': {n} registros")
 
 # Aba 2 — Pendentes
 ws2 = wb.create_sheet("Pendentes")
-df_pend = df_full[df_full["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada", "Homologação"])].copy()
+df_pend = df_full[df_full["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada", "Homologação"]) & df_full["Situação Funcional Atual"].isin(SITUACOES_ALVO)].copy()
 n = write_sheet(ws2, df_pend,
                 f"AVALIAÇÕES PENDENTES — AADP 2026",
                 COLS_EXPORT)

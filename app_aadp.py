@@ -6193,7 +6193,7 @@ if active_page == "Avaliações Pendentes":
     }
 
 
-    df_pend = df[df["Status Avaliação"].isin(STATUS_PEND)].copy()
+    df_pend = df[df["Status Avaliação"].isin(STATUS_PEND) & df["Sit. Funcional"].isin(SITUACOES_ALVO)].copy()
 
 
 
@@ -6373,28 +6373,19 @@ if active_page == "Avaliadores Pendentes":
 
 
 
+    df_alvo = df_full[df_full["Sit. Funcional"].isin(SITUACOES_ALVO)]
+
     if rpm_filter:
-
-
-        df_ab = df_full[(df_full["Status Avaliação"] == "Aberta") & (df_full["RPM (Av1)"].isin(rpm_filter))]
-
-
-        df_pe = df_full[(df_full["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada"])) & (df_full["RPM (Av2)"].isin(rpm_filter))]
-
-
-        df_hom = df_full[(df_full["Status Avaliação"] == "Homologação") & (df_full["RPM (Hom)"].isin(rpm_filter))]
-
-
+        df_ab = df_alvo[(df_alvo["Status Avaliação"] == "Aberta") & (df_alvo["RPM (Av1)"].isin(rpm_filter))]
+        df_pe = df_alvo[(df_alvo["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada"])) & (df_alvo["RPM (Av2)"].isin(rpm_filter))]
+        df_hom = df_alvo[(df_alvo["Status Avaliação"] == "Homologação") & (df_alvo["RPM (Hom)"].isin(rpm_filter))]
     else:
+        df_alvo_filtered = df[df["Sit. Funcional"].isin(SITUACOES_ALVO)]
+        df_ab = df_alvo_filtered[df_alvo_filtered["Status Avaliação"] == "Aberta"]
+        df_pe = df_alvo_filtered[df_alvo_filtered["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada"])]
+        df_hom = df_alvo_filtered[df_alvo_filtered["Status Avaliação"] == "Homologação"]
 
 
-        df_ab = df[df["Status Avaliação"] == "Aberta"]
-
-
-        df_pe = df[df["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada"])]
-
-
-        df_hom = df[df["Status Avaliação"] == "Homologação"]
 
     # Pre-calcular quantitativo de avaliadores/homologadores únicos pendentes (função)
     cnt_av1 = df_ab["nrPM (Av1)"].dropna().astype(str).str.strip().replace("", pd.NA).dropna().nunique()
@@ -7636,8 +7627,11 @@ def _write_avaliadores_sheet(ws, df_unit, s, df_global=None, titulo_unidade=""):
 
 
 
-    if df_global is not None and not is_geral:
+    if df_global is not None:
+        df_global = df_global[df_global["Sit. Funcional"].isin(SITUACOES_ALVO)]
+    df_unit = df_unit[df_unit["Sit. Funcional"].isin(SITUACOES_ALVO)]
 
+    if df_global is not None and not is_geral:
 
         df_ab = df_global[(df_global["Status Avaliação"] == "Aberta") & (df_global["RPM (Av1)"] == titulo_unidade)]
 
@@ -8695,7 +8689,7 @@ def _build_workbook(df_unit: pd.DataFrame, titulo: str, df_global: pd.DataFrame 
     ws2 = wb.create_sheet("Avaliações Pendentes")
 
 
-    df_pend = df_unit[df_unit["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada", "Homologação"])]
+    df_pend = df_unit[df_unit["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada", "Homologação"]) & df_unit["Sit. Funcional"].isin(SITUACOES_ALVO)]
 
 
     _write_data_sheet(ws2, df_pend, f"AVALIAÇÕES PENDENTES — {titulo}", cols, s)
