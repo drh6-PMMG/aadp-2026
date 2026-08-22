@@ -147,13 +147,11 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
     next(reader)
     for row in reader:
         if len(row) > 11:
-            sit = row[11].strip()
-            if sit in SITUACOES_ALVO:
-                nrpm = row[1].strip().lstrip("0") or "0"
-                dt_cdp = parse_date_safe(row[5].strip())
-                if dt_cdp:
-                    if nrpm not in pm_max_cdp or dt_cdp > pm_max_cdp[nrpm]:
-                        pm_max_cdp[nrpm] = dt_cdp
+            nrpm = row[1].strip().lstrip("0") or "0"
+            dt_cdp = parse_date_safe(row[5].strip())
+            if dt_cdp:
+                if nrpm not in pm_max_cdp or dt_cdp > pm_max_cdp[nrpm]:
+                    pm_max_cdp[nrpm] = dt_cdp
 
 print("Carregando SIGEF.csv ...")
 sigef_unidade = {}
@@ -340,9 +338,6 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
             row.append("")
 
         sit = row[11].strip()
-        if sit not in SITUACOES_ALVO:
-            continue
-
         nrpm  = row[1].strip()
         local = row[9].strip()
         nrpm_key = nrpm.lstrip("0") or "0"
@@ -436,10 +431,10 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
             "Local/Unidade (Avaliado)":     local,
             "Quadro Atual (Avaliado)":      row[10].strip(),
             "Situação Funcional Atual":     sit,
-            "Conceito":                     s_extra.get("Conceito", ""),
-            "Reg. Adicional":               s_extra.get("Reg. Adicional", ""),
-            "Ano Base":                     s_extra.get("Ano Base", ""),
-            "Ord. Almanaque":               s_extra.get("Ord. Almanaque", ""),
+            "Conceito":                     s_extra.get("Conceito", "N/A"),
+            "Reg. Adicional":               s_extra.get("Reg. Adicional", "N/A"),
+            "Ano Base":                     s_extra.get("Ano Base", "N/A"),
+            "Ord. Almanaque":               s_extra.get("Ord. Almanaque", "N/A"),
             # Avaliação 1
             "Data Avaliação 1":             row[36].strip(),
             "Conceito Geral":               j,

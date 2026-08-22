@@ -439,10 +439,8 @@ def build_audit_data_from_geral(csv_path):
                 row = row[:18] + [""] * 10 + row[18:]
             while len(row) < len(header):
                 row.append("")
-            sit = row[c_sit].strip()
-            if sit not in SITUACOES_ALVO:
-                continue
                 
+            sit = row[c_sit].strip()
             pm = normalize_pm(row[c_pm])
             if not pm:
                 continue
@@ -706,10 +704,10 @@ def append_sigef_to_audit(df):
         
     col_pm = "NR PM" if "NR PM" in df.columns else "nrPM (Avaliado)"
     if col_pm in df.columns:
-        df["Conceito"] = df[col_pm].apply(lambda x: sigef_map.get(str(x).strip().lstrip("0"), {}).get("Conceito", "-") if pd.notnull(x) else "-")
-        df["Reg. Adicional"] = df[col_pm].apply(lambda x: sigef_map.get(str(x).strip().lstrip("0"), {}).get("Reg. Adicional", "-") if pd.notnull(x) else "-")
-        df["Ano Base"] = df[col_pm].apply(lambda x: sigef_map.get(str(x).strip().lstrip("0"), {}).get("Ano Base", "-") if pd.notnull(x) else "-")
-        df["Ord. Almanaque"] = df[col_pm].apply(lambda x: sigef_map.get(str(x).strip().lstrip("0"), {}).get("Ord. Almanaque", "-") if pd.notnull(x) else "-")
+        df["Conceito"] = df[col_pm].apply(lambda x: sigef_map.get(str(x).strip().lstrip("0"), {}).get("Conceito", "N/A") if pd.notnull(x) else "N/A")
+        df["Reg. Adicional"] = df[col_pm].apply(lambda x: sigef_map.get(str(x).strip().lstrip("0"), {}).get("Reg. Adicional", "N/A") if pd.notnull(x) else "N/A")
+        df["Ano Base"] = df[col_pm].apply(lambda x: sigef_map.get(str(x).strip().lstrip("0"), {}).get("Ano Base", "N/A") if pd.notnull(x) else "N/A")
+        df["Ord. Almanaque"] = df[col_pm].apply(lambda x: sigef_map.get(str(x).strip().lstrip("0"), {}).get("Ord. Almanaque", "N/A") if pd.notnull(x) else "N/A")
     
     # Reorder columns
     cols = list(df.columns)
@@ -3636,10 +3634,8 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                 continue
             while len(row) < 8:
                 row.append("")
-            sit = row[7].strip()
-            if sit in SITUACOES_ALVO:
-                nrpm = row[0].strip()
-                pm_counts[nrpm] = pm_counts.get(nrpm, 0) + 1
+            nrpm = row[0].strip()
+            pm_counts[nrpm] = pm_counts.get(nrpm, 0) + 1
 
     rows = []
     with open(av_f, encoding="cp1252", errors="replace") as f:
@@ -3647,8 +3643,6 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
         next(reader)
         for row in reader:
             while len(row) < 50: row.append("")  # CSV tem 50 colunas (colégio até Homologador)
-            sit = row[7].strip()
-            if sit not in SITUACOES_ALVO: continue
             nrpm = row[0].strip(); local = row[5].strip()
             j = row[9].strip(); l = row[11].strip(); n = row[13].strip()
             
