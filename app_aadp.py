@@ -5280,7 +5280,7 @@ if data_ok:
         "Análise Gráfica", "Dados Gerais", "Avaliações Pendentes", 
         "Avaliadores Pendentes", "Gerar Relatório", "Relatório Word"
     ]
-    if active_page in PAGES_WITH_FILTER:
+    if st.session_state.get("active_page", "") in PAGES_WITH_FILTER:
         df_full = df_full[df_full["Sit. Funcional"].isin(SITUACOES_ALVO)].copy()
         df = df[df["Sit. Funcional"].isin(SITUACOES_ALVO)].copy()
 
