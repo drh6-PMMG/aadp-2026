@@ -3718,6 +3718,8 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
             av1_norm = normalize_pm_str(av1_val)
             av2_norm = normalize_pm_str(av2_val)
             key = (pm_norm, av1_norm, av2_norm)
+            
+            dt_cdp = cdp_map.get(key)
             if dt_cdp is not None and pm_norm in pm_max_cdp:
                 sc = "Comissão Atual" if dt_cdp >= pm_max_cdp[pm_norm] else "Nota Provisória"
             else:
