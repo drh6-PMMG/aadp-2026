@@ -342,8 +342,7 @@ def build_audit_data_from_geral(csv_path):
 
     SITUACOES_ALVO = {
         "ATIV. DIRECAO GERAL", "ATIV. FIM DESTACADO", "ATIV. FIM NA SEDE",
-        "ATIV. MEIO", "ATIVIDADE MEIO", "DISP MED DEFINITIVA",
-        "GESTANTE/LAC/ADOTANT", "QUADRO ESPECIALISTA",
+        "ATIV. MEIO", "DISP MED DEFINITIVA", "QUADRO ESPECIALISTA"
     }
 
     CONCEITO_FAIXA = {
@@ -1676,19 +1675,12 @@ CONFIG_FILE = THIS_DIR / "config_aadp.json"
 
 
 
-SITUACOES_ALVO = {
+    SITUACOES_ALVO = {
+        "ATIV. DIRECAO GERAL", "ATIV. FIM DESTACADO", "ATIV. FIM NA SEDE",
+        "ATIV. MEIO", "DISP MED DEFINITIVA", "QUADRO ESPECIALISTA"
+    }
 
 
-    "ATIV. DIRECAO GERAL","ATIV. FIM DESTACADO","ATIV. FIM NA SEDE",
-
-
-    "ATIV. MEIO","ATIVIDADE MEIO","DISP MED DEFINITIVA",
-
-
-    "GESTANTE/LAC/ADOTANT","QUADRO ESPECIALISTA",
-
-
-}
 
 
 CONCEITO_FAIXA = {
@@ -5283,6 +5275,14 @@ if data_ok:
 
 
     df = apply_filters(df_full, rpm_filter, unid_filter, sit_com_filter, status_filter, cert_filter)
+    
+    PAGES_WITH_FILTER = [
+        "Análise Gráfica", "Dados Gerais", "Avaliações Pendentes", 
+        "Avaliadores Pendentes", "Gerar Relatório", "Relatório Word"
+    ]
+    if active_page in PAGES_WITH_FILTER:
+        df_full = df_full[df_full["Sit. Funcional"].isin(SITUACOES_ALVO)].copy()
+        df = df[df["Sit. Funcional"].isin(SITUACOES_ALVO)].copy()
 
 
 else:
