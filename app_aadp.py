@@ -328,7 +328,7 @@ def build_audit_data_from_geral(csv_path):
             df_com = pd.read_excel(com_file, dtype=str)
             df_com.columns = [str(c).strip() for c in df_com.columns]
             for _, row in df_com.iterrows():
-                nrpm = str(row.get("MATRICULA", "")).strip().lstrip("0") or "0"
+                nrpm = str(row.get("MATRICULA", "")).strip().split('-')[0].lstrip("0") or "0"
                 if not nrpm or nrpm == "0": continue
                 n_sirh = str(row.get("NOTA DA AADP", "-")).strip()
                 if n_sirh in ("nan", "None", "", "0.00", "0,00", "0"):

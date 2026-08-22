@@ -276,7 +276,7 @@ if os.path.exists(COM_FILE):
     df_com = pd.read_excel(COM_FILE, dtype=str)
     df_com.columns = [c.strip() for c in df_com.columns]
     for _, row in df_com.iterrows():
-        nrpm = str(row.get("MATRICULA", "")).strip().lstrip("0") or "0"
+        nrpm = str(row.get("MATRICULA", "")).strip().split('-')[0].lstrip("0") or "0"
         if not nrpm or nrpm == "0":
             continue
         nota_sirh = str(row.get("NOTA DA AADP", "-")).strip()
