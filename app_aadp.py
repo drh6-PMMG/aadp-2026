@@ -311,9 +311,34 @@ def build_audit_data_from_geral(csv_path):
     import csv
     import os
     import pandas as pd
+    import tempfile
     import numpy as np
     import math
     import unicodedata
+
+    com_map = {}
+    try:
+        cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
+        com_paths = [
+            os.path.join(cache_dir, "COM_AADP_2026.xlsx"),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "COM_AADP_2026.xlsx")
+        ]
+        com_file = next((p for p in com_paths if os.path.exists(p)), None)
+        if com_file:
+            df_com = pd.read_excel(com_file, dtype=str)
+            df_com.columns = [str(c).strip() for c in df_com.columns]
+            for _, row in df_com.iterrows():
+                nrpm = str(row.get("MATRICULA", "")).strip().lstrip("0") or "0"
+                if not nrpm or nrpm == "0": continue
+                n_sirh = str(row.get("NOTA DA AADP", "-")).strip()
+                if n_sirh in ("nan", "None", "", "0.00", "0,00", "0"):
+                    n_sirh = "-"
+                o_sirh = str(row.get("DESCRICAO MOTIVO AADP", "")).strip()
+                if o_sirh in ("nan", "None"):
+                    o_sirh = ""
+                com_map[nrpm] = {"nota": n_sirh, "obs": o_sirh}
+    except Exception:
+        pass
 
     SITUACOES_ALVO = {
         "ATIV. DIRECAO GERAL", "ATIV. FIM DESTACADO", "ATIV. FIM NA SEDE",
@@ -574,6 +599,7 @@ def build_audit_data_from_geral(csv_path):
             }
             
             if pm not in pm_evals:
+                c_data = com_map.get(pm, {})
                 pm_evals[pm] = {
                     "NR PM": pm,
                     "Posto/Graduação": row[c_rank].strip(),
@@ -582,6 +608,8 @@ def build_audit_data_from_geral(csv_path):
                     "Nome Unidade Principal": row[c_unit].strip(),
                     "Quadro": row[c_quadro].strip(),
                     "Sit. Funcional": sit,
+                    "Nota SIRH": c_data.get("nota", "-"),
+                    "Observação": c_data.get("obs", ""),
                     "evals": []
                 }
             pm_evals[pm]["evals"].append(eval_data)
@@ -602,6 +630,27 @@ def build_audit_data_from_geral(csv_path):
         else:
             final_avg_rounded = "-"
             
+        if final_avg_rounded != "-":
+            try:
+                val_geral = float(str(final_avg_rounded).replace(",", "."))
+            except:
+                val_geral = None
+        else:
+            val_geral = None
+            
+        nota_sirh = data["Nota SIRH"]
+        try:
+            val_sirh = float(str(nota_sirh).replace(",", "."))
+        except:
+            val_sirh = None
+            
+        if val_geral is not None and val_sirh is not None and abs(val_geral - val_sirh) < 0.01:
+            auditoria = "IGUAL"
+        elif nota_sirh == "-" or final_avg_rounded == "-":
+            auditoria = ""
+        else:
+            auditoria = "DIVERGENTE"
+            
         r_audit = {
             "NR PM": data["NR PM"],
             "Posto/Graduação": data["Posto/Graduação"],
@@ -613,6 +662,8 @@ def build_audit_data_from_geral(csv_path):
             "Qtd Avaliações": qtd,
             "Todas Avaliações Foram Encerradas?": todas_encerradas,
             "Nota Final - Média Aritmética": final_avg_rounded,
+            "Nota SIRH": nota_sirh,
+            "Auditoria": auditoria,
         }
         
         for i in range(1, 5):
@@ -631,6 +682,8 @@ def build_audit_data_from_geral(csv_path):
                 r_audit[f"Houve Recurso? {i}"] = np.nan
                 r_audit[f"Fase Recurso {i}"] = np.nan
                 r_audit[f"Nota Fase 2 ou 3 {i}"] = np.nan
+        
+        r_audit["Observação"] = data["Observação"]
         rows_audit.append(r_audit)
         
     return pd.DataFrame(rows_audit)
@@ -739,9 +792,19 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
     
     cfg_to_use = load_config()
     drive_geral_id = cfg_to_use.get("drive_geral_id", "")
+    drive_com_id = cfg_to_use.get("drive_com_id", "")
     cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
     drive_geral_path = os.path.join(cache_dir, "geral.csv")
     local_geral_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "geral.csv")
+    
+    if drive_com_id:
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+            com_path = os.path.join(cache_dir, "COM_AADP_2026.xlsx")
+            if not os.path.exists(com_path) or os.path.getsize(com_path) == 0:
+                _baixar_drive(drive_com_id, com_path)
+        except Exception:
+            pass
     
     csv_to_use = None
     if drive_geral_id:
@@ -1693,7 +1756,7 @@ def load_config():
     # Carrega do st.secrets do Streamlit para evitar perda de IDs/links após reinicializações
 
 
-    for key in ["drive_av_id", "drive_si_id", "drive_geral_id", "drive_master_xlsx_id", "sheet_api_url", "fonte_dados", "db_path", "smtp_host", "smtp_port", "smtp_user", "smtp_pass", "alert_receiver_email", "alert_webhook_url"]:
+    for key in ["drive_av_id", "drive_si_id", "drive_geral_id", "drive_com_id", "drive_master_xlsx_id", "sheet_api_url", "fonte_dados", "db_path", "smtp_host", "smtp_port", "smtp_user", "smtp_pass", "alert_receiver_email", "alert_webhook_url"]:
 
 
         try:
@@ -4004,7 +4067,13 @@ def style_audit_dataframe(df):
         styles[c] = "background-color: #e8f0fe; color: #1a0dab; font-weight: 500;" # Soft blue
 
     def get_column_styles(row):
-        return [styles.get(col, "") for col in row.index]
+        row_styles = []
+        for col in row.index:
+            if col == "Auditoria" and str(row.get("Auditoria", "")).strip() == "DIVERGENTE":
+                row_styles.append("background-color: #ffcccc; color: #cc0000; font-weight: bold;")
+            else:
+                row_styles.append(styles.get(col, ""))
+        return row_styles
 
     styler = df.style.apply(get_column_styles, axis=1)
     if col_media:
@@ -9121,7 +9190,8 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
         "Sit. Funcional",
         "Nome RPM", "Nome Unidade Principal",
         "Conceito", "Reg. Adicional", "Ano Base", "Ord. Almanaque",
-        "Qtd Avaliações", "Todas Avaliações Foram Encerradas?", "Nota Final - Média Aritmética"
+        "Qtd Avaliações", "Todas Avaliações Foram Encerradas?", "Nota Final - Média Aritmética",
+        "Nota SIRH", "Auditoria"
     ]
     actual_base = [c for c in base_cols if c in df_audit.columns]
     other_cols = [c for c in df_audit.columns if c not in actual_base]
@@ -9191,7 +9261,9 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
     if len(df_evals_audit) == 0:
         card3_val = "0,00"
     else:
-        grades = pd.to_numeric(df_evals_audit["Nota Geral"].astype(str).str.replace(",", "."), errors="coerce").dropna()
+        # Apenas notas de avaliações encerradas
+        df_encerradas = df_evals_audit[df_evals_audit["Status Avaliação"].astype(str).str.upper().str.strip() == "ENCERRADA"]
+        grades = pd.to_numeric(df_encerradas["Nota Geral"].astype(str).str.replace(",", "."), errors="coerce").dropna()
         if len(grades) > 0:
             card3_avg = grades.mean()
             import math
@@ -9354,8 +9426,9 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
             mil_sim = int(all_enc.sum())
             mil_nao = int((~all_enc).sum())
             
-            # Média simples da coluna Nota Geral diretamente
-            grades = pd.to_numeric(df_sub_evals["Nota Geral"].astype(str).str.replace(",", "."), errors="coerce").dropna()
+            # Média simples da coluna Nota Geral (apenas encerradas)
+            df_enc = df_sub_evals[is_enc]
+            grades = pd.to_numeric(df_enc["Nota Geral"].astype(str).str.replace(",", "."), errors="coerce").dropna()
             mean_val = float(grades.mean()) if len(grades) > 0 else 0.0
 
 
@@ -9453,8 +9526,9 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                 mil_sim = int(all_enc.sum())
                 mil_nao = int((~all_enc).sum())
                 
-                # Média simples da coluna Nota Geral diretamente
-                grades = pd.to_numeric(df_sub["Nota Geral"].astype(str).str.replace(",", "."), errors="coerce").dropna()
+                # Média simples da coluna Nota Geral (apenas encerradas)
+                df_enc = df_sub[is_enc]
+                grades = pd.to_numeric(df_enc["Nota Geral"].astype(str).str.replace(",", "."), errors="coerce").dropna()
                 mean_val = float(grades.mean()) if len(grades) > 0 else 0.0
                 return mil_sim, mil_nao, mean_val
 

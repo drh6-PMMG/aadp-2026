@@ -24,6 +24,7 @@ SIGEF_FILE       = os.path.join(BASE_DIR, "SIGEF.csv")
 MOV_FILE         = os.path.join(BASE_DIR, "MOVIMENTAÇÕES.xlsx")
 PRESO_FILE       = os.path.join(BASE_DIR, "PRESO.xlsx")
 PUN_FILE         = os.path.join(BASE_DIR, "PUNIÇÃO.xlsx")
+COM_FILE         = os.path.join(BASE_DIR, "COM_AADP_2026.xlsx")
 OUT_DIR          = os.path.join(BASE_DIR, "Resultado_AADP_2026")
 OUT_FILE         = os.path.join(OUT_DIR, "Auditoria_Notas_AADP2026.xlsx")
 TODAY            = date.today()
@@ -268,6 +269,25 @@ for _, row in df_pun.iterrows():
         pontos = 0
     pun_map[nrpm]["pontos"] += pontos
 
+# ----------------- 5. COM_AADP_2026 -----------------
+print("Carregando COM_AADP_2026.xlsx ...")
+com_map = {}
+if os.path.exists(COM_FILE):
+    df_com = pd.read_excel(COM_FILE, dtype=str)
+    df_com.columns = [c.strip() for c in df_com.columns]
+    for _, row in df_com.iterrows():
+        nrpm = str(row.get("MATRICULA", "")).strip().lstrip("0") or "0"
+        if not nrpm or nrpm == "0":
+            continue
+        nota_sirh = str(row.get("NOTA DA AADP", "-")).strip()
+        if nota_sirh in ("nan", "None", "", "0.00", "0,00", "0"):
+            nota_sirh = "-"
+        obs_sirh = str(row.get("DESCRICAO MOTIVO AADP", "")).strip()
+        if obs_sirh in ("nan", "None"):
+            obs_sirh = ""
+        com_map[nrpm] = {"nota": nota_sirh, "obs": obs_sirh}
+
+
 # ─── 5. GERAL.CSV — processar e montar DataFrame principal ────────────────────
 print("Carregando geral.csv ...")
 rows = []
@@ -421,6 +441,28 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
             else:
                 status_av = "RECONSIDERAÇÃO COMISSÃO"
 
+        c_com = com_map.get(nrpm_key, {})
+        nota_sirh = c_com.get("nota", "-")
+        obs_sirh = c_com.get("obs", "")
+        
+        nota_geral = n if not is_empty(n) else l
+        try:
+            val_geral = float(str(nota_geral).replace(",", "."))
+        except:
+            val_geral = None
+            
+        try:
+            val_sirh = float(str(nota_sirh).replace(",", "."))
+        except:
+            val_sirh = None
+            
+        if val_geral is not None and val_sirh is not None and abs(val_geral - val_sirh) < 0.01:
+            auditoria = "IGUAL"
+        elif nota_sirh == "-" or nota_geral == "":
+            auditoria = ""
+        else:
+            auditoria = "DIVERGENTE"
+
         s_extra = sigef_extra.get(nrpm_key, {})
         rows.append({
             "nrPM (Avaliado)":              nrpm,
@@ -440,7 +482,9 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
             "Conceito Geral":               j,
             # Avaliação 2
             "Data Avaliação 2":             row[71].strip() if not is_empty(n) else row[45].strip(),
-            "Nota Geral":                   n if not is_empty(n) else l,
+            "Nota Geral":                   nota_geral,
+            "Nota SIRH":                    nota_sirh,
+            "Auditoria":                    auditoria,
             "Certificação Homologador":     calc_cert_hom(j, l),
             # Homologação
             "Data Homologação":             row[71].strip(),
@@ -501,6 +545,7 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
             "Recurso Fase 4":               row[85].strip(),
             "Nota (Fase 4)":                row[86].strip(),
             "Data Recurso 4":               row[88].strip(),
+            "Observação":                   obs_sirh,
         })
 
 df_full = pd.DataFrame(rows)
@@ -601,6 +646,8 @@ COLS_EXPORT = [
     "Conceito Geral",
     "Data Avaliação 2",
     "Nota Geral",
+    "Nota SIRH",
+    "Auditoria",
     "Certificação Homologador",
     "Data Homologação",
     "Nota Homologação",
@@ -629,6 +676,7 @@ COLS_EXPORT = [
     "Recurso Fase 2", "Nota (Fase 2)", "Data Recurso 2",
     "Recurso Fase 3", "Nota (Fase 3)", "Data Recurso 3",
     "Recurso Fase 4", "Nota (Fase 4)", "Data Recurso 4",
+    "Observação",
     # ── NOVAS COLUNAS ──
     "DATA DA TRANSFERÊNCIA",
     "MOTIVO DA TRANSFERÊNCIA",
