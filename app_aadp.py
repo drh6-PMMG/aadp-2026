@@ -342,7 +342,7 @@ def build_audit_data_from_geral(csv_path):
 
     SITUACOES_ALVO = {
         "ATIV. DIRECAO GERAL", "ATIV. FIM DESTACADO", "ATIV. FIM NA SEDE",
-        "ATIV. MEIO", "DISP MED DEFINITIVA", "QUADRO ESPECIALISTA"
+        "ATIV. MEIO", "ATIVIDADE MEIO", "DISP MED DEFINITIVA", "QUADRO ESPECIALISTA"
     }
 
     CONCEITO_FAIXA = {
@@ -1677,7 +1677,7 @@ CONFIG_FILE = THIS_DIR / "config_aadp.json"
 
 SITUACOES_ALVO = {
     "ATIV. DIRECAO GERAL", "ATIV. FIM DESTACADO", "ATIV. FIM NA SEDE",
-    "ATIV. MEIO", "DISP MED DEFINITIVA", "QUADRO ESPECIALISTA"
+    "ATIV. MEIO", "ATIVIDADE MEIO", "DISP MED DEFINITIVA", "QUADRO ESPECIALISTA"
 }
 
 
@@ -3762,7 +3762,7 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                 "Quadro Atual (Avaliado)":   row[6].strip(),
 
 
-                "Sit. Funcional":        row[7].strip(),
+                "Sit. Funcional":        "ATIV. MEIO" if row[7].strip() == "ATIVIDADE MEIO" else row[7].strip(),
 
 
                 "Data AV1":                  row[8].strip(),

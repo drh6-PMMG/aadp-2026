@@ -33,8 +33,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 
 SITUACOES_ALVO = {
     "ATIV. DIRECAO GERAL", "ATIV. FIM DESTACADO", "ATIV. FIM NA SEDE",
-    "ATIV. MEIO", "ATIVIDADE MEIO", "DISP MED DEFINITIVA",
-    "GESTANTE/LAC/ADOTANT", "QUADRO ESPECIALISTA",
+    "ATIV. MEIO", "ATIVIDADE MEIO", "DISP MED DEFINITIVA", "QUADRO ESPECIALISTA"
 }
 
 CONCEITO_FAIXA = {
@@ -357,7 +356,7 @@ with open(GERAL_FILE, encoding="cp1252", errors="replace") as f:
         while len(row) < 198:
             row.append("")
 
-        sit = row[11].strip()
+        sit = "ATIV. MEIO" if row[11].strip() == "ATIVIDADE MEIO" else row[11].strip()
         nrpm  = row[1].strip()
         local = row[9].strip()
         nrpm_key = nrpm.lstrip("0") or "0"
