@@ -10360,10 +10360,10 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
         df_merge['Tipo AADP'] = df_merge['SIT. FUNCIONAL'].apply(_c_aadp_type)
         df_merge['Categoria AADP'] = df_merge['SIT. FUNCIONAL'].apply(_c_aadp_category)
 
-        df_merge['RPM Final'] = df_merge['Unidade RPM Atual (Avaliado)'].fillna(df_merge['NOME RPM'])
+        df_merge['RPM Final'] = df_merge['Unidade RPM Atual (Avaliado)'].fillna(df_merge['NOME RPM']).str.strip()
         df_merge['RPM Final'] = df_merge['RPM Final'].replace({'NÃO': 'DINT', 'AUDI SET': 'AUD SET'})
-        df_merge['Unidade Principal Final'] = df_merge['Unidade Principal Atual (Avaliado)'].fillna(df_merge['NOME UNIDADE PRINCIPAL'])
-        df_merge['Posto/Graduação Final'] = df_merge['Posto/Graduação (Avaliado)'].fillna(df_merge['POSTO/GRADUACAO'])
+        df_merge['Unidade Principal Final'] = df_merge['Unidade Principal Atual (Avaliado)'].fillna(df_merge['NOME UNIDADE PRINCIPAL']).str.strip()
+        df_merge['Posto/Graduação Final'] = df_merge['Posto/Graduação (Avaliado)'].fillna(df_merge['POSTO/GRADUACAO']).str.strip()
         df_merge = df_merge[df_merge['SIT. FUNCIONAL'] != 'JUIZ/TJM']
         df_merge['Situação AADP'] = df_merge['Status da Comissão'].apply(lambda x: 'Completa' if str(x).upper().startswith('COMPLETA') else 'Incompleta')
         
