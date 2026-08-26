@@ -10283,13 +10283,22 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
             
         try:
             df_com = pd.read_csv(comissao_path, sep=';', encoding='cp1252', dtype=str, on_bad_lines='skip', index_col=False)
+            df_com = df_com.rename(columns={
+                "Unidade RPM (Avaliado)": "Unidade RPM Atual (Avaliado)",
+                "Unidade Principal (Avaliado)": "Unidade Principal Atual (Avaliado)",
+                "Local/Unidade (Avaliado)": "Local/Unidade Atual (Avaliado)"
+            })
         except Exception:
             df_com = pd.DataFrame()
             
         return df_sigef, df_com
 
     with st.spinner("Carregando bases de dados (SIGEF e Comissões)..."):
-        df_sigef, df_com = load_comissoes_tab_data(db_path, drive_av_id, drive_si_id)
+        # Resolve os argumentos usando cfg_to_use diretamente, para evitar falha caso a função não receba
+        _d_path = cfg_to_use.get("db_path", "")
+        _d_av_id = cfg_to_use.get("drive_av_id", "")
+        _d_si_id = cfg_to_use.get("drive_si_id", "")
+        df_sigef, df_com = load_comissoes_tab_data(_d_path, _d_av_id, _d_si_id)
 
     if df_sigef.empty:
         st.error("Erro: SIGEF.csv não encontrado ou ilegível.")
