@@ -10295,6 +10295,7 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
 
     with st.spinner("Carregando bases de dados (SIGEF e Comissões)..."):
         # Resolve os argumentos usando cfg_to_use diretamente, para evitar falha caso a função não receba
+        cfg_to_use = load_config()
         _d_path = cfg_to_use.get("db_path", "")
         _d_av_id = cfg_to_use.get("drive_av_id", "")
         _d_si_id = cfg_to_use.get("drive_si_id", "")
