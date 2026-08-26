@@ -1,4 +1,4 @@
-﻿"""
+"""
 
 
 AADP 2026 — Dashboard de Análise de Avaliações
