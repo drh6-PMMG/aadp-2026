@@ -10263,34 +10263,33 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
     st.markdown("### ⚖️ Análise de Comissões")
     
     @st.cache_data(show_spinner=False)
-    def load_comissoes_tab_data():
+    def load_comissoes_tab_data(_db_path, _drive_av_id, _drive_si_id):
         import pandas as pd
+        import os
+        import tempfile
         
-        def get_gdrive_url(url):
-            if 'drive.google.com' in url and '/view' in url:
-                try:
-                    return f"https://drive.google.com/uc?export=download&id={url.split('/d/')[1].split('/view')[0]}"
-                except Exception:
-                    pass
-            return url
+        cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
+        if _drive_av_id and _drive_si_id:
+            sigef_path = os.path.join(cache_dir, "SIGEF.csv")
+            comissao_path = os.path.join(cache_dir, "avaliacoes.csv")
+        else:
+            sigef_path = os.path.join(_db_path, "SIGEF.csv")
+            comissao_path = os.path.join(_db_path, "avaliacoes.csv")
             
-        # Para usar o Google Drive (Caminho B), substitua os nomes de arquivo abaixo 
-        # pelos links de compartilhamento gerados ("Qualquer pessoa com o link pode ver").
-        # Ex: comissao_path = get_gdrive_url('https://drive.google.com/file/d/1234.../view?usp=sharing')
-        sigef_path = get_gdrive_url('https://drive.google.com/file/d/10Ld_4XEz9b4kI_T6TC9W19tQdtBJCz5F/view?usp=sharing')
-        comissao_path = get_gdrive_url('https://drive.google.com/file/d/12Ba_czEzw-eae1jShXpASn3WzJjZe2Wx/view?usp=sharing')
         try:
             df_sigef = pd.read_csv(sigef_path, sep=';', encoding='cp1252', dtype=str, on_bad_lines='skip', index_col=False)
         except Exception:
-            return pd.DataFrame(), pd.DataFrame()
+            df_sigef = pd.DataFrame()
+            
         try:
             df_com = pd.read_csv(comissao_path, sep=';', encoding='cp1252', dtype=str, on_bad_lines='skip', index_col=False)
         except Exception:
             df_com = pd.DataFrame()
+            
         return df_sigef, df_com
 
     with st.spinner("Carregando bases de dados (SIGEF e Comissões)..."):
-        df_sigef, df_com = load_comissoes_tab_data()
+        df_sigef, df_com = load_comissoes_tab_data(db_path, drive_av_id, drive_si_id)
 
     if df_sigef.empty:
         st.error("Erro: SIGEF.csv não encontrado ou ilegível.")
