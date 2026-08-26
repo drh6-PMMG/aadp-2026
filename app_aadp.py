@@ -1,10 +1,10 @@
 ﻿"""
 
 
-AADP 2026 â€” Dashboard de AnÃ¡lise de AvaliaÃ§Ãµes
+AADP 2026 — Dashboard de Análise de Avaliações
 
 
-VersÃ£o 3.0 â€” Google Drive + Streamlit Cloud + GeraÃ§Ã£o em memÃ³ria
+Versão 3.0 — Google Drive + Streamlit Cloud + Geração em memória
 
 
 """
@@ -46,7 +46,7 @@ from datetime import datetime, timezone, timedelta
 def now_br():
 
 
-    """Retorna datetime no fuso de BrasÃ­lia (UTC-3)."""
+    """Retorna datetime no fuso de Brasília (UTC-3)."""
 
 
     return datetime.now(timezone(timedelta(hours=-3)))
@@ -58,7 +58,7 @@ def now_br():
 def get_last_updated_time(av_f, drive_av_id=None):
 
 
-    """Retorna a data e hora de consolidaÃ§Ã£o dos dados em horÃ¡rio de BrasÃ­lia."""
+    """Retorna a data e hora de consolidação dos dados em horário de Brasília."""
 
 
     import requests, email.utils, os
@@ -127,13 +127,13 @@ def get_last_updated_time(av_f, drive_av_id=None):
         dt_br = dt_utc.astimezone(tz_br)
 
 
-        return dt_br.strftime("%d/%m/%Y, Ã s %H:%M horas")
+        return dt_br.strftime("%d/%m/%Y, às %H:%M horas")
 
 
         
 
 
-    return "Data/Hora indisponÃ­vel"
+    return "Data/Hora indisponível"
 
 
 
@@ -213,10 +213,10 @@ def run_grades_audit(xlsx_path, csv_path, drive_geral_id=None, drive_master_xlsx
 
     cols_to_keep = {
         'nrPM (Avaliado)': 1, 'Nome Completo (Avaliado)': 2, 'Conceito Geral': 46, 'Nota Geral': 47,
-        'Nota (CompetÃªncia 1)': 50, 'Nota (CompetÃªncia 2)': 53, 'Nota (CompetÃªncia 3)': 56, 'Nota (CompetÃªncia 4)': 59,
-        'Nota da HomologaÃ§Ã£o': 70, 'Data da HomologaÃ§Ã£o': 71,
+        'Nota (Competência 1)': 50, 'Nota (Competência 2)': 53, 'Nota (Competência 3)': 56, 'Nota (Competência 4)': 59,
+        'Nota da Homologação': 70, 'Data da Homologação': 71,
         'Recurso Fase 2': 77, 'Nota (Fase 2)': 78, 'Recurso Fase 3': 81, 'Nota (Fase 3)': 82,
-        'Data da AvaliaÃ§Ã£o 1': 36, 'Data da AvaliaÃ§Ã£o 2': 45
+        'Data da Avaliação 1': 36, 'Data da Avaliação 2': 45
     }
     
     rows = []
@@ -240,8 +240,8 @@ def run_grades_audit(xlsx_path, csv_path, drive_geral_id=None, drive_master_xlsx
 
     discrepancies = []
 
-    # 1. Auditoria de Qtd de AvaliaÃ§Ãµes
-    master_counts = df_master.set_index('NR PM')['Qtd AvaliaÃ§Ãµes'].to_dict()
+    # 1. Auditoria de Qtd de Avaliações
+    master_counts = df_master.set_index('NR PM')['Qtd Avaliações'].to_dict()
     geral_counts = df_geral['nrPM (Avaliado)'].value_counts().to_dict()
     all_pms = set(master_counts.keys()).union(set(geral_counts.keys()))
 
@@ -260,8 +260,8 @@ def run_grades_audit(xlsx_path, csv_path, drive_geral_id=None, drive_master_xlsx
             discrepancies.append({
                 "PM": pm,
                 "Nome": name,
-                "Tipo": "DivergÃªncia de Qtd de AvaliaÃ§Ãµes",
-                "Detalhe": f"Excel mestre diz {m_c} avaliaÃ§Ãµes, mas geral.csv possui {g_c} registros."
+                "Tipo": "Divergência de Qtd de Avaliações",
+                "Detalhe": f"Excel mestre diz {m_c} avaliações, mas geral.csv possui {g_c} registros."
             })
 
     # 2. Auditorias de Notas por registro de geral.csv
@@ -270,10 +270,10 @@ def run_grades_audit(xlsx_path, csv_path, drive_geral_id=None, drive_master_xlsx
         name = row['Nome Completo (Avaliado)']
         
         n_g = parse_float(row['Nota Geral'])
-        c1 = parse_float(row['Nota (CompetÃªncia 1)'])
-        c2 = parse_float(row['Nota (CompetÃªncia 2)'])
-        c3 = parse_float(row['Nota (CompetÃªncia 3)'])
-        c4 = parse_float(row['Nota (CompetÃªncia 4)'])
+        c1 = parse_float(row['Nota (Competência 1)'])
+        c2 = parse_float(row['Nota (Competência 2)'])
+        c3 = parse_float(row['Nota (Competência 3)'])
+        c4 = parse_float(row['Nota (Competência 4)'])
         
         if n_g is not None and all(x is not None for x in [c1, c2, c3, c4]):
             avg_comp = (c1 + c2 + c3 + c4) / 4.0
@@ -281,12 +281,12 @@ def run_grades_audit(xlsx_path, csv_path, drive_geral_id=None, drive_master_xlsx
                 discrepancies.append({
                     "PM": pm,
                     "Nome": name,
-                    "Tipo": "DivergÃªncia de MÃ©dia de CompetÃªncias",
-                    "Detalhe": f"MÃ©dia das CompetÃªncias = {avg_comp:.2f} (C1={c1}, C2={c2}, C3={c3}, C4={c4}) vs Nota Geral informada = {n_g}"
+                    "Tipo": "Divergência de Média de Competências",
+                    "Detalhe": f"Média das Competências = {avg_comp:.2f} (C1={c1}, C2={c2}, C3={c3}, C4={c4}) vs Nota Geral informada = {n_g}"
                 })
                 
         concept = row['Conceito Geral']
-        n_hom = parse_float(row['Nota da HomologaÃ§Ã£o'])
+        n_hom = parse_float(row['Nota da Homologação'])
         
         if n_g is not None and not pd.isna(concept) and concept != '-':
             concept_norm = normaliza(str(concept))
@@ -298,8 +298,8 @@ def run_grades_audit(xlsx_path, csv_path, drive_geral_id=None, drive_master_xlsx
                         discrepancies.append({
                             "PM": pm,
                             "Nome": name,
-                            "Tipo": "DivergÃªncia de Nota de HomologaÃ§Ã£o",
-                            "Detalhe": f"DivergÃªncia entre Conceito Geral ('{concept}') e Nota Geral ({n_g}), mas sem Nota de HomologaÃ§Ã£o cadastrada."
+                            "Tipo": "Divergência de Nota de Homologação",
+                            "Detalhe": f"Divergência entre Conceito Geral ('{concept}') e Nota Geral ({n_g}), mas sem Nota de Homologação cadastrada."
                         })
 
     return pd.DataFrame(discrepancies), None
@@ -390,7 +390,7 @@ def build_audit_data_from_geral(csv_path):
         if c is True:
             return "Encerrada"
         elif c is False:
-            return "Encerrada" if not is_empty(n) else "HomologaÃ§Ã£o"
+            return "Encerrada" if not is_empty(n) else "Homologação"
         return "Encerrada"
 
     def normalize_pm(pm):
@@ -405,7 +405,7 @@ def build_audit_data_from_geral(csv_path):
         for idx, col in enumerate(header):
             if pattern_norm in normaliza(col):
                 return idx
-        raise ValueError(f"Coluna contendo '{pattern}' nÃ£o encontrada no geral.csv.")
+        raise ValueError(f"Coluna contendo '{pattern}' não encontrada no geral.csv.")
 
     def parse_date(d_str):
         if is_empty(d_str): return None
@@ -437,13 +437,13 @@ def build_audit_data_from_geral(csv_path):
         c_rpm = find_col(header, "Unidade RPM (Avaliado)")
         c_unit = find_col(header, "Unidade Principal (Avaliado)")
         c_quadro = find_col(header, "Quadro Atual (Avaliado)")
-        c_sit = find_col(header, "SituaÃ§Ã£o Funcional")
-        c_dt_av1 = find_col(header, "Data da AvaliaÃ§Ã£o 1")
-        c_dt_av2 = find_col(header, "Data da AvaliaÃ§Ã£o 2")
+        c_sit = find_col(header, "Situação Funcional")
+        c_dt_av1 = find_col(header, "Data da Avaliação 1")
+        c_dt_av2 = find_col(header, "Data da Avaliação 2")
         c_concept = find_col(header, "Conceito Geral")
         c_grade = find_col(header, "Nota Geral")
-        c_n_hom = find_col(header, "Nota da HomologaÃ§Ã£o")
-        c_dt_hom = find_col(header, "Data da HomologaÃ§Ã£o")
+        c_n_hom = find_col(header, "Nota da Homologação")
+        c_dt_hom = find_col(header, "Data da Homologação")
         
         c_n_f1 = find_col(header, "Nota (Fase 1)")
         c_n_f2 = find_col(header, "Nota (Fase 2)")
@@ -503,9 +503,9 @@ def build_audit_data_from_geral(csv_path):
                 final_grade = None
             elif not has_appeal:
                 if c is False:
-                    # Houve discordÃ¢ncia: necessita passar para o homologador
+                    # Houve discordância: necessita passar para o homologador
                     if is_empty(n):
-                        status = "HomologaÃ§Ã£o"
+                        status = "Homologação"
                         final_grade = None
                     else:
                         dt_base = parse_date(row[c_dt_hom])
@@ -521,7 +521,7 @@ def build_audit_data_from_geral(csv_path):
                             status = "Encerrada"
                             final_grade = parse_float(n)
                 else:
-                    # NÃ£o houve discordÃ¢ncia: prazo de 5 dias Ãºteis a partir da data de AV2
+                    # Não houve discordância: prazo de 5 dias úteis a partir da data de AV2
                     dt_base = parse_date(row[c_dt_av2])
                     if dt_base is not None:
                         deadline = add_business_days(dt_base, 5)
@@ -535,7 +535,7 @@ def build_audit_data_from_geral(csv_path):
                         status = "Encerrada"
                         final_grade = parse_float(l)
             else:
-                # Houve recurso! (r_f1 registrado = militar interpÃ´s recurso)
+                # Houve recurso! (r_f1 registrado = militar interpôs recurso)
                 houve_recurso = "SIM"
 
                 if n_f4 is not None:
@@ -546,44 +546,44 @@ def build_audit_data_from_geral(csv_path):
                     status = "Encerrada"
 
                 elif r_f3 not in ("", "-") or n_f3 is not None:
-                    # Fase 3 registrada = Autoridade Recursal DECIDIU â†’ Encerrada
-                    # (com nota â†’ nova nota; sem nota + com data â†’ indeferido c/ nota original)
+                    # Fase 3 registrada = Autoridade Recursal DECIDIU → Encerrada
+                    # (com nota → nova nota; sem nota + com data → indeferido c/ nota original)
                     fase_recurso = "FASE 3"
                     if n_f3 is not None:
                         final_grade = n_f3
                         nota_recurso = str(n_f3)
                     else:
-                        final_grade = original_grade   # indeferido: mantÃ©m nota da comissÃ£o
+                        final_grade = original_grade   # indeferido: mantém nota da comissão
                         nota_recurso = "-"
                     status = "Encerrada"
 
                 elif r_f2 not in ("", "-"):
-                    # Fase 2 registrada = comissÃ£o promoveu para Autoridade Recursal
+                    # Fase 2 registrada = comissão promoveu para Autoridade Recursal
                     fase_recurso = "FASE 2"
                     if n_f2 is not None:
-                        # Autoridade deferiu com nova nota (sem Fase 3 explÃ­cita)
+                        # Autoridade deferiu com nova nota (sem Fase 3 explícita)
                         final_grade = n_f2
                         nota_recurso = str(n_f2)
                         status = "Encerrada"
                     else:
-                        # Autoridade ainda nÃ£o decidiu
+                        # Autoridade ainda não decidiu
                         final_grade = None
                         nota_recurso = "-"
                         status = "AUTORIDADE RECURSAL"
 
                 else:
-                    # SÃ³ Fase 1 registrada = comissÃ£o analisando (ReconsideraÃ§Ã£o)
+                    # Só Fase 1 registrada = comissão analisando (Reconsideração)
                     fase_recurso = "FASE 1"
                     if n_f1 is not None:
-                        # ComissÃ£o deferiu com nova nota
+                        # Comissão deferiu com nova nota
                         final_grade = n_f1
                         nota_recurso = str(n_f1)
                         status = "Encerrada"
                     else:
-                        # ComissÃ£o ainda analisando
+                        # Comissão ainda analisando
                         final_grade = None
                         nota_recurso = "-"
-                        status = "RECONSIDERAÃ‡ÃƒO COMISSÃƒO"
+                        status = "RECONSIDERAÇÃO COMISSÃO"
                 
             dt_av = row[c_dt_hom].strip() if not is_empty(n) and row[c_dt_hom].strip() else (row[c_dt_av2].strip() or row[c_dt_av1].strip() or "-")
             
@@ -601,14 +601,14 @@ def build_audit_data_from_geral(csv_path):
                 c_data = com_map.get(pm, {})
                 pm_evals[pm] = {
                     "NR PM": pm,
-                    "Posto/GraduaÃ§Ã£o": row[c_rank].strip(),
+                    "Posto/Graduação": row[c_rank].strip(),
                     "Nome Completo": row[c_name].strip(),
                     "Nome RPM": row[c_rpm].strip(),
                     "Nome Unidade Principal": row[c_unit].strip(),
                     "Quadro": row[c_quadro].strip(),
                     "Sit. Funcional": sit,
                     "Nota SIRH": c_data.get("nota", "-"),
-                    "ObservaÃ§Ã£o": c_data.get("obs", ""),
+                    "Observação": c_data.get("obs", ""),
                     "evals": []
                 }
             pm_evals[pm]["evals"].append(eval_data)
@@ -652,15 +652,15 @@ def build_audit_data_from_geral(csv_path):
             
         r_audit = {
             "NR PM": data["NR PM"],
-            "Posto/GraduaÃ§Ã£o": data["Posto/GraduaÃ§Ã£o"],
+            "Posto/Graduação": data["Posto/Graduação"],
             "Nome Completo": data["Nome Completo"],
             "Nome RPM": data["Nome RPM"],
             "Nome Unidade Principal": data["Nome Unidade Principal"],
             "Quadro": data["Quadro"],
             "Sit. Funcional": data["Sit. Funcional"],
-            "Qtd AvaliaÃ§Ãµes": qtd,
-            "Todas AvaliaÃ§Ãµes Foram Encerradas?": todas_encerradas,
-            "Nota Final - MÃ©dia AritmÃ©tica": final_avg_rounded,
+            "Qtd Avaliações": qtd,
+            "Todas Avaliações Foram Encerradas?": todas_encerradas,
+            "Nota Final - Média Aritmética": final_avg_rounded,
             "Nota SIRH": nota_sirh,
             "Auditoria": auditoria,
         }
@@ -668,23 +668,23 @@ def build_audit_data_from_geral(csv_path):
         for i in range(1, 5):
             if i <= qtd:
                 ev = evals[i-1]
-                r_audit[f"Data AvaliaÃ§Ã£o {i}"] = ev["date"]
-                r_audit[f"Fase AvaliaÃ§Ã£o {i}"] = ev["status"]
-                r_audit[f"Nota AvaliaÃ§Ã£o {i}"] = ev["grade"]
+                r_audit[f"Data Avaliação {i}"] = ev["date"]
+                r_audit[f"Fase Avaliação {i}"] = ev["status"]
+                r_audit[f"Nota Avaliação {i}"] = ev["grade"]
                 r_audit[f"Houve Recurso? {i}"] = ev["houve_recurso"]
                 r_audit[f"Fase Recurso {i}"] = ev["fase_recurso"]
                 r_audit[f"Nota Fase 2 ou 3 {i}"] = ev["nota_recurso"]
             else:
-                r_audit[f"Data AvaliaÃ§Ã£o {i}"] = np.nan
-                r_audit[f"Fase AvaliaÃ§Ã£o {i}"] = np.nan
-                r_audit[f"Nota AvaliaÃ§Ã£o {i}"] = np.nan
+                r_audit[f"Data Avaliação {i}"] = np.nan
+                r_audit[f"Fase Avaliação {i}"] = np.nan
+                r_audit[f"Nota Avaliação {i}"] = np.nan
                 r_audit[f"Houve Recurso? {i}"] = np.nan
                 r_audit[f"Fase Recurso {i}"] = np.nan
                 r_audit[f"Nota Fase 2 ou 3 {i}"] = np.nan
         
-        r_audit["ObservaÃ§Ã£o"] = data["ObservaÃ§Ã£o"]
+        r_audit["Observação"] = data["Observação"]
         
-        obs_lower = str(data["ObservaÃ§Ã£o"]).lower()
+        obs_lower = str(data["Observação"]).lower()
         motivo = "-"
         if "artigo 17" in obs_lower or "art 17" in obs_lower or "art. 17" in obs_lower or "art.17" in obs_lower:
             motivo = "ARTIGO 17"
@@ -727,7 +727,7 @@ def append_sigef_to_audit(df):
                     pm_clean = row[0].strip().lstrip("0")
                     if not pm_clean: continue
                     
-                    # T = 19 (NÃºmero de QuinquÃªnio)
+                    # T = 19 (Número de Quinquênio)
                     # X = 23 (Data ADE)
                     # AF = 31 (Ano Base)
                     # AG = 32 (Ord. Almanaque)
@@ -741,7 +741,7 @@ def append_sigef_to_audit(df):
                     ai = row[34].strip()
                     aj = row[35].strip()
                     
-                    # Reg Adicional: Se X (Data ADE) tem dado vÃ¡lido -> ADE. Se nÃ£o, T -> QQ. Se ambos -> ADE.
+                    # Reg Adicional: Se X (Data ADE) tem dado válido -> ADE. Se não, T -> QQ. Se ambos -> ADE.
                     reg_adicional = ""
                     if data_ade and str(data_ade).strip() not in ("-", "", "nan", "None"):
                         reg_adicional = "ADE"
@@ -782,7 +782,7 @@ def append_sigef_to_audit(df):
             if c in cols:
                 cols.remove(c)
                 
-        # Insert them right after SituaÃ§Ã£o Funcional
+        # Insert them right after Situação Funcional
         cols.insert(idx, "Conceito")
         cols.insert(idx + 1, "Reg. Adicional")
         cols.insert(idx + 2, "Ano Base")
@@ -844,7 +844,7 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
             return None, f"Falha ao baixar master Excel do Google Drive (ID: {drive_master_xlsx_id}): {str(e)}"
             
     if not os.path.exists(xlsx_path):
-        return None, f"Arquivo Excel consolidado ou geral.csv nÃ£o encontrado."
+        return None, f"Arquivo Excel consolidado ou geral.csv não encontrado."
         
     try:
         df = pd.read_excel(xlsx_path)
@@ -867,7 +867,7 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
     except Exception as e:
         return None, f"Erro ao ler planilha consolidada: {str(e)}"
 
-# gdown: download do Google Drive (opcional â€” sÃ³ necessÃ¡rio no modo Drive)
+# gdown: download do Google Drive (opcional — só necessário no modo Drive)
 
 
 try:
@@ -897,7 +897,7 @@ pd.set_option("styler.render.max_elements", 5_000_000)
 st.set_page_config(
 
 
-    page_title="AADP 2026 â€” AnÃ¡lise de AvaliaÃ§Ãµes",
+    page_title="AADP 2026 — Análise de Avaliações",
 
 
     page_icon=None,
@@ -915,7 +915,7 @@ st.set_page_config(
 
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CSS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────── CSS ──────────────────────────────────────────────────
 
 
 st.markdown("""
@@ -994,7 +994,7 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 
 
 
-/* Garante que a seta de recolhimento e expansÃ£o da barra lateral esteja sempre visÃ­vel */
+/* Garante que a seta de recolhimento e expansão da barra lateral esteja sempre visível */
 
 
 [data-testid="collapsedControl"], button[data-testid="stSidebarCollapseButton"] {
@@ -1102,8 +1102,8 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 .kpi-active-recurso { background: #282828 !important; box-shadow: 0 0 15px rgba(155, 89, 182, 0.45) !important; border: 1.5px solid #9B59B6 !important; border-left: 5px solid #9B59B6 !important; }
 
 /* Glassmorphic Crystal Style Button */
-button[aria-label="ðŸ‘ï¸ Mostrar Encerradas"],
-button[aria-label="ðŸ™ˆ Ocultar Encerradas"] {
+button[aria-label="👁️ Mostrar Encerradas"],
+button[aria-label="🙈 Ocultar Encerradas"] {
     background: rgba(155, 138, 92, 0.15) !important;
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
@@ -1116,29 +1116,29 @@ button[aria-label="ðŸ™ˆ Ocultar Encerradas"] {
     transition: all 0.3s ease !important;
 }
 
-button[aria-label="ðŸ‘ï¸ Mostrar Encerradas"]:hover,
-button[aria-label="ðŸ™ˆ Ocultar Encerradas"]:hover {
+button[aria-label="👁️ Mostrar Encerradas"]:hover,
+button[aria-label="🙈 Ocultar Encerradas"]:hover {
     background: rgba(155, 138, 92, 0.25) !important;
     border-color: rgba(155, 138, 92, 0.6) !important;
     box-shadow: 0 6px 25px rgba(155, 138, 92, 0.4), inset 0 1px 3px rgba(255, 255, 255, 0.2) !important;
     transform: translateY(-1px) !important;
 }
 
-button[aria-label="ðŸ‘ï¸ Mostrar Encerradas"]:active,
-button[aria-label="ðŸ™ˆ Ocultar Encerradas"]:active {
+button[aria-label="👁️ Mostrar Encerradas"]:active,
+button[aria-label="🙈 Ocultar Encerradas"]:active {
     background: rgba(128, 128, 128, 0.02) !important;
     transform: translateY(0px) !important;
 }
 
 /* Crystal Liquid styles for interactive legend buttons */
-button[aria-label="ðŸŸ¢ Encerrada"],
-button[aria-label="ðŸ”´ Aberta"],
-button[aria-label="ðŸŸ  Parcialmente Encerrada"],
-button[aria-label="ðŸŸ¡ HomologaÃ§Ã£o"],
-button[aria-label="âšª Encerrada"],
-button[aria-label="âšª Aberta"],
-button[aria-label="âšª Parcialmente Encerrada"],
-button[aria-label="âšª HomologaÃ§Ã£o"] {
+button[aria-label="🟢 Encerrada"],
+button[aria-label="🔴 Aberta"],
+button[aria-label="🟠 Parcialmente Encerrada"],
+button[aria-label="🟡 Homologação"],
+button[aria-label="⚪ Encerrada"],
+button[aria-label="⚪ Aberta"],
+button[aria-label="⚪ Parcialmente Encerrada"],
+button[aria-label="⚪ Homologação"] {
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
     border-radius: 30px !important;
@@ -1150,44 +1150,44 @@ button[aria-label="âšª HomologaÃ§Ã£o"] {
 }
 
 /* Hover effects */
-button[aria-label="ðŸŸ¢ Encerrada"]:hover,
-button[aria-label="ðŸ”´ Aberta"]:hover,
-button[aria-label="ðŸŸ  Parcialmente Encerrada"]:hover,
-button[aria-label="ðŸŸ¡ HomologaÃ§Ã£o"]:hover,
-button[aria-label="âšª Encerrada"]:hover,
-button[aria-label="âšª Aberta"]:hover,
-button[aria-label="âšª Parcialmente Encerrada"]:hover,
-button[aria-label="âšª HomologaÃ§Ã£o"]:hover {
+button[aria-label="🟢 Encerrada"]:hover,
+button[aria-label="🔴 Aberta"]:hover,
+button[aria-label="🟠 Parcialmente Encerrada"]:hover,
+button[aria-label="🟡 Homologação"]:hover,
+button[aria-label="⚪ Encerrada"]:hover,
+button[aria-label="⚪ Aberta"]:hover,
+button[aria-label="⚪ Parcialmente Encerrada"]:hover,
+button[aria-label="⚪ Homologação"]:hover {
     transform: translateY(-1px) !important;
 }
 
 /* Colored glowing styles for active buttons */
-button[aria-label="ðŸŸ¢ Encerrada"] {
+button[aria-label="🟢 Encerrada"] {
     background: rgba(112, 173, 71, 0.15) !important;
     border: 1px solid #70AD47 !important;
     box-shadow: 0 0 10px rgba(112, 173, 71, 0.3) !important;
 }
-button[aria-label="ðŸ”´ Aberta"] {
+button[aria-label="🔴 Aberta"] {
     background: rgba(255, 68, 68, 0.15) !important;
     border: 1px solid #FF4444 !important;
     box-shadow: 0 0 10px rgba(255, 68, 68, 0.3) !important;
 }
-button[aria-label="ðŸŸ  Parcialmente Encerrada"] {
+button[aria-label="🟠 Parcialmente Encerrada"] {
     background: rgba(255, 140, 0, 0.15) !important;
     border: 1px solid #FF8C00 !important;
     box-shadow: 0 0 10px rgba(255, 140, 0, 0.3) !important;
 }
-button[aria-label="ðŸŸ¡ HomologaÃ§Ã£o"] {
+button[aria-label="🟡 Homologação"] {
     background: rgba(255, 217, 102, 0.15) !important;
     border: 1px solid #FFD966 !important;
     box-shadow: 0 0 10px rgba(255, 217, 102, 0.3) !important;
 }
 
 /* Muted look for inactive buttons */
-button[aria-label="âšª Encerrada"],
-button[aria-label="âšª Aberta"],
-button[aria-label="âšª Parcialmente Encerrada"],
-button[aria-label="âšª HomologaÃ§Ã£o"] {
+button[aria-label="⚪ Encerrada"],
+button[aria-label="⚪ Aberta"],
+button[aria-label="⚪ Parcialmente Encerrada"],
+button[aria-label="⚪ Homologação"] {
     background: rgba(128, 128, 128, 0.03) !important;
     border: 1px solid rgba(128, 128, 128, 0.15) !important;
     opacity: 0.55 !important;
@@ -1323,8 +1323,8 @@ div[data-testid="metric-container"]{background:#1c1c1c;border-radius:10px;
   padding:12px;box-shadow:0 2px 8px rgba(0,0,0,.3);}
 
 
-/* BotÃµes Gerais - Efeito Cristal LÃ­quido (Glassmorphism Premium) */
-/* BotÃµes Gerais - Efeito Cristal LÃ­quido (Glassmorphism Premium) */
+/* Botões Gerais - Efeito Cristal Líquido (Glassmorphism Premium) */
+/* Botões Gerais - Efeito Cristal Líquido (Glassmorphism Premium) */
 .stButton button {
   background: rgba(128, 128, 128, 0.06) !important;
   color: var(--text-color) !important;
@@ -1362,7 +1362,7 @@ div[data-testid="metric-container"]{background:#1c1c1c;border-radius:10px;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6) !important;
 }
 
-/* BotÃµes PrimÃ¡rios - Efeito Cristal Ouro (Ativo) */
+/* Botões Primários - Efeito Cristal Ouro (Ativo) */
 .stButton button[data-testid="baseButton-primary"] {
   background: linear-gradient(135deg, rgba(155, 138, 92, 0.25) 0%, rgba(0, 0, 0, 0.6) 100%) !important;
   color: var(--text-color) !important;
@@ -1386,7 +1386,7 @@ div[data-testid="metric-container"]{background:#1c1c1c;border-radius:10px;
   color: var(--text-color) !important;
 }
 
-/* Sidebar BotÃµes SecundÃ¡rios */
+/* Sidebar Botões Secundários */
 div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"] {
   background: rgba(128, 128, 128, 0.05) !important;
   color: var(--text-color) !important;
@@ -1417,7 +1417,7 @@ div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"]:hover * 
   color: var(--text-color) !important;
 }
 
-/* Sidebar BotÃµes PrimÃ¡rios */
+/* Sidebar Botões Primários */
 div[data-testid="stSidebar"] button[data-testid="baseButton-primary"] {
   background: linear-gradient(135deg, rgba(155, 138, 92, 0.3) 0%, rgba(0, 0, 0, 0.7) 100%) !important;
   color: #ffffff !important;
@@ -1657,7 +1657,7 @@ div[data-baseweb="input"] > div:focus-within {
 
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CONSTANTES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────── CONSTANTES ───────────────────────────────────────────
 
 
 THIS_DIR  = Path(__file__).parent
@@ -1706,31 +1706,31 @@ CONCEITO_FAIXA = {
 
 STATUS_COLORS = {
     "Encerrada":                  "#70AD47",
-    "HomologaÃ§Ã£o":              "#FFD966",
+    "Homologação":              "#FFD966",
     "Parcialmente Encerrada":     "#FF8C00",
     "Aberta":                     "#FF4444",
     "EM PRAZO DE RECURSO":         "#BDC3C7",
-    "RECONSIDERAÃ‡ÃƒO COMISSÃƒO":    "#D6A2E8",
+    "RECONSIDERAÇÃO COMISSÃO":    "#D6A2E8",
     "AUTORIDADE RECURSAL":        "#AF7AC5",
 }
 
 
-SIT_COLORS = {"ComissÃ£o Atual":"#4472C4","Nota ProvisÃ³ria":"#FFC000"}
+SIT_COLORS = {"Comissão Atual":"#4472C4","Nota Provisória":"#FFC000"}
 
 
 # Ordem para empilhamento: Encerradas embaixo, pendentes em cima
 
 
 STACK_ORDER  = [
-    "Encerrada", "Aberta", "Parcialmente Encerrada", "HomologaÃ§Ã£o",
-    "EM PRAZO DE RECURSO", "RECONSIDERAÃ‡ÃƒO COMISSÃƒO", "AUTORIDADE RECURSAL"
+    "Encerrada", "Aberta", "Parcialmente Encerrada", "Homologação",
+    "EM PRAZO DE RECURSO", "RECONSIDERAÇÃO COMISSÃO", "AUTORIDADE RECURSAL"
 ]
 
 
 
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CONFIGURAÃ‡ÃƒO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────── CONFIGURAÇÃO ─────────────────────────────────────────
 
 
 def load_config():
@@ -1754,7 +1754,7 @@ def load_config():
             pass
 
 
-    # Carrega do st.secrets do Streamlit para evitar perda de IDs/links apÃ³s reinicializaÃ§Ãµes
+    # Carrega do st.secrets do Streamlit para evitar perda de IDs/links após reinicializações
 
 
     for key in ["drive_av_id", "drive_si_id", "drive_geral_id", "drive_com_id", "drive_master_xlsx_id", "sheet_api_url", "fonte_dados", "db_path", "smtp_host", "smtp_port", "smtp_user", "smtp_pass", "alert_receiver_email", "alert_webhook_url"]:
@@ -1961,7 +1961,7 @@ cfg = load_config()
 
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ DATABASE WRAPPERS (SQLite / Google Sheets Cloud) â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────── DATABASE WRAPPERS (SQLite / Google Sheets Cloud) ───────
 
 
 def check_use_cloud():
@@ -2114,19 +2114,19 @@ def send_new_user_alert(pm, name, rank, rpm, unit, function):
     
     cfg = load_config()
     
-    subject = f"âš ï¸ Novo Cadastro Pendente AADP 2026 - PM: {pm}"
-    body = f"""OlÃ¡ Administrador,
+    subject = f"⚠️ Novo Cadastro Pendente AADP 2026 - PM: {pm}"
+    body = f"""Olá Administrador,
 
 Um novo pedido de cadastro de acesso ao AADP 2026 foi realizado:
 
-â€¢ NÂº PM: {pm}
-â€¢ Nome: {name}
-â€¢ Posto/GraduaÃ§Ã£o: {rank}
-â€¢ RPM/UDG: {rpm}
-â€¢ Unidade: {unit}
-â€¢ FunÃ§Ã£o: {function}
+• Nº PM: {pm}
+• Nome: {name}
+• Posto/Graduação: {rank}
+• RPM/UDG: {rpm}
+• Unidade: {unit}
+• Função: {function}
 
-Por favor, acesse o Painel Administrador do sistema para aprovar ou recusar esta solicitaÃ§Ã£o.
+Por favor, acesse o Painel Administrador do sistema para aprovar ou recusar esta solicitação.
 """
     
     # 1. Webhook Alert (Zapier/Make/etc)
@@ -2478,7 +2478,7 @@ def db_get_pending_users():
 
     users = get_cached_users()
     
-    # Mapeia PMs que jÃ¡ possuem um status resolvido (Ativo, Recusado, Bloqueado)
+    # Mapeia PMs que já possuem um status resolvido (Ativo, Recusado, Bloqueado)
     non_pending_pms = {str(u["pm"]).strip() for u in users if u["status"] != "Pendente"}
 
 
@@ -2488,7 +2488,7 @@ def db_get_pending_users():
 
     for u in users:
         pm = str(u["pm"]).strip()
-        # Se o PM nÃ£o tem status resolvido e ainda nÃ£o foi listado nas pendÃªncias
+        # Se o PM não tem status resolvido e ainda não foi listado nas pendências
         if u["status"] == "Pendente" and pm not in non_pending_pms and pm not in seen:
 
 
@@ -2867,12 +2867,12 @@ def db_check_user_status(pm):
 
 def _auto_detect_role(sector: str):
     """
-    Determina automaticamente o perfil do usuÃ¡rio com base no NOME UNIDADE (col J do SIGEF).
+    Determina automaticamente o perfil do usuário com base no NOME UNIDADE (col J do SIGEF).
     Regras:
-      - Se contiver 'SADM' â†’ perfil 'SADM' (liberaÃ§Ã£o automÃ¡tica)
-      - Se contiver 'P1'   â†’ perfil 'P1'   (liberaÃ§Ã£o automÃ¡tica)
-      - Qualquer outro valor â†’ None (cadastro fica PENDENTE para o administrador)
-    NOTA: Perfis GESTOR e ADMINISTRADOR NUNCA sÃ£o liberados automaticamente.
+      - Se contiver 'SADM' → perfil 'SADM' (liberação automática)
+      - Se contiver 'P1'   → perfil 'P1'   (liberação automática)
+      - Qualquer outro valor → None (cadastro fica PENDENTE para o administrador)
+    NOTA: Perfis GESTOR e ADMINISTRADOR NUNCA são liberados automaticamente.
     """
     s = str(sector).strip().upper()
     if "SADM" in s:
@@ -2890,7 +2890,7 @@ def db_re_request_access(pm, name, rank, rpm, unit, sector, password_hash):
 
     success = False
 
-    # Detecta perfil automÃ¡tico pelo NOME UNIDADE (col J SIGEF)
+    # Detecta perfil automático pelo NOME UNIDADE (col J SIGEF)
     auto_role = _auto_detect_role(sector)
     final_role   = auto_role if auto_role else "PENDENTE"
     final_status = "Ativo"   if auto_role else "Pendente"
@@ -2962,7 +2962,7 @@ def db_re_request_access(pm, name, rank, rpm, unit, sector, password_hash):
     if success:
         refresh_db_cache()
         if not auto_role:
-            # SÃ³ envia alerta quando nÃ£o hÃ¡ liberaÃ§Ã£o automÃ¡tica
+            # Só envia alerta quando não há liberação automática
             try:
                 send_new_user_alert(pm, name, rank, rpm, unit, sector)
             except Exception:
@@ -2982,7 +2982,7 @@ def db_create_new_request(pm, name, rank, rpm, unit, sector, password_hash):
 
     success = False
 
-    # Detecta perfil automÃ¡tico pelo NOME UNIDADE (col J SIGEF)
+    # Detecta perfil automático pelo NOME UNIDADE (col J SIGEF)
     auto_role = _auto_detect_role(sector)
     final_role   = auto_role if auto_role else "PENDENTE"
     final_status = "Ativo"   if auto_role else "Pendente"
@@ -3051,7 +3051,7 @@ def db_create_new_request(pm, name, rank, rpm, unit, sector, password_hash):
     if success:
         refresh_db_cache()
         if not auto_role:
-            # SÃ³ envia alerta quando nÃ£o hÃ¡ liberaÃ§Ã£o automÃ¡tica
+            # Só envia alerta quando não há liberação automática
             try:
                 send_new_user_alert(pm, name, rank, rpm, unit, sector)
             except Exception:
@@ -3063,7 +3063,7 @@ def db_create_new_request(pm, name, rank, rpm, unit, sector, password_hash):
 
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ LÃ“GICA DADOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────── LÓGICA DADOS ─────────────────────────────────────────
 
 
 def normaliza(t):
@@ -3141,7 +3141,7 @@ def matches_rpm(reg_rpm, csv_rpm):
     
 
 
-    # Extrair dÃ­gitos de forma ultra rÃ¡pida
+    # Extrair dígitos de forma ultra rápida
 
 
     reg_digits = "".join(c for c in s_reg if c.isdigit())
@@ -3168,7 +3168,7 @@ def matches_rpm(reg_rpm, csv_rpm):
 def find_sigef_user(pm_number: str) -> dict:
 
 
-    """Busca os dados do militar no SIGEF.csv pelo NÂº PM (6 dÃ­gitos)."""
+    """Busca os dados do militar no SIGEF.csv pelo Nº PM (6 dígitos)."""
 
 
     pm_clean = pm_number.strip().lstrip("0")
@@ -3189,7 +3189,7 @@ def find_sigef_user(pm_number: str) -> dict:
         si_path = "SIGEF.csv"
 
 
-        # Se nÃ£o existe localmente, tenta baixar do Google Drive
+        # Se não existe localmente, tenta baixar do Google Drive
 
 
         if not os.path.exists(si_path):
@@ -3288,7 +3288,7 @@ def find_sigef_user(pm_number: str) -> dict:
 def sync_users_with_sigef():
 
 
-    """Sincroniza os dados cadastrais de todos os usuÃ¡rios com o SIGEF.csv de forma otimizada."""
+    """Sincroniza os dados cadastrais de todos os usuários com o SIGEF.csv de forma otimizada."""
 
 
     try:
@@ -3333,7 +3333,7 @@ def sync_users_with_sigef():
 
 
 
-        # Carrega todo o SIGEF para um dicionÃ¡rio em memÃ³ria (uma Ãºnica leitura de disco)
+        # Carrega todo o SIGEF para um dicionário em memória (uma única leitura de disco)
 
 
         sigef_dict = {}
@@ -3345,7 +3345,7 @@ def sync_users_with_sigef():
             reader = csv.reader(f, delimiter=";")
 
 
-            next(reader)  # pula cabeÃ§alho
+            next(reader)  # pula cabeçalho
 
 
             for row in reader:
@@ -3414,7 +3414,7 @@ def calc_cert(j, l):
     c = concordam(j, l)
 
 
-    return "NÃƒO" if c is True else ("SIM" if c is False else "-")
+    return "NÃO" if c is True else ("SIM" if c is False else "-")
 
 
 
@@ -3447,7 +3447,7 @@ def calc_status(j, l, n):
     elif c is False:
 
 
-        return "Encerrada" if not is_empty(n) else "HomologaÃ§Ã£o"
+        return "Encerrada" if not is_empty(n) else "Homologação"
 
 
     return "Parcialmente Encerrada"
@@ -3473,14 +3473,14 @@ def rpm_sort_key(name):
 
 def _baixar_drive(file_id: str, destino: str):
     """Baixa um arquivo do Google Drive para destino local.
-    CompatÃ­vel com todas as versÃµes do gdown (com e sem parÃ¢metro fuzzy).
+    Compatível com todas as versões do gdown (com e sem parâmetro fuzzy).
     """
     if not GDOWN_OK:
-        raise ImportError("Biblioteca 'gdown' nÃ£o instalada. Execute: pip install gdown")
+        raise ImportError("Biblioteca 'gdown' não instalada. Execute: pip install gdown")
     import inspect
     url = f"https://drive.google.com/uc?id={file_id}&export=download"
     
-    # gdown >= 4.6 suporta fuzzy; versÃµes mais antigas nÃ£o suportam
+    # gdown >= 4.6 suporta fuzzy; versões mais antigas não suportam
     sig = inspect.signature(gdown.download)
     if "fuzzy" in sig.parameters:
         gdown.download(url, destino, quiet=True, fuzzy=True)
@@ -3494,7 +3494,7 @@ def _baixar_drive(file_id: str, destino: str):
         with open(destino, "rb") as f:
             head = f.read(200)
         if b"<!DOCTYPE" in head.upper() or b"<HTML" in head.upper():
-            raise ValueError("O Google Drive retornou uma pÃ¡gina HTML em vez do arquivo binÃ¡rio. Isso ocorre se o arquivo nÃ£o estiver compartilhado como pÃºblico ('Qualquer pessoa com o link pode ler'), se o ID estiver incorreto, ou se vocÃª estiver tentando baixar uma Planilha Google (Google Sheets) em vez de um arquivo Excel (.xlsx) carregado no Drive.")
+            raise ValueError("O Google Drive retornou uma página HTML em vez do arquivo binário. Isso ocorre se o arquivo não estiver compartilhado como público ('Qualquer pessoa com o link pode ler'), se o ID estiver incorreto, ou se você estiver tentando baixar uma Planilha Google (Google Sheets) em vez de um arquivo Excel (.xlsx) carregado no Drive.")
     except ValueError as ve:
         if os.path.exists(destino):
             os.remove(destino)
@@ -3511,7 +3511,7 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
             if len(row) > 9:
                 sigef[row[0].strip().lstrip("0") or "0"] = row[9].strip()
 
-    # Carregar o geral.csv se disponÃ­vel para obter as colunas de recursos e calcular o status de recurso
+    # Carregar o geral.csv se disponível para obter as colunas de recursos e calcular o status de recurso
     geral_f = os.path.join(os.path.dirname(av_f), "geral.csv")
     recourse_map = {}
     cdp_map = {}
@@ -3557,10 +3557,10 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                     c_dt_cdp_g = -1
                 c_concept_g = find_col_index(header, "Conceito Geral")
                 c_grade_g = find_col_index(header, "Nota Geral")
-                c_dt_av1_g = find_col_index(header, "Data da AvaliaÃ§Ã£o 1")
-                c_dt_av2_g = find_col_index(header, "Data da AvaliaÃ§Ã£o 2")
-                c_dt_hom_g = find_col_index(header, "Data da HomologaÃ§Ã£o")
-                c_n_hom_g = find_col_index(header, "Nota da HomologaÃ§Ã£o")
+                c_dt_av1_g = find_col_index(header, "Data da Avaliação 1")
+                c_dt_av2_g = find_col_index(header, "Data da Avaliação 2")
+                c_dt_hom_g = find_col_index(header, "Data da Homologação")
+                c_n_hom_g = find_col_index(header, "Nota da Homologação")
                 
                 c_n_f1_g = find_col_index(header, "Nota (Fase 1)")
                 c_n_f2_g = find_col_index(header, "Nota (Fase 2)")
@@ -3639,9 +3639,9 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                         pass
                     elif not has_appeal_g:
                         if c_g is False:
-                            # Houve discordÃ¢ncia: necessita passar para o homologador
+                            # Houve discordância: necessita passar para o homologador
                             if is_empty(n_hom_g):
-                                final_status_g = "HomologaÃ§Ã£o"
+                                final_status_g = "Homologação"
                             else:
                                 dt_base = parse_date_internal(row_g[c_dt_hom_g])
                                 if dt_base is not None:
@@ -3653,7 +3653,7 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                                 else:
                                     final_status_g = "Encerrada"
                         else:
-                            # NÃ£o houve discordÃ¢ncia: prazo de 5 dias Ãºteis a partir da data de AV2
+                            # Não houve discordância: prazo de 5 dias úteis a partir da data de AV2
                             dt_base = parse_date_internal(row_g[c_dt_av2_g])
                             if dt_base is not None:
                                 deadline = add_business_days_internal(dt_base, 5)
@@ -3664,28 +3664,28 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                             else:
                                 final_status_g = "Encerrada"
                     else:
-                        # Houve recurso (r_f1 registrado = militar interpÃ´s recurso)
+                        # Houve recurso (r_f1 registrado = militar interpôs recurso)
                         if n_f4_val is not None:
                             # Fase 4: encerra definitivamente
                             final_status_g = "Encerrada"
                         elif r_f3_val not in ("", "-") or n_f3_val is not None:
-                            # Fase 3 registrada = Autoridade Recursal DECIDIU â†’ Encerrada
+                            # Fase 3 registrada = Autoridade Recursal DECIDIU → Encerrada
                             final_status_g = "Encerrada"
                         elif r_f2_val not in ("", "-"):
-                            # Fase 2 registrada = comissÃ£o promoveu para Autoridade Recursal
+                            # Fase 2 registrada = comissão promoveu para Autoridade Recursal
                             if n_f2_val is not None:
                                 final_status_g = "Encerrada"
                             else:
                                 final_status_g = "AUTORIDADE RECURSAL"
                         else:
-                            # SÃ³ Fase 1 registrada = comissÃ£o analisando (ReconsideraÃ§Ã£o)
-                            final_status_g = "RECONSIDERAÃ‡ÃƒO COMISSÃƒO"
+                            # Só Fase 1 registrada = comissão analisando (Reconsideração)
+                            final_status_g = "RECONSIDERAÇÃO COMISSÃO"
                     key = (pm_g, av1_g, av2_g)
                     recourse_map[key] = final_status_g
         except Exception:
             pass
 
-    # Contagem de instÃ¢ncias de avaliaÃ§Ã£o ativas por PM
+    # Contagem de instâncias de avaliação ativas por PM
     pm_counts = {}
     with open(av_f, encoding="cp1252", errors="replace") as f:
         reader = csv.reader(f, delimiter=";")
@@ -3706,7 +3706,7 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
         reader = csv.reader(f, delimiter=";")
         next(reader)
         for row in reader:
-            while len(row) < 50: row.append("")  # CSV tem 50 colunas (colÃ©gio atÃ© Homologador)
+            while len(row) < 50: row.append("")  # CSV tem 50 colunas (colégio até Homologador)
             nrpm = row[0].strip(); local = row[5].strip()
             j = row[9].strip(); l = row[11].strip(); n = row[13].strip()
             
@@ -3722,9 +3722,9 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
             
             dt_cdp = cdp_map.get(key)
             if dt_cdp is not None and pm_norm in pm_max_cdp:
-                sc = "ComissÃ£o Atual" if dt_cdp >= pm_max_cdp[pm_norm] else "Nota ProvisÃ³ria"
+                sc = "Comissão Atual" if dt_cdp >= pm_max_cdp[pm_norm] else "Nota Provisória"
             else:
-                sc = "ComissÃ£o Atual" if (is_same_location or not has_multiple_evals) else "Nota ProvisÃ³ria"
+                sc = "Comissão Atual" if (is_same_location or not has_multiple_evals) else "Nota Provisória"
             
             # Verificar se temos o status do recurso no recourse_map
             pm_norm = normalize_pm_str(nrpm)
@@ -3777,34 +3777,34 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                 "Nota Geral":                n if not is_empty(n) else l,
 
 
-                "CertificaÃ§Ã£o Homologador":  calc_cert(j, l),
+                "Certificação Homologador":  calc_cert(j, l),
 
 
                 "Data HOM":                  row[12].strip(),
 
 
-                "Nota HomologaÃ§Ã£o":          n,
+                "Nota Homologação":          n,
 
 
-                "CompetÃªncia 1":             row[14].strip(),
+                "Competência 1":             row[14].strip(),
 
 
                 "Conceito Comp.1":           row[15].strip(), "Nota Comp.1": row[16].strip(),
 
 
-                "CompetÃªncia 2":             row[17].strip(),
+                "Competência 2":             row[17].strip(),
 
 
                 "Conceito Comp.2":           row[18].strip(), "Nota Comp.2": row[19].strip(),
 
 
-                "CompetÃªncia 3":             row[20].strip(),
+                "Competência 3":             row[20].strip(),
 
 
                 "Conceito Comp.3":           row[21].strip(), "Nota Comp.3": row[22].strip(),
 
 
-                "CompetÃªncia 4":             row[23].strip(),
+                "Competência 4":             row[23].strip(),
 
 
                 "Conceito Comp.4":           row[24].strip(), "Nota Comp.4": row[25].strip(),
@@ -3822,7 +3822,7 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                 "Unid. Principal (Av1)": row[30].strip(), "Local (Av1)": row[31].strip(),
 
 
-                "Quadro (Av1)":  row[32].strip(), "SituaÃ§Ã£o (Av1)": row[33].strip(),
+                "Quadro (Av1)":  row[32].strip(), "Situação (Av1)": row[33].strip(),
 
 
                 # Avaliador 2
@@ -3837,10 +3837,10 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                 "Unid. Principal (Av2)": row[38].strip(), "Local (Av2)": row[39].strip(),
 
 
-                "Quadro (Av2)":  row[40].strip(), "SituaÃ§Ã£o (Av2)": row[41].strip(),
+                "Quadro (Av2)":  row[40].strip(), "Situação (Av2)": row[41].strip(),
 
 
-                # Homologador (colunas 42â€“49)
+                # Homologador (colunas 42–49)
 
 
                 "nrPM (Hom)":    row[42].strip(), "Nome (Hom)":  row[43].strip(),
@@ -3852,13 +3852,13 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                 "Unid. Principal (Hom)": row[46].strip(), "Local (Hom)": row[47].strip(),
 
 
-                "Quadro (Hom)":  row[48].strip(), "SituaÃ§Ã£o (Hom)": row[49].strip(),
+                "Quadro (Hom)":  row[48].strip(), "Situação (Hom)": row[49].strip(),
 
 
-                "SituaÃ§Ã£o ComissÃ£o": sc,
+                "Situação Comissão": sc,
 
 
-                "Status AvaliaÃ§Ã£o":  status_av,
+                "Status Avaliação":  status_av,
 
 
             })
@@ -3870,11 +3870,11 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
 
 
 
-@st.cache_resource(show_spinner="â³ Carregando e processando dados...")
+@st.cache_resource(show_spinner="⏳ Carregando e processando dados...")
 def load_data(db_path: str, drive_av_id: str = "", drive_si_id: str = "", drive_geral_id: str = ""):
     """Carrega dados de pasta local ou Google Drive e gera o Geral.xlsx automaticamente."""
     if drive_av_id and drive_si_id:
-        # â”€â”€ Modo Google Drive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── Modo Google Drive ──────────────────────────────────────────────
         cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
         os.makedirs(cache_dir, exist_ok=True)
         av_f = os.path.join(cache_dir, "avaliacoes.csv")
@@ -3896,7 +3896,7 @@ def load_data(db_path: str, drive_av_id: str = "", drive_si_id: str = "", drive_
     else:
 
 
-        # â”€â”€ Modo pasta local â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── Modo pasta local ───────────────────────────────────────────────
 
 
         av_f = os.path.join(db_path, "avaliacoes.csv")
@@ -3905,10 +3905,10 @@ def load_data(db_path: str, drive_av_id: str = "", drive_si_id: str = "", drive_
         si_f = os.path.join(db_path, "SIGEF.csv")
 
 
-        if not os.path.exists(av_f): raise FileNotFoundError(f"NÃ£o encontrado: {av_f}")
+        if not os.path.exists(av_f): raise FileNotFoundError(f"Não encontrado: {av_f}")
 
 
-        if not os.path.exists(si_f): raise FileNotFoundError(f"NÃ£o encontrado: {si_f}")
+        if not os.path.exists(si_f): raise FileNotFoundError(f"Não encontrado: {si_f}")
 
 
         
@@ -3920,7 +3920,7 @@ def load_data(db_path: str, drive_av_id: str = "", drive_si_id: str = "", drive_
     
 
 
-    # Gera e substitui o Geral.xlsx na pasta local/servidor apenas se necessÃ¡rio
+    # Gera e substitui o Geral.xlsx na pasta local/servidor apenas se necessário
 
 
     try:
@@ -3953,7 +3953,7 @@ def load_data(db_path: str, drive_av_id: str = "", drive_si_id: str = "", drive_
         if build_needed:
 
 
-            xlsx_bytes = _build_workbook(df, "GERAL â€” AADP 2026", df)
+            xlsx_bytes = _build_workbook(df, "GERAL — AADP 2026", df)
 
 
             with open(geral_out, "wb") as f_out:
@@ -3986,13 +3986,13 @@ def apply_filters(df, rpm_f, unid_f, sc_f, st_f, cert_f):
     if unid_f: df = df[df["Unidade Principal (Avaliado)"].isin(unid_f)]
 
 
-    if sc_f:   df = df[df["SituaÃ§Ã£o ComissÃ£o"].isin(sc_f)]
+    if sc_f:   df = df[df["Situação Comissão"].isin(sc_f)]
 
 
-    if st_f:   df = df[df["Status AvaliaÃ§Ã£o"].isin(st_f)]
+    if st_f:   df = df[df["Status Avaliação"].isin(st_f)]
 
 
-    if cert_f: df = df[df["CertificaÃ§Ã£o Homologador"].isin(cert_f)]
+    if cert_f: df = df[df["Certificação Homologador"].isin(cert_f)]
 
 
     return df
@@ -4126,12 +4126,12 @@ def safe_df(styled_or_df, height=520, key_prefix=None, show_download=False, down
             "".join(str(c) for c in raw_df.columns).encode()
         ).hexdigest()[:8]
 
-    # Layout para campo de busca e botÃ£o de download
+    # Layout para campo de busca e botão de download
     st.markdown("<div style='margin-top: -15px; margin-bottom: -15px;'></div>", unsafe_allow_html=True)
     col_search, col_space, col_dl = st.columns([2.5, 0.1, 1], vertical_alignment="bottom")
     with col_search:
         busca = st.text_input(
-            "ðŸ” Busca rÃ¡pida (filtra qualquer coluna)",
+            "🔍 Busca rápida (filtra qualquer coluna)",
             key=f"{key_prefix}_busca",
             placeholder="Digite o nr PM, Nome ou Unidade para filtrar",
             label_visibility="collapsed",
@@ -4157,7 +4157,7 @@ def safe_df(styled_or_df, height=520, key_prefix=None, show_download=False, down
                 d_mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             
             st.download_button(
-                f"â¬‡ï¸ {download_label}",
+                f"⬇️ {download_label}",
                 d_file,
                 f"{download_name}.{d_ext}",
                 mime=d_mime,
@@ -4170,10 +4170,10 @@ def safe_df(styled_or_df, height=520, key_prefix=None, show_download=False, down
     limit = 500
     
     if shown > limit:
-        st.caption(f"ðŸ“Š Exibindo as primeiras **{limit}** de **{shown:,}** linhas encontradas (Total: {total:,} registros). Use o campo **Busca rÃ¡pida** acima para filtrar.")
+        st.caption(f"📊 Exibindo as primeiras **{limit}** de **{shown:,}** linhas encontradas (Total: {total:,} registros). Use o campo **Busca rápida** acima para filtrar.")
         df_to_show = df_filtered.head(limit)
     else:
-        st.caption(f"ðŸ“Š Exibindo **{shown:,}** de **{total:,}** registros.")
+        st.caption(f"📊 Exibindo **{shown:,}** de **{total:,}** registros.")
         df_to_show = df_filtered
 
     # Exibir com estilo quando possivel
@@ -4200,7 +4200,7 @@ def color_status(val):
     m = {"Encerrada":"background-color:#e8f5e1;color:#2d6a0f;font-weight:600",
 
 
-         "HomologaÃ§Ã£o":"background-color:#fff8db;color:#7a5c00;font-weight:600",
+         "Homologação":"background-color:#fff8db;color:#7a5c00;font-weight:600",
 
 
          "Parcialmente Encerrada":"background-color:#fff0db;color:#7a3d00;font-weight:600",
@@ -4208,7 +4208,7 @@ def color_status(val):
 
          "Aberta":"background-color:#fde8e8;color:#8b0000;font-weight:600",
          "EM PRAZO DE RECURSO":"background-color:#f2f3f4;color:#5d6d7e;font-weight:600",
-         "RECONSIDERAÃ‡ÃƒO COMISSÃƒO":"background-color:#f4ecf7;color:#6c3483;font-weight:600",
+         "RECONSIDERAÇÃO COMISSÃO":"background-color:#f4ecf7;color:#6c3483;font-weight:600",
          "AUTORIDADE RECURSAL":"background-color:#f4ecf7;color:#6c3483;font-weight:600"}
 
 
@@ -4221,10 +4221,10 @@ def color_status(val):
 def color_sit(val):
 
 
-    if val == "ComissÃ£o Atual":   return "background-color:#dce8f5;color:#1a3a6a;font-weight:600"
+    if val == "Comissão Atual":   return "background-color:#dce8f5;color:#1a3a6a;font-weight:600"
 
 
-    if val == "Nota ProvisÃ³ria":  return "background-color:#fff9e6;color:#7a5c00;font-weight:600"
+    if val == "Nota Provisória":  return "background-color:#fff9e6;color:#7a5c00;font-weight:600"
 
 
     return ""
@@ -4233,7 +4233,7 @@ def color_sit(val):
 
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SEGURANÃ‡A E AUTENTICAÃ‡ÃƒO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────── SEGURANÇA E AUTENTICAÇÃO ──────────────────────────────
 
 
 if "authenticated" not in st.session_state:
@@ -4272,13 +4272,13 @@ if not st.session_state.authenticated:
         if os.path.exists("logo_drh.png"):
             st.image("logo_drh.png", use_container_width=True)
         else:
-            st.markdown("<div style='text-align: center; font-size: 4.5rem; margin-bottom: 25px;'>ðŸ‘®</div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align: center; font-size: 4.5rem; margin-bottom: 25px;'>👮</div>", unsafe_allow_html=True)
 
 
         st.markdown("<h2 style='text-align: center; color: #9b8a5c; margin-top: -15px;'>Painel de Controle AADP</h2>", unsafe_allow_html=True)
 
 
-        st.markdown("<h4 style='text-align: center; color: #a0a0a0; font-size: 0.95rem;'>PolÃ­cia Militar de Minas Gerais Â· ResoluÃ§Ã£o 5458/2025</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='text-align: center; color: #a0a0a0; font-size: 0.95rem;'>Polícia Militar de Minas Gerais · Resolução 5458/2025</h4>", unsafe_allow_html=True)
 
 
         st.markdown("---")
@@ -4290,13 +4290,13 @@ if not st.session_state.authenticated:
         if "auth_mode" not in st.session_state:
 
 
-            st.session_state.auth_mode = "ðŸ”‘ Acessar Conta"
+            st.session_state.auth_mode = "🔑 Acessar Conta"
 
 
             
 
 
-        auth_mode = st.radio("Selecione uma opÃ§Ã£o:", ["ðŸ”‘ Acessar Conta", "ðŸ“ Solicitar Cadastro"], horizontal=True, key="auth_mode_radio")
+        auth_mode = st.radio("Selecione uma opção:", ["🔑 Acessar Conta", "📝 Solicitar Cadastro"], horizontal=True, key="auth_mode_radio")
 
 
         st.markdown("---")
@@ -4305,17 +4305,17 @@ if not st.session_state.authenticated:
         
 
 
-        if auth_mode == "ðŸ”‘ Acessar Conta":
+        if auth_mode == "🔑 Acessar Conta":
             if st.session_state.get("forgot_password_mode", False):
-                st.markdown("##### â“ Recuperar Acesso (Esqueci minha senha)")
+                st.markdown("##### ❓ Recuperar Acesso (Esqueci minha senha)")
                 
                 if st.session_state.get("forgot_step2", False) and st.session_state.get("forgot_target_pm"):
                     target_pm = st.session_state.forgot_target_pm
                     
                     st.warning(
-                        f"âš ï¸ **AtenÃ§Ã£o (PM: {target_pm})**:\n\n"
-                        "Para recuperar seu acesso vocÃª precisa revogar o acesso e criar novo acesso.\n\n"
-                        "Deseja prosseguir com a revogaÃ§Ã£o do seu cadastro atual?"
+                        f"⚠️ **Atenção (PM: {target_pm})**:\n\n"
+                        "Para recuperar seu acesso você precisa revogar o acesso e criar novo acesso.\n\n"
+                        "Deseja prosseguir com a revogação do seu cadastro atual?"
                     )
                     
                     col_c1, col_c2 = st.columns(2)
@@ -4329,15 +4329,15 @@ if not st.session_state.authenticated:
                         if st.button("Revogar", use_container_width=True, type="primary", key="btn_forgot_revoke"):
                             db_revoke_user(target_pm)
                             log_action(target_pm, "REVOGAR_AUTOCADASTRO", "Usuario solicitou revogacao por esquecimento de senha")
-                            st.success("âœ… Seu cadastro foi revogado com sucesso! Agora vocÃª pode solicitar um novo cadastro.")
+                            st.success("✅ Seu cadastro foi revogado com sucesso! Agora você pode solicitar um novo cadastro.")
                             st.session_state.forgot_password_mode = False
                             st.session_state.forgot_step2 = False
                             st.session_state.forgot_target_pm = None
-                            st.session_state.auth_mode_radio = "ðŸ“ Solicitar Cadastro"
+                            st.session_state.auth_mode_radio = "📝 Solicitar Cadastro"
                             st.rerun()
                 else:
-                    st.write("Informe o seu NÂº PM para verificar seu cadastro:")
-                    forgot_pm = st.text_input("NÂº PM:", key="forgot_pm_input", placeholder="Ex: 123456")
+                    st.write("Informe o seu Nº PM para verificar seu cadastro:")
+                    forgot_pm = st.text_input("Nº PM:", key="forgot_pm_input", placeholder="Ex: 123456")
                     
                     col_f1, col_f2 = st.columns(2)
                     with col_f1:
@@ -4347,21 +4347,21 @@ if not st.session_state.authenticated:
                     with col_f2:
                         if st.button("Verificar Cadastro", use_container_width=True, type="primary", key="btn_forgot_verify"):
                             if not forgot_pm or not forgot_pm.isdigit():
-                                st.error("Por favor, informe um NÂº PM vÃ¡lido (apenas nÃºmeros).")
+                                st.error("Por favor, informe um Nº PM válido (apenas números).")
                             else:
                                 f_pm = forgot_pm.strip()
                                 status = db_check_user_status(f_pm)
                                 if not status:
-                                    st.error("âŒ NÂº PM nÃ£o encontrado no sistema!")
+                                    st.error("❌ Nº PM não encontrado no sistema!")
                                 elif status == "Bloqueado":
-                                    st.warning("âš ï¸ Seu acesso jÃ¡ estÃ¡ revogado. VocÃª pode ir para a opÃ§Ã£o 'ðŸ“ Solicitar Cadastro' e realizar seu novo cadastro.")
+                                    st.warning("⚠️ Seu acesso já está revogado. Você pode ir para a opção '📝 Solicitar Cadastro' e realizar seu novo cadastro.")
                                 else:
                                     st.session_state.forgot_target_pm = f_pm
                                     st.session_state.forgot_step2 = True
                                     st.rerun()
             else:
                 with st.form("form_login", clear_on_submit=False):
-                    login_pm = st.text_input("NÂº PM:", key="login_pm_val", placeholder="Ex: 123456 ou ADM")
+                    login_pm = st.text_input("Nº PM:", key="login_pm_val", placeholder="Ex: 123456 ou ADM")
                     login_pass = st.text_input("Senha:", type="password", key="login_pass_val")
                     submitted_login = st.form_submit_button("Entrar", use_container_width=True, type="primary")
 
@@ -4392,14 +4392,14 @@ if not st.session_state.authenticated:
                                 st.success(f"Bem-vindo, {name}!")
                                 st.rerun()
                             elif status == "Pendente":
-                                st.warning("âš ï¸ Sua conta estÃ¡ aguardando liberaÃ§Ã£o do Administrador.")
+                                st.warning("⚠️ Sua conta está aguardando liberação do Administrador.")
                             else:
-                                st.error("âŒ Acesso revogado/bloqueado. Entre em contato com a DRH.")
+                                st.error("❌ Acesso revogado/bloqueado. Entre em contato com a DRH.")
                         else:
-                            st.error("âŒ NÂº PM ou Senha incorretos.")
+                            st.error("❌ Nº PM ou Senha incorretos.")
 
                 st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-                if st.button("â“ Esqueci minha senha", use_container_width=True, key="btn_forgot_password"):
+                if st.button("❓ Esqueci minha senha", use_container_width=True, key="btn_forgot_password"):
                     st.session_state.forgot_password_mode = True
                     st.session_state.forgot_step2 = False
                     st.session_state.forgot_target_pm = None
@@ -4412,16 +4412,16 @@ if not st.session_state.authenticated:
         else:
 
 
-            st.markdown("##### ðŸ“ SolicitaÃ§Ã£o de acesso - Painel de Controle AADP")
+            st.markdown("##### 📝 Solicitação de acesso - Painel de Controle AADP")
 
 
-            st.info("âš ï¸ Informe apenas os **6 primeiros dÃ­gitos** do seu NÂº PM (sem o dÃ­gito verificador).\n\nðŸ”’ **Importante:** Somente Comandante e Subcomandante de unidade, militares da P1 e SADM poderÃ£o solicitar e ter autorizado o acesso a este Painel de controle AADP.")
+            st.info("⚠️ Informe apenas os **6 primeiros dígitos** do seu Nº PM (sem o dígito verificador).\n\n🔒 **Importante:** Somente Comandante e Subcomandante de unidade, militares da P1 e SADM poderão solicitar e ter autorizado o acesso a este Painel de controle AADP.")
 
 
             
 
 
-            # Inicializa variÃ¡veis de estado
+            # Inicializa variáveis de estado
 
 
             if "sigef_data" not in st.session_state:
@@ -4439,10 +4439,10 @@ if not st.session_state.authenticated:
                 
 
 
-            # Entrada de NÂº PM
+            # Entrada de Nº PM
 
 
-            reg_pm = st.text_input("NÂº PM (Apenas os 6 primeiros dÃ­gitos):", max_chars=6, key="reg_pm", placeholder="Ex: 053108")
+            reg_pm = st.text_input("Nº PM (Apenas os 6 primeiros dígitos):", max_chars=6, key="reg_pm", placeholder="Ex: 053108")
 
 
             
@@ -4454,13 +4454,13 @@ if not st.session_state.authenticated:
             with col_cons:
 
 
-                if st.button("ðŸ” Consultar", use_container_width=True, type="secondary"):
+                if st.button("🔍 Consultar", use_container_width=True, type="secondary"):
 
 
                     if not reg_pm or not reg_pm.isdigit():
 
 
-                        st.error("Por favor, informe um NÂº PM vÃ¡lido (apenas nÃºmeros, mÃ¡ximo 6 dÃ­gitos).")
+                        st.error("Por favor, informe um Nº PM válido (apenas números, máximo 6 dígitos).")
 
 
                         st.session_state.sigef_data = None
@@ -4472,7 +4472,7 @@ if not st.session_state.authenticated:
                     else:
 
 
-                        with st.spinner("â³ Consultando banco de dados do SIGEF..."):
+                        with st.spinner("⏳ Consultando banco de dados do SIGEF..."):
 
 
                             res = find_sigef_user(reg_pm)
@@ -4484,16 +4484,16 @@ if not st.session_state.authenticated:
                                 st.session_state.sigef_data = res
 
 
-                                st.session_state.sigef_verified = False # Reseta a verificaÃ§Ã£o para nova busca
+                                st.session_state.sigef_verified = False # Reseta a verificação para nova busca
 
 
-                                st.success("âœ… Militar encontrado no SIGEF! Prossiga com a verificaÃ§Ã£o de seguranÃ§a abaixo.")
+                                st.success("✅ Militar encontrado no SIGEF! Prossiga com a verificação de segurança abaixo.")
 
 
                             else:
 
 
-                                st.error("âŒ NÂº PM nÃ£o encontrado no banco SIGEF. Verifique se digitou os 6 primeiros dÃ­gitos corretamente.")
+                                st.error("❌ Nº PM não encontrado no banco SIGEF. Verifique se digitou os 6 primeiros dígitos corretamente.")
 
 
                                 st.session_state.sigef_data = None
@@ -4505,7 +4505,7 @@ if not st.session_state.authenticated:
             with col_clear:
 
 
-                if st.button("ðŸ§¹ Limpar", use_container_width=True):
+                if st.button("🧹 Limpar", use_container_width=True):
 
 
                     st.session_state.sigef_data = None
@@ -4529,7 +4529,7 @@ if not st.session_state.authenticated:
                 
 
 
-                # Etapa 2: VerificaÃ§Ã£o de SeguranÃ§a (CPF e Nascimento)
+                # Etapa 2: Verificação de Segurança (CPF e Nascimento)
 
 
                 if not st.session_state.sigef_verified:
@@ -4538,16 +4538,16 @@ if not st.session_state.authenticated:
                     st.markdown("---")
 
 
-                    st.markdown("##### ðŸ”’ VerificaÃ§Ã£o de SeguranÃ§a")
+                    st.markdown("##### 🔒 Verificação de Segurança")
 
 
-                    st.write("Para confirmar se realmente Ã© vocÃª, confirme as duas informaÃ§Ãµes abaixo:")
+                    st.write("Para confirmar se realmente é você, confirme as duas informações abaixo:")
 
 
                     
 
 
-                    v_cpf = st.text_input("Digite seu CPF (apenas nÃºmeros):", max_chars=11, key="v_cpf", placeholder="Ex: 12345678901")
+                    v_cpf = st.text_input("Digite seu CPF (apenas números):", max_chars=11, key="v_cpf", placeholder="Ex: 12345678901")
 
 
                     v_birth = st.text_input("Digite sua Data de Nascimento (DD/MM/AAAA):", max_chars=10, key="v_birth", placeholder="Ex: 25/09/1957")
@@ -4559,7 +4559,7 @@ if not st.session_state.authenticated:
                     if st.button("Confirmar Dados", use_container_width=True, type="primary"):
 
 
-                        # Normaliza CPF: remove pontuaÃ§Ã£o e tambÃ©m todos os zeros Ã  esquerda
+                        # Normaliza CPF: remove pontuação e também todos os zeros à esquerda
 
 
                         clean_input_cpf = re.sub(r'\D', '', v_cpf).lstrip('0')
@@ -4571,7 +4571,7 @@ if not st.session_state.authenticated:
                         
 
 
-                        # Normaliza Data de Nascimento: remove qualquer caractere que nÃ£o seja nÃºmero (ex: barras)
+                        # Normaliza Data de Nascimento: remove qualquer caractere que não seja número (ex: barras)
 
 
                         clean_input_birth = re.sub(r'\D', '', v_birth)
@@ -4589,7 +4589,7 @@ if not st.session_state.authenticated:
                             st.session_state.sigef_verified = True
 
 
-                            st.success("âœ… Identidade confirmada com sucesso!")
+                            st.success("✅ Identidade confirmada com sucesso!")
 
 
                             st.rerun()
@@ -4598,13 +4598,13 @@ if not st.session_state.authenticated:
                         else:
 
 
-                            st.error("âŒ CPF ou Data de Nascimento incorretos. Verifique suas informaÃ§Ãµes e tente novamente.")
+                            st.error("❌ CPF ou Data de Nascimento incorretos. Verifique suas informações e tente novamente.")
 
 
                 
 
 
-                # Etapa 3: LiberaÃ§Ã£o do FormulÃ¡rio de Senha
+                # Etapa 3: Liberação do Formulário de Senha
 
 
                 if st.session_state.sigef_verified:
@@ -4613,10 +4613,10 @@ if not st.session_state.authenticated:
                     st.markdown("---")
 
 
-                    st.markdown("##### ðŸ‘¤ Dados Funcionais Confirmados:")
+                    st.markdown("##### 👤 Dados Funcionais Confirmados:")
 
 
-                    st.text_input("Posto/GraduaÃ§Ã£o:", value=data["rank"], disabled=True, key="disp_rank")
+                    st.text_input("Posto/Graduação:", value=data["rank"], disabled=True, key="disp_rank")
 
 
                     st.text_input("Nome Completo:", value=data["name"], disabled=True, key="disp_name")
@@ -4634,11 +4634,11 @@ if not st.session_state.authenticated:
                     
 
 
-                    st.markdown("##### ðŸ”‘ ConfiguraÃ§Ã£o de Senha de Acesso:")
+                    st.markdown("##### 🔑 Configuração de Senha de Acesso:")
 
 
                     with st.form("form_cadastro_final", clear_on_submit=False):
-                        st.warning("âš ï¸ **SeguranÃ§a:** Por motivos de seguranÃ§a, a senha de acesso cadastrada **NÃƒO** deve ser igual Ã  sua senha da **IntranetPM** ou do **SIRH**.")
+                        st.warning("⚠️ **Segurança:** Por motivos de segurança, a senha de acesso cadastrada **NÃO** deve ser igual à sua senha da **IntranetPM** ou do **SIRH**.")
                         reg_pass = st.text_input("Escolha uma Senha:", type="password", key="reg_pass")
 
 
@@ -4648,7 +4648,7 @@ if not st.session_state.authenticated:
                         
 
 
-                        submitted = st.form_submit_button("Enviar SolicitaÃ§Ã£o", use_container_width=True, type="primary")
+                        submitted = st.form_submit_button("Enviar Solicitação", use_container_width=True, type="primary")
 
 
                         
@@ -4669,7 +4669,7 @@ if not st.session_state.authenticated:
                         elif spass != reg_pass_conf:
 
 
-                            st.error("As senhas nÃ£o coincidem!")
+                            st.error("As senhas não coincidem!")
 
 
                         elif len(spass) < 6:
@@ -4682,7 +4682,7 @@ if not st.session_state.authenticated:
 
 
                             if st.session_state.get(f"registered_{data['pm']}", False):
-                                st.error("âŒ SolicitaÃ§Ã£o jÃ¡ processada. Por favor, retorne Ã  tela de Login.")
+                                st.error("❌ Solicitação já processada. Por favor, retorne à tela de Login.")
                             else:
                                 st.session_state[f"registered_{data['pm']}"] = True
                                 try:
@@ -4697,19 +4697,19 @@ if not st.session_state.authenticated:
                                         if current_status in ("Pendente", "Ativo"):
 
 
-                                            st.error("âŒ Este NÂº PM jÃ¡ possui solicitaÃ§Ã£o de acesso ativa ou pendente no sistema!")
+                                            st.error("❌ Este Nº PM já possui solicitação de acesso ativa ou pendente no sistema!")
 
 
                                         else:
-                                            # UsuÃ¡rio Bloqueado ou Recusado - pode solicitar novamente
+                                            # Usuário Bloqueado ou Recusado - pode solicitar novamente
                                             h_pass = hashlib.sha256(spass.encode()).hexdigest()
                                             db_re_request_access(data["pm"], data["name"], data["rank"], data["rpm"], data["unit"], data["sector"], h_pass)
                                             log_action(data["pm"], "RE_CADASTRO_SOLICITADO", f"Nome: {data['name']}, Posto: {data['rank']}")
                                             auto_role_check = _auto_detect_role(data["sector"])
                                             if auto_role_check:
-                                                st.success(f"âœ… Cadastro aprovado automaticamente! Seu perfil **{auto_role_check}** foi liberado. VocÃª jÃ¡ pode fazer login.")
+                                                st.success(f"✅ Cadastro aprovado automaticamente! Seu perfil **{auto_role_check}** foi liberado. Você já pode fazer login.")
                                             else:
-                                                st.success("âœ… Nova solicitaÃ§Ã£o enviada com sucesso! Aguarde a liberaÃ§Ã£o do Administrador.")
+                                                st.success("✅ Nova solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
                                             st.session_state.sigef_data = None
                                             st.session_state.sigef_verified = False
                                     else:
@@ -4726,9 +4726,9 @@ if not st.session_state.authenticated:
 
                                         auto_role_check = _auto_detect_role(data["sector"])
                                         if auto_role_check:
-                                            st.success(f"âœ… Cadastro aprovado automaticamente! Seu perfil **{auto_role_check}** foi liberado. VocÃª jÃ¡ pode fazer login.")
+                                            st.success(f"✅ Cadastro aprovado automaticamente! Seu perfil **{auto_role_check}** foi liberado. Você já pode fazer login.")
                                         else:
-                                            st.success("âœ… SolicitaÃ§Ã£o enviada com sucesso! Aguarde a liberaÃ§Ã£o do Administrador.")
+                                            st.success("✅ Solicitação enviada com sucesso! Aguarde a liberação do Administrador.")
 
 
                                         st.session_state.sigef_data = None
@@ -4746,7 +4746,7 @@ if not st.session_state.authenticated:
 
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SIDEBAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────── SIDEBAR ──────────────────────────────────────────────
 
 
 with st.sidebar:
@@ -4758,13 +4758,13 @@ with st.sidebar:
     st.markdown("### AADP 2026")
 
 
-    st.markdown("**Sistema de AnÃ¡lise de AvaliaÃ§Ãµes**")
+    st.markdown("**Sistema de Análise de Avaliações**")
 
 
     
 
 
-    # Determina o perfil ativo (real vs simulado) para ajustar as opÃ§Ãµes da barra lateral
+    # Determina o perfil ativo (real vs simulado) para ajustar as opções da barra lateral
 
 
     sidebar_active_role = st.session_state.get("simulated_role", st.session_state.user_role) if st.session_state.get("simulation_active", False) else st.session_state.user_role
@@ -4773,22 +4773,22 @@ with st.sidebar:
     
 
 
-    # Exibe informaÃ§Ãµes do militar
+    # Exibe informações do militar
 
 
-    st.markdown(f"<small>ðŸ‘¤ <b>Militar:</b> {st.session_state.user_name} ({st.session_state.user_pm})</small>", unsafe_allow_html=True)
+    st.markdown(f"<small>👤 <b>Militar:</b> {st.session_state.user_name} ({st.session_state.user_pm})</small>", unsafe_allow_html=True)
 
 
     if st.session_state.get("simulation_active", False) and st.session_state.user_role == "ADMINISTRADOR":
 
 
-        st.markdown(f"<small>ðŸ”‘ <b>Perfil Real:</b> ADMINISTRADOR</small>", unsafe_allow_html=True)
+        st.markdown(f"<small>🔑 <b>Perfil Real:</b> ADMINISTRADOR</small>", unsafe_allow_html=True)
 
 
-        st.markdown(f"<small>ðŸ•µï¸ <b>Simulado:</b> <span style='color:#ff9f43;'>{st.session_state.simulated_role}</span></small>", unsafe_allow_html=True)
+        st.markdown(f"<small>🕵️ <b>Simulado:</b> <span style='color:#ff9f43;'>{st.session_state.simulated_role}</span></small>", unsafe_allow_html=True)
 
 
-        if st.button("Voltar simulaÃ§Ã£o", key="sidebar_stop_sim", type="primary", use_container_width=True):
+        if st.button("Voltar simulação", key="sidebar_stop_sim", type="primary", use_container_width=True):
             st.session_state.simulation_active = False
             st.session_state.simulated_pm = ""
             st.session_state.simulated_name = ""
@@ -4803,7 +4803,7 @@ with st.sidebar:
     else:
 
 
-        st.markdown(f"<small>ðŸ”‘ <b>Perfil:</b> <span style='color:#9b8a5c;'>{sidebar_active_role}</span></small>", unsafe_allow_html=True)
+        st.markdown(f"<small>🔑 <b>Perfil:</b> <span style='color:#9b8a5c;'>{sidebar_active_role}</span></small>", unsafe_allow_html=True)
 
 
         
@@ -4831,7 +4831,7 @@ with st.sidebar:
         
 
 
-    btn_filtros_label = "ðŸ” Ocultar Filtros" if st.session_state.show_filtros else "ðŸ” Mostrar Filtros"
+    btn_filtros_label = "🔍 Ocultar Filtros" if st.session_state.show_filtros else "🔍 Mostrar Filtros"
 
 
     btn_filtros_type = "primary" if st.session_state.show_filtros else "secondary"
@@ -4858,38 +4858,38 @@ with st.sidebar:
 
 
 
-    # 2. PÃ¡ginas / NavegaÃ§Ã£o (Segundo)
+    # 2. Páginas / Navegação (Segundo)
 
 
-    st.markdown("#### ðŸ§­ PÃ¡ginas")
+    st.markdown("#### 🧭 Páginas")
 
 
     pages = []
     
     if sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
-        pages.append(("ðŸš¨ AnÃ¡lise de ComissÃµes :red[(NOVO)]", "ComissÃµes"))
+        pages.append(("🚨 Análise de Comissões :red[(NOVO)]", "Comissões"))
 
     pages.extend([
-        ("ðŸ“Š AnÃ¡lise GrÃ¡fica", "AnÃ¡lise GrÃ¡fica"),
-        ("ðŸ“‹ Dados Gerais", "Dados Gerais"),
-        ("â³ AvaliaÃ§Ãµes Pendentes", "AvaliaÃ§Ãµes Pendentes"),
-        ("ðŸ‘¥ Avaliadores Pendentes", "Avaliadores Pendentes"),
+        ("📊 Análise Gráfica", "Análise Gráfica"),
+        ("📋 Dados Gerais", "Dados Gerais"),
+        ("⏳ Avaliações Pendentes", "Avaliações Pendentes"),
+        ("👥 Avaliadores Pendentes", "Avaliadores Pendentes"),
     ])
 
-    # P1 e SADM nÃ£o possuem acesso Ã s opÃ§Ãµes de exportaÃ§Ã£o/relatÃ³rios
+    # P1 e SADM não possuem acesso às opções de exportação/relatórios
     if sidebar_active_role not in ("P1", "SADM"):
-        pages.append(("ðŸ“¥ Gerar RelatÃ³rio", "Gerar RelatÃ³rio"))
+        pages.append(("📥 Gerar Relatório", "Gerar Relatório"))
     if sidebar_active_role not in ("SADM",):
-        pages.append(("ðŸ“„ RelatÃ³rio Word", "RelatÃ³rio Word"))
+        pages.append(("📄 Relatório Word", "Relatório Word"))
 
-    # Auditoria de Notas: visÃ­vel para ADMINISTRADOR, GESTOR, P1 e SADM
+    # Auditoria de Notas: visível para ADMINISTRADOR, GESTOR, P1 e SADM
     if sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
-        pages.append(("ðŸ“Š Auditoria de Notas", "Auditoria de Notas"))
+        pages.append(("📊 Auditoria de Notas", "Auditoria de Notas"))
 
     if sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
-        pages.append(("ðŸ“Š Dados Consolidados", "Dados Consolidados"))
+        pages.append(("📊 Dados Consolidados", "Dados Consolidados"))
 
-    # O administrador real sempre vÃª o painel administrador
+    # O administrador real sempre vê o painel administrador
 
 
     if st.session_state.user_role == "ADMINISTRADOR":
@@ -4904,13 +4904,13 @@ with st.sidebar:
         if pending_count > 0:
 
 
-            pages.append((f"âš™ï¸ Painel Administrador (ðŸ”´ :red[{pending_count}])", "Painel Administrador"))
+            pages.append((f"⚙️ Painel Administrador (🔴 :red[{pending_count}])", "Painel Administrador"))
 
 
         else:
 
 
-            pages.append(("âš™ï¸ Painel Administrador", "Painel Administrador"))
+            pages.append(("⚙️ Painel Administrador", "Painel Administrador"))
 
 
 
@@ -4919,7 +4919,7 @@ with st.sidebar:
     if "active_page" not in st.session_state:
 
 
-        st.session_state.active_page = "AnÃ¡lise GrÃ¡fica"
+        st.session_state.active_page = "Análise Gráfica"
 
 
         
@@ -4928,16 +4928,16 @@ with st.sidebar:
     if st.session_state.active_page == "Painel Administrador" and st.session_state.user_role != "ADMINISTRADOR":
 
 
-        st.session_state.active_page = "AnÃ¡lise GrÃ¡fica"
+        st.session_state.active_page = "Análise Gráfica"
 
 
         
 
 
-    if st.session_state.active_page == "Gerar RelatÃ³rio" and sidebar_active_role in ("P1", "SADM"):
-        st.session_state.active_page = "AnÃ¡lise GrÃ¡fica"
-    elif st.session_state.active_page == "RelatÃ³rio Word" and sidebar_active_role in ("SADM",):
-        st.session_state.active_page = "AnÃ¡lise GrÃ¡fica"
+    if st.session_state.active_page == "Gerar Relatório" and sidebar_active_role in ("P1", "SADM"):
+        st.session_state.active_page = "Análise Gráfica"
+    elif st.session_state.active_page == "Relatório Word" and sidebar_active_role in ("SADM",):
+        st.session_state.active_page = "Análise Gráfica"
 
 
 
@@ -4960,7 +4960,7 @@ with st.sidebar:
 
 
 
-    # Inicializa variÃ¡veis para nÃ£o dar NameError
+    # Inicializa variáveis para não dar NameError
 
 
     drive_av_id = drive_si_id = drive_geral_id = ""
@@ -4969,7 +4969,7 @@ with st.sidebar:
     db_path = ""
 
 
-    fonte = cfg.get("fonte_dados", "ðŸ“ Pasta local / Servidor")
+    fonte = cfg.get("fonte_dados", "📁 Pasta local / Servidor")
 
 
     reload = False
@@ -4987,11 +4987,11 @@ with st.sidebar:
         st.markdown("---")
 
 
-        if st.button("ðŸ”„ Recarregar Dados", use_container_width=True, type="primary", key="btn_reload"):
+        if st.button("🔄 Recarregar Dados", use_container_width=True, type="primary", key="btn_reload"):
             st.cache_data.clear()
             st.cache_resource.clear()
             
-            # Limpar arquivos baixados para forÃ§ar download novo
+            # Limpar arquivos baixados para forçar download novo
             import tempfile
             cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
             for f in ["avaliacoes.csv", "SIGEF.csv", "geral.csv"]:
@@ -5022,13 +5022,13 @@ with st.sidebar:
 
 
 
-    # BotÃµes de Alterar Senha e Sair/Logoff no final da barra lateral
+    # Botões de Alterar Senha e Sair/Logoff no final da barra lateral
 
 
     st.markdown("---")
 
 
-    if st.button("ðŸ”‘ Alterar Senha", use_container_width=True, key="btn_toggle_change_password"):
+    if st.button("🔑 Alterar Senha", use_container_width=True, key="btn_toggle_change_password"):
 
 
         st.session_state.show_change_password = not st.session_state.get("show_change_password", False)
@@ -5040,10 +5040,10 @@ with st.sidebar:
 
 
 
-    if st.button("ðŸšª Sair / Logoff", use_container_width=True, key="btn_logoff"):
+    if st.button("🚪 Sair / Logoff", use_container_width=True, key="btn_logoff"):
 
 
-        log_action(st.session_state.user_pm, "LOGOFF", "SaÃ­da voluntÃ¡ria")
+        log_action(st.session_state.user_pm, "LOGOFF", "Saída voluntária")
 
 
         st.session_state.authenticated = False
@@ -5084,10 +5084,10 @@ with st.sidebar:
 
         st.rerun()
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CARREGAR DADOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────── CARREGAR DADOS ───────────────────────────────────────
 
 
-# Calcula as variÃ¡veis ativas considerando simulaÃ§Ã£o
+# Calcula as variáveis ativas considerando simulação
 
 
 if st.session_state.get("simulation_active", False):
@@ -5181,13 +5181,13 @@ try:
 except Exception as e:
 
 
-    data_ok = False; err_msg = str(e); last_mod_str = "Data/Hora indisponÃ­vel"
+    data_ok = False; err_msg = str(e); last_mod_str = "Data/Hora indisponível"
 
 
 
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ FILTROS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────── FILTROS ──────────────────────────────────────────────
 
 
 rpm_filter = unid_filter = sit_com_filter = status_filter = cert_filter = []
@@ -5199,13 +5199,13 @@ if data_ok:
     all_rpm   = sorted(df_full["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key)
 
 
-    all_status= ["Aberta", "Parcialmente Encerrada", "HomologaÃ§Ã£o", "Encerrada", "EM PRAZO DE RECURSO", "RECONSIDERAÃ‡ÃƒO COMISSÃƒO", "AUTORIDADE RECURSAL"]
+    all_status= ["Aberta", "Parcialmente Encerrada", "Homologação", "Encerrada", "EM PRAZO DE RECURSO", "RECONSIDERAÇÃO COMISSÃO", "AUTORIDADE RECURSAL"]
 
 
-    all_sit   = ["ComissÃ£o Atual","Nota ProvisÃ³ria"]
+    all_sit   = ["Comissão Atual","Nota Provisória"]
 
 
-    all_cert  = ["SIM","NÃƒO","-"]
+    all_cert  = ["SIM","NÃO","-"]
 
 
     with container_filtros:
@@ -5214,13 +5214,13 @@ if data_ok:
         if st.session_state.show_filtros:
 
 
-            st.markdown("#### ðŸ” Filtros de VisualizaÃ§Ã£o")
+            st.markdown("#### 🔍 Filtros de Visualização")
 
 
             if active_role not in ("P1", "SADM"):
 
 
-                rpm_filter = st.multiselect("ðŸ¢ Unidade RPM", all_rpm, placeholder="Todas")
+                rpm_filter = st.multiselect("🏢 Unidade RPM", all_rpm, placeholder="Todas")
 
 
             else:
@@ -5241,7 +5241,7 @@ if data_ok:
             if active_role != "SADM":
 
 
-                unid_filter = st.multiselect("ðŸ›ï¸ Subunidade", all_unid, placeholder="Todas")
+                unid_filter = st.multiselect("🏛️ Subunidade", all_unid, placeholder="Todas")
 
 
             else:
@@ -5256,29 +5256,29 @@ if data_ok:
             st.markdown("")
 
 
-            sit_com_filter = st.multiselect("ðŸ”µ SituaÃ§Ã£o ComissÃ£o", all_sit, placeholder="Todas")
+            sit_com_filter = st.multiselect("🔵 Situação Comissão", all_sit, placeholder="Todas")
 
 
-            status_filter  = st.multiselect("ðŸ“Š Status",            all_status, placeholder="Todos")
+            status_filter  = st.multiselect("📊 Status",            all_status, placeholder="Todos")
 
 
-            cert_filter    = st.multiselect("âœ… Cert. Homologador",  all_cert,   placeholder="Todos")
+            cert_filter    = st.multiselect("✅ Cert. Homologador",  all_cert,   placeholder="Todos")
 
 
             st.markdown("---")
 
 
-            st.markdown(f"<small>ðŸ• Carregado: {ts}</small>", unsafe_allow_html=True)
+            st.markdown(f"<small>🕐 Carregado: {ts}</small>", unsafe_allow_html=True)
 
 
-            st.markdown(f"<small>ðŸ“Š {fmt_num(len(df_full))} registros</small>", unsafe_allow_html=True)
+            st.markdown(f"<small>📊 {fmt_num(len(df_full))} registros</small>", unsafe_allow_html=True)
 
 
     df = apply_filters(df_full, rpm_filter, unid_filter, sit_com_filter, status_filter, cert_filter)
     
     PAGES_WITH_FILTER = [
-        "AnÃ¡lise GrÃ¡fica", "Dados Gerais", "AvaliaÃ§Ãµes Pendentes", 
-        "Avaliadores Pendentes", "Gerar RelatÃ³rio", "RelatÃ³rio Word"
+        "Análise Gráfica", "Dados Gerais", "Avaliações Pendentes", 
+        "Avaliadores Pendentes", "Gerar Relatório", "Relatório Word"
     ]
     if st.session_state.get("active_page", "") in PAGES_WITH_FILTER:
         df_full = df_full[df_full["Sit. Funcional"].isin(SITUACOES_ALVO)].copy()
@@ -5294,7 +5294,7 @@ else:
 
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CABEÃ‡ALHO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────── CABEÇALHO ────────────────────────────────────────────
 
 
 logo_base64 = ""
@@ -5321,77 +5321,77 @@ logo_html = f'<img src="data:image/png;base64,{logo_base64}" style="width: 100%;
 
 
 
-st.markdown(f'<div class="main-title">{logo_html}<div style="margin-top: 10px;"><h1 style="font-size: 2.3rem; margin: 0; font-weight: 800; color: #9b8a5c; text-transform: uppercase;">Painel de Controle AADP</h1><p style="font-size: 1.05rem; margin: 5px 0 0 0; color: #e5dccb; font-weight: 500;">PolÃ­cia Militar de Minas Gerais Â· ResoluÃ§Ã£o 5458/2025</p><p style="font-size: 0.9rem; margin-top: 8px; color: #a0a0a0; font-style: italic;">Dados consolidados em {last_mod_str}</p></div></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="main-title">{logo_html}<div style="margin-top: 10px;"><h1 style="font-size: 2.3rem; margin: 0; font-weight: 800; color: #9b8a5c; text-transform: uppercase;">Painel de Controle AADP</h1><p style="font-size: 1.05rem; margin: 5px 0 0 0; color: #e5dccb; font-weight: 500;">Polícia Militar de Minas Gerais · Resolução 5458/2025</p><p style="font-size: 0.9rem; margin-top: 8px; color: #a0a0a0; font-style: italic;">Dados consolidados em {last_mod_str}</p></div></div>', unsafe_allow_html=True)
 
 
 
 
 
-# --- FORMULÃRIO DE ALTERAÃ‡ÃƒO DE SENHA ---
+# --- FORMULÁRIO DE ALTERAÇÃO DE SENHA ---
 if st.session_state.get("show_change_password", False):
-    st.markdown('<div class="info-box" style="border-left: 5px solid #9b8a5c;">ðŸ›¡ï¸ <b>Alterar Senha do UsuÃ¡rio</b></div>', unsafe_allow_html=True)
+    st.markdown('<div class="info-box" style="border-left: 5px solid #9b8a5c;">🛡️ <b>Alterar Senha do Usuário</b></div>', unsafe_allow_html=True)
     with st.form("form_change_password", clear_on_submit=True):
         curr_pw = st.text_input("Senha Atual:", type="password", key="chg_curr_pw")
         new_pw = st.text_input("Nova Senha:", type="password", key="chg_new_pw")
         conf_pw = st.text_input("Confirmar Nova Senha:", type="password", key="chg_conf_pw")
-        submit_chg = st.form_submit_button("ðŸ’¾ Atualizar Senha", use_container_width=True, type="primary")
+        submit_chg = st.form_submit_button("💾 Atualizar Senha", use_container_width=True, type="primary")
             
     if submit_chg:
         if not curr_pw or not new_pw or not conf_pw:
-            st.error("âŒ Por favor, preencha todos os campos.")
+            st.error("❌ Por favor, preencha todos os campos.")
         elif new_pw != conf_pw:
-            st.error("âŒ A nova senha e a confirmaÃ§Ã£o nÃ£o coincidem.")
+            st.error("❌ A nova senha e a confirmação não coincidem.")
         else:
             h_curr = hashlib.sha256(curr_pw.encode()).hexdigest()
             row_pw = db_get_user_password(st.session_state.user_pm)
             if not row_pw or row_pw != h_curr:
-                st.error("âŒ Senha atual incorreta.")
+                st.error("❌ Senha atual incorreta.")
             else:
                 h_new = hashlib.sha256(new_pw.encode()).hexdigest()
                 db_update_password(st.session_state.user_pm, h_new)
                 log_action(st.session_state.user_pm, "ALTERAR_SENHA", "Senha alterada com sucesso pelo proprio usuario")
-                st.success("âœ… Senha alterada com sucesso!")
+                st.success("✅ Senha alterada com sucesso!")
                 st.session_state.show_change_password = False
                 st.rerun()
                 
-    if st.button("âŒ Cancelar / Fechar", use_container_width=True, key="btn_cancel_change_pw"):
+    if st.button("❌ Cancelar / Fechar", use_container_width=True, key="btn_cancel_change_pw"):
         st.session_state.show_change_password = False
         st.rerun()
     st.markdown("---")
 
 
 if not data_ok:
-    st.error(f"âŒ {err_msg}")
+    st.error(f"❌ {err_msg}")
     st.markdown(f"""<div class="info-box">
-    ðŸ‘ˆ Configure a pasta dos CSVs na barra lateral.<br>
-    ðŸ“‚ Pasta padrÃ£o criada: <code>{DADOS_DIR}</code><br>
+    👈 Configure a pasta dos CSVs na barra lateral.<br>
+    📂 Pasta padrão criada: <code>{DADOS_DIR}</code><br>
     Coloque os arquivos <code>avaliacoes.csv</code> e <code>SIGEF.csv</code> nessa pasta.
     </div>""", unsafe_allow_html=True)
     st.stop()
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ KPI CARDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────── KPI CARDS ────────────────────────────────────────────
 n_total  = len(df)
-n_enc    = (df["Status AvaliaÃ§Ã£o"]=="Encerrada").sum()
-n_hom    = (df["Status AvaliaÃ§Ã£o"]=="HomologaÃ§Ã£o").sum()
-n_parc   = (df["Status AvaliaÃ§Ã£o"]=="Parcialmente Encerrada").sum()
-n_aberta = (df["Status AvaliaÃ§Ã£o"]=="Aberta").sum()
-n_recurso = df["Status AvaliaÃ§Ã£o"].isin([
-    "RECONSIDERAÃ‡ÃƒO COMISSÃƒO", "AUTORIDADE RECURSAL", "EM PRAZO DE RECURSO"
+n_enc    = (df["Status Avaliação"]=="Encerrada").sum()
+n_hom    = (df["Status Avaliação"]=="Homologação").sum()
+n_parc   = (df["Status Avaliação"]=="Parcialmente Encerrada").sum()
+n_aberta = (df["Status Avaliação"]=="Aberta").sum()
+n_recurso = df["Status Avaliação"].isin([
+    "RECONSIDERAÇÃO COMISSÃO", "AUTORIDADE RECURSAL", "EM PRAZO DE RECURSO"
 ]).sum()
-n_ca     = (df["SituaÃ§Ã£o ComissÃ£o"]=="ComissÃ£o Atual").sum()
-n_np     = (df["SituaÃ§Ã£o ComissÃ£o"]=="Nota ProvisÃ³ria").sum()
+n_ca     = (df["Situação Comissão"]=="Comissão Atual").sum()
+n_np     = (df["Situação Comissão"]=="Nota Provisória").sum()
 
 
 
-if st.session_state.get("active_page", "AnÃ¡lise GrÃ¡fica") == "AnÃ¡lise GrÃ¡fica":
+if st.session_state.get("active_page", "Análise Gráfica") == "Análise Gráfica":
     col_block1, col_block2 = st.columns([1, 1.25], gap="large")
 
     with col_block1:
         st.markdown('<div class="kpi-card kpi-total">'
-                    '<div class="label">TOTAL AVALIAÃ‡Ã•ES</div>'
+                    '<div class="label">TOTAL AVALIAÇÕES</div>'
                     f'<div class="value">{fmt_num(n_total)}</div>'
-                    '<div class="sub">avaliaÃ§Ãµes</div>'
+                    '<div class="sub">avaliações</div>'
                     '</div>', unsafe_allow_html=True)
 
         st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
@@ -5399,13 +5399,13 @@ if st.session_state.get("active_page", "AnÃ¡lise GrÃ¡fica") == "AnÃ¡lise G
         cb1_1, cb1_2 = st.columns(2)
         with cb1_1:
             st.markdown('<div class="kpi-card kpi-ca">'
-                        '<div class="label">COMISSÃƒO ATUAL</div>'
+                        '<div class="label">COMISSÃO ATUAL</div>'
                         f'<div class="value">{fmt_num(n_ca)}</div>'
                         f'<div class="sub">{n_ca/max(n_total,1)*100:.2f}%</div>'
                         '</div>', unsafe_allow_html=True)
         with cb1_2:
             st.markdown('<div class="kpi-card kpi-np">'
-                        '<div class="label">NOTA PROVISÃ“RIA</div>'
+                        '<div class="label">NOTA PROVISÓRIA</div>'
                         f'<div class="value">{fmt_num(n_np)}</div>'
                         f'<div class="sub">{n_np/max(n_total,1)*100:.2f}%</div>'
                         '</div>', unsafe_allow_html=True)
@@ -5434,7 +5434,7 @@ if st.session_state.get("active_page", "AnÃ¡lise GrÃ¡fica") == "AnÃ¡lise G
                         '</div>', unsafe_allow_html=True)
         with cb2_3:
             st.markdown('<div class="kpi-card kpi-hom">'
-                        '<div class="label">HOMOLOGAÃ‡ÃƒO</div>'
+                        '<div class="label">HOMOLOGAÇÃO</div>'
                         f'<div class="value">{fmt_num(n_hom)}</div>'
                         '<div class="sub">HOM pendente</div>'
                         '</div>', unsafe_allow_html=True)
@@ -5453,37 +5453,37 @@ if st.session_state.get("active_page", "AnÃ¡lise GrÃ¡fica") == "AnÃ¡lise G
 
 st.markdown("<div class='main-nav-marker' style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ HORIZONTAL NAVIGATION TABS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────── HORIZONTAL NAVIGATION TABS ──────────────────────────
 main_active_role = st.session_state.get("simulated_role", st.session_state.user_role) if st.session_state.get("simulation_active", False) else st.session_state.user_role
 
 main_nav_pages = []
 
 if main_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
-    main_nav_pages.append(("ðŸš¨\nAnÃ¡lise de ComissÃµes :red[(NOVO)]", "ComissÃµes"))
+    main_nav_pages.append(("🚨\nAnálise de Comissões :red[(NOVO)]", "Comissões"))
 
 main_nav_pages.extend([
-    ("ðŸ“Š\nAnÃ¡lise GrÃ¡fica", "AnÃ¡lise GrÃ¡fica"),
-    ("ðŸ“‹\nDados Gerais", "Dados Gerais"),
-    ("â³\nAvaliaÃ§Ãµes Pendentes", "AvaliaÃ§Ãµes Pendentes"),
-    ("ðŸ‘¥\nAvaliadores Pendentes", "Avaliadores Pendentes"),
+    ("📊\nAnálise Gráfica", "Análise Gráfica"),
+    ("📋\nDados Gerais", "Dados Gerais"),
+    ("⏳\nAvaliações Pendentes", "Avaliações Pendentes"),
+    ("👥\nAvaliadores Pendentes", "Avaliadores Pendentes"),
 ])
 
 if main_active_role not in ("P1", "SADM"):
-    main_nav_pages.append(("ðŸ“¥\nGerar RelatÃ³rio", "Gerar RelatÃ³rio"))
-    main_nav_pages.append(("ðŸ“„\nRelatÃ³rio Word", "RelatÃ³rio Word"))
+    main_nav_pages.append(("📥\nGerar Relatório", "Gerar Relatório"))
+    main_nav_pages.append(("📄\nRelatório Word", "Relatório Word"))
 
 if main_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
-    main_nav_pages.append(("ðŸ“Š\nAuditoria de Notas", "Auditoria de Notas"))
+    main_nav_pages.append(("📊\nAuditoria de Notas", "Auditoria de Notas"))
 
 if main_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
-    main_nav_pages.append(("ðŸ“Š\nDados Consolidados", "Dados Consolidados"))
+    main_nav_pages.append(("📊\nDados Consolidados", "Dados Consolidados"))
 
 if st.session_state.user_role == "ADMINISTRADOR":
     p_count = db_get_pending_count()
     if p_count > 0:
-        main_nav_pages.append((f"âš™ï¸\nPainel Administrador ({p_count} ðŸ”´)", "Painel Administrador"))
+        main_nav_pages.append((f"⚙️\nPainel Administrador ({p_count} 🔴)", "Painel Administrador"))
     else:
-        main_nav_pages.append(("âš™ï¸\nPainel Administrador", "Painel Administrador"))
+        main_nav_pages.append(("⚙️\nPainel Administrador", "Painel Administrador"))
 
 # Render as horizontal buttons in columns
 num_tabs = len(main_nav_pages)
@@ -5502,13 +5502,13 @@ st.markdown("<div style='margin-bottom: 25px; border-bottom: 1px solid rgba(255,
 
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SELEÃ‡ÃƒO DE ABAS VIA SESSION STATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────── SELEÇÃO DE ABAS VIA SESSION STATE ───────────────────
 
 
 if "active_page" not in st.session_state:
 
 
-    st.session_state.active_page = "AnÃ¡lise GrÃ¡fica"
+    st.session_state.active_page = "Análise Gráfica"
 
 
 
@@ -5519,31 +5519,31 @@ active_page = st.session_state.active_page
 
 
 
-# TAB 1 â€” ANÃLISE GRÃFICA
+# TAB 1 — ANÁLISE GRÁFICA
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ══════════════════════════════════════════════════════════════════════════════
 
 
-if active_page == "AnÃ¡lise GrÃ¡fica":
+if active_page == "Análise Gráfica":
 
 
-    st.markdown("### ðŸ“Š AnÃ¡lise GrÃ¡fica das AvaliaÃ§Ãµes")
+    st.markdown("### 📊 Análise Gráfica das Avaliações")
 
 
 
 
 
-    # â”€â”€ LINHA 1: Pizza de Status (destaque, full width) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── LINHA 1: Pizza de Status (destaque, full width) ──────────────────────
 
 
     st.markdown("---")
 
 
-    ordered_labels = ["Aberta", "Parcialmente Encerrada", "HomologaÃ§Ã£o", "Encerrada", "EM PRAZO DE RECURSO", "RECONSIDERAÃ‡ÃƒO COMISSÃƒO", "AUTORIDADE RECURSAL"]
+    ordered_labels = ["Aberta", "Parcialmente Encerrada", "Homologação", "Encerrada", "EM PRAZO DE RECURSO", "RECONSIDERAÇÃO COMISSÃO", "AUTORIDADE RECURSAL"]
 
 
-    sd = df.groupby("Status AvaliaÃ§Ã£o").size()
+    sd = df.groupby("Status Avaliação").size()
 
 
     vals_pizza  = [int(sd.get(s, 0)) for s in ordered_labels]
@@ -5561,7 +5561,7 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
 
 
 
-    # Sombra para efeito 3D (circle com proporÃ§Ã£o assimÃ©trica = elipse)
+    # Sombra para efeito 3D (circle com proporção assimétrica = elipse)
 
 
     fig_status.add_shape(type="circle", xref="paper", yref="paper",
@@ -5582,16 +5582,16 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
         pull=[0.09, 0.06, 0.04, 0],
         texttemplate="<b>%{label}</b><br>%{value:,} (%{percent:.2%})",
         textposition="outside",
-        rotation=90,  # Solicitado pelo usuÃ¡rio
+        rotation=90,  # Solicitado pelo usuário
         textfont=dict(size=13, family="Inter, sans-serif"),
         insidetextorientation="radial",
         marker=dict(colors=cols_pizza, line=dict(color="#121212", width=3)),
-        hovertemplate="<b>%{label}</b><br>AvaliaÃ§Ãµes: <b>%{value:,}</b><br>%{percent:.2%}<extra></extra>",
+        hovertemplate="<b>%{label}</b><br>Avaliações: <b>%{value:,}</b><br>%{percent:.2%}<extra></extra>",
         sort=False,
     ))
 
     fig_status.add_annotation(
-        text=f"<b>{fmt_num(n_total)}</b><br><span style='font-size:11px;color:#a0a0a0'>avaliaÃ§Ãµes</span>",
+        text=f"<b>{fmt_num(n_total)}</b><br><span style='font-size:11px;color:#a0a0a0'>avaliações</span>",
         x=0.5, y=0.5, showarrow=False,
         font=dict(size=22, color="#9b8a5c", family="Inter"),
         align="center",
@@ -5599,7 +5599,7 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
 
     fig_status.update_layout(
         template="plotly_dark",
-        title=dict(text="<b>Status das AvaliaÃ§Ãµes â€” AADP 2026</b>",
+        title=dict(text="<b>Status das Avaliações — AADP 2026</b>",
                    font=dict(size=20, color="#9b8a5c"), x=0.5, y=0.96),
         height=500, showlegend=False,
         paper_bgcolor="rgba(0,0,0,0)",
@@ -5614,7 +5614,7 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
 
 
 
-    # â”€â”€ LINHA 2: SituaÃ§Ã£o ComissÃ£o + Status Ã— ComissÃ£o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── LINHA 2: Situação Comissão + Status × Comissão ────────────────────────
 
 
     st.markdown("---")
@@ -5629,13 +5629,13 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
     with c1:
 
 
-        sit_d = df.groupby("SituaÃ§Ã£o ComissÃ£o").size().reset_index(name="Qtd")
+        sit_d = df.groupby("Situação Comissão").size().reset_index(name="Qtd")
 
 
         fig_sit = go.Figure(go.Pie(
 
 
-            labels=sit_d["SituaÃ§Ã£o ComissÃ£o"], values=sit_d["Qtd"],
+            labels=sit_d["Situação Comissão"], values=sit_d["Qtd"],
 
 
             hole=0.50, pull=[0.05,0],
@@ -5647,13 +5647,13 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
             textfont=dict(size=12), sort=False,
 
 
-            marker=dict(colors=[SIT_COLORS.get(s,"#aaa") for s in sit_d["SituaÃ§Ã£o ComissÃ£o"]],
+            marker=dict(colors=[SIT_COLORS.get(s,"#aaa") for s in sit_d["Situação Comissão"]],
 
 
                         line=dict(color="#121212", width=3)),
 
 
-            hovertemplate="<b>%{label}</b><br>%{value:,} avaliaÃ§Ãµes (%{percent:.2%})<extra></extra>",
+            hovertemplate="<b>%{label}</b><br>%{value:,} avaliações (%{percent:.2%})<extra></extra>",
 
 
         ))
@@ -5665,7 +5665,7 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
             template="plotly_dark",
 
 
-            title=dict(text="<b>SituaÃ§Ã£o da ComissÃ£o</b>", font_size=15, x=0.5, font=dict(color="#9b8a5c")),
+            title=dict(text="<b>Situação da Comissão</b>", font_size=15, x=0.5, font=dict(color="#9b8a5c")),
 
 
             height=380, showlegend=False,
@@ -5689,28 +5689,28 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
         if "hide_enc_chart" not in st.session_state:
             st.session_state.hide_enc_chart = True
             
-        btn_label = "ðŸ‘ï¸ Mostrar Encerradas" if st.session_state.hide_enc_chart else "ðŸ™ˆ Ocultar Encerradas"
+        btn_label = "👁️ Mostrar Encerradas" if st.session_state.hide_enc_chart else "🙈 Ocultar Encerradas"
         if st.button(btn_label, key="btn_toggle_enc_chart", use_container_width=True):
             st.session_state.hide_enc_chart = not st.session_state.hide_enc_chart
             st.rerun()
             
         excluir_encerradas = st.session_state.hide_enc_chart
-        st.markdown("<p style='font-size: 0.78rem; color: #a0a0a0; margin-top: -8px; margin-bottom: 12px; font-style: italic;'>â„¹ï¸ Oculta avaliaÃ§Ãµes encerradas para ampliar e detalhar a escala dos status pendentes.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='font-size: 0.78rem; color: #a0a0a0; margin-top: -8px; margin-bottom: 12px; font-style: italic;'>ℹ️ Oculta avaliações encerradas para ampliar e detalhar a escala dos status pendentes.</p>", unsafe_allow_html=True)
         
-        cross = df.groupby(["Status AvaliaÃ§Ã£o","SituaÃ§Ã£o ComissÃ£o"]).size().reset_index(name="Qtd")
+        cross = df.groupby(["Status Avaliação","Situação Comissão"]).size().reset_index(name="Qtd")
         
         if excluir_encerradas:
-            cross = cross[cross["Status AvaliaÃ§Ã£o"] != "Encerrada"]
+            cross = cross[cross["Status Avaliação"] != "Encerrada"]
             
         current_labels = [l for l in ordered_labels if l != "Encerrada"] if excluir_encerradas else ordered_labels
-        cross["Status AvaliaÃ§Ã£o"] = pd.Categorical(cross["Status AvaliaÃ§Ã£o"],
+        cross["Status Avaliação"] = pd.Categorical(cross["Status Avaliação"],
                                                     categories=current_labels, ordered=True)
-        cross = cross.sort_values("Status AvaliaÃ§Ã£o")
+        cross = cross.sort_values("Status Avaliação")
         
-        fig_bar = px.bar(cross, x="Status AvaliaÃ§Ã£o", y="Qtd", color="SituaÃ§Ã£o ComissÃ£o",
+        fig_bar = px.bar(cross, x="Status Avaliação", y="Qtd", color="Situação Comissão",
                          color_discrete_map=SIT_COLORS, barmode="group", text="Qtd",
                          template="plotly_dark",
-                         title="<b>Status Ã— SituaÃ§Ã£o ComissÃ£o</b>")
+                         title="<b>Status × Situação Comissão</b>")
         
         fig_bar.update_traces(textposition="outside", textfont_size=11)
         
@@ -5728,7 +5728,7 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
 
 
 
-    # â”€â”€ LINHA 3: Barras por RPM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── LINHA 3: Barras por RPM ────────────────────────────────────────────────
 
 
     st.markdown("---")
@@ -5737,7 +5737,7 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
     col_s1, col_s2 = st.columns([1, 1])
     with col_s1:
         sort_option = st.selectbox(
-            "OrdenaÃ§Ã£o das Unidades (RPM):",
+            "Ordenação das Unidades (RPM):",
             [
                 "Crescente por Unidade",
                 "Decrescente por Unidade",
@@ -5760,28 +5760,28 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
         st.session_state.dist_legend_hom = True
 
     # Legenda Interativa - Checkboxes para selecionar os status
-    st.markdown("<p style='font-size: 0.95rem; font-weight: bold; margin-bottom: 6px; color: #9b8a5c;'>Legenda Interativa â€” Selecione os Status para ExibiÃ§Ã£o e OrdenaÃ§Ã£o:</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 0.95rem; font-weight: bold; margin-bottom: 6px; color: #9b8a5c;'>Legenda Interativa — Selecione os Status para Exibição e Ordenação:</p>", unsafe_allow_html=True)
     l1, l2, l3, l4 = st.columns(4)
     with l1:
-        enc_label = "ðŸŸ¢ Encerrada" if st.session_state.dist_legend_enc else "âšª Encerrada"
+        enc_label = "🟢 Encerrada" if st.session_state.dist_legend_enc else "⚪ Encerrada"
         if st.button(enc_label, key="btn_dist_enc", use_container_width=True):
             st.session_state.dist_legend_enc = not st.session_state.dist_legend_enc
             st.rerun()
         show_enc = st.session_state.dist_legend_enc
     with l2:
-        abe_label = "ðŸ”´ Aberta" if st.session_state.dist_legend_abe else "âšª Aberta"
+        abe_label = "🔴 Aberta" if st.session_state.dist_legend_abe else "⚪ Aberta"
         if st.button(abe_label, key="btn_dist_abe", use_container_width=True):
             st.session_state.dist_legend_abe = not st.session_state.dist_legend_abe
             st.rerun()
         show_abe = st.session_state.dist_legend_abe
     with l3:
-        par_label = "ðŸŸ  Parcialmente Encerrada" if st.session_state.dist_legend_par else "âšª Parcialmente Encerrada"
+        par_label = "🟠 Parcialmente Encerrada" if st.session_state.dist_legend_par else "⚪ Parcialmente Encerrada"
         if st.button(par_label, key="btn_dist_par", use_container_width=True):
             st.session_state.dist_legend_par = not st.session_state.dist_legend_par
             st.rerun()
         show_par = st.session_state.dist_legend_par
     with l4:
-        hom_label = "ðŸŸ¡ HomologaÃ§Ã£o" if st.session_state.dist_legend_hom else "âšª HomologaÃ§Ã£o"
+        hom_label = "🟡 Homologação" if st.session_state.dist_legend_hom else "⚪ Homologação"
         if st.button(hom_label, key="btn_dist_hom", use_container_width=True):
             st.session_state.dist_legend_hom = not st.session_state.dist_legend_hom
             st.rerun()
@@ -5792,23 +5792,23 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
     if show_enc: active_statuses.append("Encerrada")
     if show_abe: active_statuses.append("Aberta")
     if show_par: active_statuses.append("Parcialmente Encerrada")
-    if show_hom: active_statuses.append("HomologaÃ§Ã£o")
+    if show_hom: active_statuses.append("Homologação")
 
     if not active_statuses:
-        active_statuses = ["Encerrada", "Aberta", "Parcialmente Encerrada", "HomologaÃ§Ã£o"]
+        active_statuses = ["Encerrada", "Aberta", "Parcialmente Encerrada", "Homologação"]
 
     # Filtrar o DataFrame pelos status selecionados
-    df_filtered = df[df["Status AvaliaÃ§Ã£o"].isin(active_statuses)]
+    df_filtered = df[df["Status Avaliação"].isin(active_statuses)]
 
     grp_col = "Unidade RPM (Avaliado)" if main_active_role != "P1" else "Unidade Principal (Avaliado)"
-    title_text = "<b>DistribuiÃ§Ã£o por Unidade RPM e Status</b>" if main_active_role != "P1" else f"<b>DistribuiÃ§Ã£o por Subunidade ({active_rpm}) e Status</b>"
+    title_text = "<b>Distribuição por Unidade RPM e Status</b>" if main_active_role != "P1" else f"<b>Distribuição por Subunidade ({active_rpm}) e Status</b>"
     
     # Obter lista de unidades presentes
     all_units = df_filtered[grp_col].dropna().unique()
     if len(all_units) == 0:
         all_units = df[grp_col].dropna().unique()
 
-    # Ordenar as unidades com base na opÃ§Ã£o selecionada e nos status ativos
+    # Ordenar as unidades com base na opção selecionada e nos status ativos
     if sort_option == "Crescente por Unidade":
         all_units_sorted = sorted(all_units, key=rpm_sort_key)
     elif sort_option == "Decrescente por Unidade":
@@ -5828,17 +5828,17 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
             if u not in all_units_sorted:
                 all_units_sorted.append(u)
 
-    rpm_cross = df_filtered.groupby([grp_col,"Status AvaliaÃ§Ã£o"]).size().reset_index(name="Qtd")
+    rpm_cross = df_filtered.groupby([grp_col,"Status Avaliação"]).size().reset_index(name="Qtd")
     
     fig_rpm = px.bar(
         rpm_cross, x=grp_col, y="Qtd",
-        color="Status AvaliaÃ§Ã£o", color_discrete_map=STATUS_COLORS,
+        color="Status Avaliação", color_discrete_map=STATUS_COLORS,
         barmode="stack", text_auto=True,
         template="plotly_dark",
         title=title_text,
         category_orders={
             grp_col: all_units_sorted,
-            "Status AvaliaÃ§Ã£o": STACK_ORDER,
+            "Status Avaliação": STACK_ORDER,
         },
     )
     
@@ -5852,7 +5852,7 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
         uirevision="constant_value",
         height=480, title_font_size=15, title_x=0.5,
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        xaxis_title="", yaxis_title="AvaliaÃ§Ãµes",
+        xaxis_title="", yaxis_title="Avaliações",
         showlegend=False,
         title_font=dict(color="#9b8a5c")
     )
@@ -5865,7 +5865,7 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
 
 
 
-    # â”€â”€ LINHA 4: CertificaÃ§Ã£o + Timeline AV1/AV2/HOM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── LINHA 4: Certificação + Timeline AV1/AV2/HOM ──────────────────────────
 
 
     st.markdown("---")
@@ -5880,13 +5880,13 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
     with c3:
 
 
-        cert_d = df["CertificaÃ§Ã£o Homologador"].value_counts().reset_index()
+        cert_d = df["Certificação Homologador"].value_counts().reset_index()
 
 
         cert_d.columns = ["Cert","Qtd"]
 
 
-        cert_map = {"SIM":"#FF6B6B","NÃƒO":"#70AD47","-":"#AAAAAA"}
+        cert_map = {"SIM":"#FF6B6B","NÃO":"#70AD47","-":"#AAAAAA"}
 
 
         fig_cert = px.bar(cert_d, x="Cert", y="Qtd", color="Cert",
@@ -5898,7 +5898,7 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
                           template="plotly_dark",
 
 
-                          title="<b>CertificaÃ§Ã£o Homologador</b>", text="Qtd")
+                          title="<b>Certificação Homologador</b>", text="Qtd")
 
 
         fig_cert.update_traces(textposition="outside", textfont_size=12)
@@ -5937,13 +5937,13 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
         timeline_frames = []
 
 
-        for col, label in [("Data AV1","AV1 â€” Avaliador 1"),
+        for col, label in [("Data AV1","AV1 — Avaliador 1"),
 
 
-                            ("Data AV2","AV2 â€” Avaliador 2"),
+                            ("Data AV2","AV2 — Avaliador 2"),
 
 
-                            ("Data HOM","HOM â€” Homologador")]:
+                            ("Data HOM","HOM — Homologador")]:
 
 
             sub = df[df[col] != "-"].copy()
@@ -5964,7 +5964,7 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
                 cnt = sub.groupby("Data").size().reset_index(name="Qtd")
 
 
-                cnt["FunÃ§Ã£o"] = label
+                cnt["Função"] = label
 
 
                 timeline_frames.append(cnt)
@@ -5986,35 +5986,35 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
             st.markdown("<br>", unsafe_allow_html=True)
             col_d1, col_d2 = st.columns(2)
             with col_d1:
-                dt_ini = st.date_input("ðŸ“… Data InÃ­cio da Pesquisa", value=min_date, min_value=min_date, max_value=max_date, key="dt_ini_timechart")
+                dt_ini = st.date_input("📅 Data Início da Pesquisa", value=min_date, min_value=min_date, max_value=max_date, key="dt_ini_timechart")
             with col_d2:
-                dt_fim = st.date_input("ðŸ“… Data Fim da Pesquisa", value=max_date, min_value=min_date, max_value=max_date, key="dt_fim_timechart")
-            # Seletores de Filtros de FunÃ§Ã£o (Cards)
+                dt_fim = st.date_input("📅 Data Fim da Pesquisa", value=max_date, min_value=min_date, max_value=max_date, key="dt_fim_timechart")
+            # Seletores de Filtros de Função (Cards)
             for k in ["sh_av1", "sh_av2", "sh_hom"]:
                 if k not in st.session_state: st.session_state[k] = True
             
             st.markdown("<br>", unsafe_allow_html=True)
             cb1, cb2, cb3 = st.columns(3)
             with cb1:
-                if st.button("ðŸ”µ AV1" if st.session_state.sh_av1 else "âšª AV1", use_container_width=True): st.session_state.sh_av1 = not st.session_state.sh_av1
+                if st.button("🔵 AV1" if st.session_state.sh_av1 else "⚪ AV1", use_container_width=True): st.session_state.sh_av1 = not st.session_state.sh_av1
             with cb2:
-                if st.button("ðŸŸ  AV2" if st.session_state.sh_av2 else "âšª AV2", use_container_width=True): st.session_state.sh_av2 = not st.session_state.sh_av2
+                if st.button("🟠 AV2" if st.session_state.sh_av2 else "⚪ AV2", use_container_width=True): st.session_state.sh_av2 = not st.session_state.sh_av2
             with cb3:
-                if st.button("ðŸŸ¢ HOM" if st.session_state.sh_hom else "âšª HOM", use_container_width=True): st.session_state.sh_hom = not st.session_state.sh_hom
+                if st.button("🟢 HOM" if st.session_state.sh_hom else "⚪ HOM", use_container_width=True): st.session_state.sh_hom = not st.session_state.sh_hom
                 
             allowed = []
-            if st.session_state.sh_av1: allowed.append("AV1 â€” Avaliador 1")
-            if st.session_state.sh_av2: allowed.append("AV2 â€” Avaliador 2")
-            if st.session_state.sh_hom: allowed.append("HOM â€” Homologador")
+            if st.session_state.sh_av1: allowed.append("AV1 — Avaliador 1")
+            if st.session_state.sh_av2: allowed.append("AV2 — Avaliador 2")
+            if st.session_state.sh_hom: allowed.append("HOM — Homologador")
             
-            mask = (df_time["Data"].dt.date >= dt_ini) & (df_time["Data"].dt.date <= dt_fim) & (df_time["FunÃ§Ã£o"].isin(allowed))
+            mask = (df_time["Data"].dt.date >= dt_ini) & (df_time["Data"].dt.date <= dt_fim) & (df_time["Função"].isin(allowed))
             df_time_filtered = df_time[mask]
 
             fig_time = px.line(
-                df_time_filtered, x="Data", y="Qtd", color="FunÃ§Ã£o",
+                df_time_filtered, x="Data", y="Qtd", color="Função",
 
 
-                title="<b>AvaliaÃ§Ãµes por Data e FunÃ§Ã£o</b>",
+                title="<b>Avaliações por Data e Função</b>",
 
 
                 template="plotly_dark",
@@ -6026,13 +6026,13 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
                 color_discrete_map={
 
 
-                    "AV1 â€” Avaliador 1":"#4472C4",
+                    "AV1 — Avaliador 1":"#4472C4",
 
 
-                    "AV2 â€” Avaliador 2":"#ED7D31",
+                    "AV2 — Avaliador 2":"#ED7D31",
 
 
-                    "HOM â€” Homologador":"#70AD47",
+                    "HOM — Homologador":"#70AD47",
 
 
                 },
@@ -6047,10 +6047,10 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
                 hovertemplate="<b>%{fullData.name}</b><br>"
 
 
-                              "ðŸ“… <b>%{x|%d/%m/%Y}</b><br>"
+                              "📅 <b>%{x|%d/%m/%Y}</b><br>"
 
 
-                              "AvaliaÃ§Ãµes: <b>%{y}</b><extra></extra>",
+                              "Avaliações: <b>%{y}</b><extra></extra>",
 
 
                 line=dict(width=2.5), marker=dict(size=7),
@@ -6061,7 +6061,7 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
 
             fig_time.update_layout(
                 height=380, title_x=0.5, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                xaxis_title="", yaxis_title="AvaliaÃ§Ãµes encerradas",
+                xaxis_title="", yaxis_title="Avaliações encerradas",
                 showlegend=False,
                 legend=dict(
                     orientation="h",
@@ -6092,25 +6092,25 @@ if active_page == "AnÃ¡lise GrÃ¡fica":
         else:
 
 
-            st.info("Sem dados de datas disponÃ­veis para o grÃ¡fico de linha do tempo.")
+            st.info("Sem dados de datas disponíveis para o gráfico de linha do tempo.")
 
 
 
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ══════════════════════════════════════════════════════════════════════════════
 
 
-# TAB 2 â€” DADOS GERAIS
+# TAB 2 — DADOS GERAIS
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ══════════════════════════════════════════════════════════════════════════════
 
 
 if active_page == "Dados Gerais":
 
 
-    st.markdown(f"### ðŸ“‹ Dados Gerais â€” {fmt_num(len(df))} avaliaÃ§Ãµes")
+    st.markdown(f"### 📋 Dados Gerais — {fmt_num(len(df))} avaliações")
 
 
     cols_d = [
@@ -6128,10 +6128,10 @@ if active_page == "Dados Gerais":
         "Sit. Funcional",
 
 
-        # Datas e CertificaÃ§Ã£o (sem notas/conceitos)
+        # Datas e Certificação (sem notas/conceitos)
 
 
-        "Data AV1", "Data AV2", "Data HOM", "CertificaÃ§Ã£o Homologador",
+        "Data AV1", "Data AV2", "Data HOM", "Certificação Homologador",
 
 
         # Avaliador 1
@@ -6155,7 +6155,7 @@ if active_page == "Dados Gerais":
         # Status
 
 
-        "SituaÃ§Ã£o ComissÃ£o", "Status AvaliaÃ§Ã£o",
+        "Situação Comissão", "Status Avaliação",
 
 
     ]
@@ -6164,36 +6164,36 @@ if active_page == "Dados Gerais":
     cols_d = [c for c in cols_d if c in df.columns]
 
 
-    safe_df(df[cols_d].style.map(color_status,subset=["Status AvaliaÃ§Ã£o"])
-                            .map(color_sit,   subset=["SituaÃ§Ã£o ComissÃ£o"]), height=540,
+    safe_df(df[cols_d].style.map(color_status,subset=["Status Avaliação"])
+                            .map(color_sit,   subset=["Situação Comissão"]), height=540,
             show_download=True, download_name=f"avaliacoes_filtradas_{now_br().strftime('%Y%m%d_%H%M')}")
 
 
 
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ══════════════════════════════════════════════════════════════════════════════
 
 
-# TAB 3 â€” AVALIAÃ‡Ã•ES PENDENTES
+# TAB 3 — AVALIAÇÕES PENDENTES
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ══════════════════════════════════════════════════════════════════════════════
 
 
-if active_page == "AvaliaÃ§Ãµes Pendentes":
+if active_page == "Avaliações Pendentes":
 
 
-    st.markdown("### â³ AvaliaÃ§Ãµes Pendentes")
+    st.markdown("### ⏳ Avaliações Pendentes")
 
 
     STATUS_PEND = {
-        "HomologaÃ§Ã£o", "Parcialmente Encerrada", "Aberta",
-        "EM PRAZO DE RECURSO", "RECONSIDERAÃ‡ÃƒO COMISSÃƒO", "AUTORIDADE RECURSAL"
+        "Homologação", "Parcialmente Encerrada", "Aberta",
+        "EM PRAZO DE RECURSO", "RECONSIDERAÇÃO COMISSÃO", "AUTORIDADE RECURSAL"
     }
 
 
-    df_pend = df[df["Status AvaliaÃ§Ã£o"].isin(STATUS_PEND) & df["Sit. Funcional"].isin(SITUACOES_ALVO)].copy()
+    df_pend = df[df["Status Avaliação"].isin(STATUS_PEND) & df["Sit. Funcional"].isin(SITUACOES_ALVO)].copy()
 
 
 
@@ -6205,10 +6205,10 @@ if active_page == "AvaliaÃ§Ãµes Pendentes":
     with c1:
 
 
-        tipo_pend = st.multiselect("Status:", ["Aberta", "Parcialmente Encerrada", "HomologaÃ§Ã£o", "EM RECURSO"],
+        tipo_pend = st.multiselect("Status:", ["Aberta", "Parcialmente Encerrada", "Homologação", "EM RECURSO"],
 
 
-                                   default=["Aberta", "Parcialmente Encerrada", "HomologaÃ§Ã£o", "EM RECURSO"],
+                                   default=["Aberta", "Parcialmente Encerrada", "Homologação", "EM RECURSO"],
 
 
                                    key="tp")
@@ -6217,10 +6217,10 @@ if active_page == "AvaliaÃ§Ãµes Pendentes":
     with c2:
 
 
-        sc_pend = st.multiselect("SituaÃ§Ã£o:", ["ComissÃ£o Atual","Nota ProvisÃ³ria"],
+        sc_pend = st.multiselect("Situação:", ["Comissão Atual","Nota Provisória"],
 
 
-                                  default=["ComissÃ£o Atual","Nota ProvisÃ³ria"], key="sp")
+                                  default=["Comissão Atual","Nota Provisória"], key="sp")
 
 
 
@@ -6229,14 +6229,14 @@ if active_page == "AvaliaÃ§Ãµes Pendentes":
     filter_statuses = []
     for tp in tipo_pend:
         if tp == "EM RECURSO":
-            filter_statuses.extend(["RECONSIDERAÃ‡ÃƒO COMISSÃƒO", "AUTORIDADE RECURSAL", "EM PRAZO DE RECURSO"])
+            filter_statuses.extend(["RECONSIDERAÇÃO COMISSÃO", "AUTORIDADE RECURSAL", "EM PRAZO DE RECURSO"])
         else:
             filter_statuses.append(tp)
 
-    df_pv = df_pend[df_pend["Status AvaliaÃ§Ã£o"].isin(filter_statuses) &
+    df_pv = df_pend[df_pend["Status Avaliação"].isin(filter_statuses) &
 
 
-                    df_pend["SituaÃ§Ã£o ComissÃ£o"].isin(sc_pend)] if tipo_pend and sc_pend else df_pend
+                    df_pend["Situação Comissão"].isin(sc_pend)] if tipo_pend and sc_pend else df_pend
 
 
 
@@ -6245,31 +6245,31 @@ if active_page == "AvaliaÃ§Ãµes Pendentes":
     k1, k2, k3, k4, k5 = st.columns(5)
     with k1:
         st.markdown(f'<div class="kpi-card kpi-aberta">'
-                    '<div class="label">ðŸ”´ Abertas</div>'
-                    f'<div class="value">{fmt_num((df_pv["Status AvaliaÃ§Ã£o"]=="Aberta").sum())}</div>'
+                    '<div class="label">🔴 Abertas</div>'
+                    f'<div class="value">{fmt_num((df_pv["Status Avaliação"]=="Aberta").sum())}</div>'
                     '<div class="sub">AV1 pendente</div>'
                     '</div>', unsafe_allow_html=True)
     with k2:
         st.markdown(f'<div class="kpi-card kpi-parc">'
-                    '<div class="label">ðŸŸ  Parc. Encerradas</div>'
-                    f'<div class="value">{fmt_num((df_pv["Status AvaliaÃ§Ã£o"]=="Parcialmente Encerrada").sum())}</div>'
+                    '<div class="label">🟠 Parc. Encerradas</div>'
+                    f'<div class="value">{fmt_num((df_pv["Status Avaliação"]=="Parcialmente Encerrada").sum())}</div>'
                     '<div class="sub">AV2 pendente</div>'
                     '</div>', unsafe_allow_html=True)
     with k3:
         st.markdown(f'<div class="kpi-card kpi-hom">'
-                    '<div class="label">ðŸŸ¡ HomologaÃ§Ã£o</div>'
-                    f'<div class="value">{fmt_num((df_pv["Status AvaliaÃ§Ã£o"]=="HomologaÃ§Ã£o").sum())}</div>'
-                    '<div class="sub">HomologaÃ§Ã£o pendente</div>'
+                    '<div class="label">🟡 Homologação</div>'
+                    f'<div class="value">{fmt_num((df_pv["Status Avaliação"]=="Homologação").sum())}</div>'
+                    '<div class="sub">Homologação pendente</div>'
                     '</div>', unsafe_allow_html=True)
     with k4:
         st.markdown(f'<div class="kpi-card kpi-recurso">'
-                    '<div class="label">ðŸŸ£ Em Recurso</div>'
-                    f'<div class="value">{fmt_num(df_pv["Status AvaliaÃ§Ã£o"].isin(["RECONSIDERAÃ‡ÃƒO COMISSÃƒO", "AUTORIDADE RECURSAL", "EM PRAZO DE RECURSO"]).sum())}</div>'
+                    '<div class="label">🟣 Em Recurso</div>'
+                    f'<div class="value">{fmt_num(df_pv["Status Avaliação"].isin(["RECONSIDERAÇÃO COMISSÃO", "AUTORIDADE RECURSAL", "EM PRAZO DE RECURSO"]).sum())}</div>'
                     '<div class="sub">Recurso pendente</div>'
                     '</div>', unsafe_allow_html=True)
     with k5:
         st.markdown(f'<div class="kpi-card kpi-total">'
-                    '<div class="label">ðŸ“Š Total</div>'
+                    '<div class="label">📊 Total</div>'
                     f'<div class="value">{fmt_num(len(df_pv))}</div>'
                     '<div class="sub">Registros filtrados</div>'
                     '</div>', unsafe_allow_html=True)
@@ -6281,7 +6281,7 @@ if active_page == "AvaliaÃ§Ãµes Pendentes":
     cols_pend = [
 
 
-        # â”€â”€ Avaliado â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── Avaliado ──────────────────────────────────────────────────────────
 
 
         "nrPM (Avaliado)", "Posto/Grad. (Avaliado)", "Nome (Avaliado)",
@@ -6293,16 +6293,16 @@ if active_page == "AvaliaÃ§Ãµes Pendentes":
         "Sit. Funcional",
 
 
-        # â”€â”€ Status e Datas (sem notas/conceitos) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── Status e Datas (sem notas/conceitos) ─────────────────────────────
 
 
-        "Status AvaliaÃ§Ã£o", "SituaÃ§Ã£o ComissÃ£o",
+        "Status Avaliação", "Situação Comissão",
 
 
-        "Data AV1", "Data AV2", "Data HOM", "CertificaÃ§Ã£o Homologador",
+        "Data AV1", "Data AV2", "Data HOM", "Certificação Homologador",
 
 
-        # â”€â”€ Avaliador 1 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── Avaliador 1 ───────────────────────────────────────────────────────
 
 
         "nrPM (Av1)", "Posto (Av1)", "Nome (Av1)",
@@ -6311,7 +6311,7 @@ if active_page == "AvaliaÃ§Ãµes Pendentes":
         "RPM (Av1)", "Unid. Principal (Av1)",
 
 
-        # â”€â”€ Avaliador 2 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── Avaliador 2 ───────────────────────────────────────────────────────
 
 
         "nrPM (Av2)", "Posto (Av2)", "Nome (Av2)",
@@ -6320,7 +6320,7 @@ if active_page == "AvaliaÃ§Ãµes Pendentes":
         "RPM (Av2)", "Unid. Principal (Av2)",
 
 
-        # â”€â”€ Homologador â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── Homologador ───────────────────────────────────────────────────────
 
 
         "nrPM (Hom)", "Posto (Hom)", "Nome (Hom)",
@@ -6342,10 +6342,10 @@ if active_page == "AvaliaÃ§Ãµes Pendentes":
 
 
     safe_df(df_pv[cols_pend]
-            .sort_values(["Unidade RPM (Avaliado)", "Status AvaliaÃ§Ã£o", "Nome (Avaliado)"])
+            .sort_values(["Unidade RPM (Avaliado)", "Status Avaliação", "Nome (Avaliado)"])
             .reset_index(drop=True)
-            .style.map(color_status, subset=["Status AvaliaÃ§Ã£o"])
-            .map(color_sit,          subset=["SituaÃ§Ã£o ComissÃ£o"]),
+            .style.map(color_status, subset=["Status Avaliação"])
+            .map(color_sit,          subset=["Situação Comissão"]),
             height=520, show_download=True, download_name=f"avaliacoes_pendentes_{now_br().strftime('%Y%m%d_%H%M')}", download_label="Baixar pendentes")
 
 
@@ -6355,19 +6355,19 @@ if active_page == "AvaliaÃ§Ãµes Pendentes":
 
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ══════════════════════════════════════════════════════════════════════════════
 
 
-# TAB 4 â€” AVALIADORES PENDENTES
+# TAB 4 — AVALIADORES PENDENTES
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ══════════════════════════════════════════════════════════════════════════════
 
 
 if active_page == "Avaliadores Pendentes":
 
 
-    st.markdown("### ðŸ‘¥ Avaliadores Pendentes")
+    st.markdown("### 👥 Avaliadores Pendentes")
 
 
 
@@ -6376,18 +6376,18 @@ if active_page == "Avaliadores Pendentes":
     df_alvo = df_full[df_full["Sit. Funcional"].isin(SITUACOES_ALVO)]
 
     if rpm_filter:
-        df_ab = df_alvo[(df_alvo["Status AvaliaÃ§Ã£o"] == "Aberta") & (df_alvo["RPM (Av1)"].isin(rpm_filter))]
-        df_pe = df_alvo[(df_alvo["Status AvaliaÃ§Ã£o"].isin(["Aberta", "Parcialmente Encerrada"])) & (df_alvo["RPM (Av2)"].isin(rpm_filter))]
-        df_hom = df_alvo[(df_alvo["Status AvaliaÃ§Ã£o"] == "HomologaÃ§Ã£o") & (df_alvo["RPM (Hom)"].isin(rpm_filter))]
+        df_ab = df_alvo[(df_alvo["Status Avaliação"] == "Aberta") & (df_alvo["RPM (Av1)"].isin(rpm_filter))]
+        df_pe = df_alvo[(df_alvo["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada"])) & (df_alvo["RPM (Av2)"].isin(rpm_filter))]
+        df_hom = df_alvo[(df_alvo["Status Avaliação"] == "Homologação") & (df_alvo["RPM (Hom)"].isin(rpm_filter))]
     else:
         df_alvo_filtered = df[df["Sit. Funcional"].isin(SITUACOES_ALVO)]
-        df_ab = df_alvo_filtered[df_alvo_filtered["Status AvaliaÃ§Ã£o"] == "Aberta"]
-        df_pe = df_alvo_filtered[df_alvo_filtered["Status AvaliaÃ§Ã£o"].isin(["Aberta", "Parcialmente Encerrada"])]
-        df_hom = df_alvo_filtered[df_alvo_filtered["Status AvaliaÃ§Ã£o"] == "HomologaÃ§Ã£o"]
+        df_ab = df_alvo_filtered[df_alvo_filtered["Status Avaliação"] == "Aberta"]
+        df_pe = df_alvo_filtered[df_alvo_filtered["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada"])]
+        df_hom = df_alvo_filtered[df_alvo_filtered["Status Avaliação"] == "Homologação"]
 
 
 
-    # Pre-calcular quantitativo de avaliadores/homologadores Ãºnicos pendentes (funÃ§Ã£o)
+    # Pre-calcular quantitativo de avaliadores/homologadores únicos pendentes (função)
     cnt_av1 = df_ab["nrPM (Av1)"].dropna().astype(str).str.strip().replace("", pd.NA).dropna().nunique()
     cnt_av2 = df_pe["nrPM (Av2)"].dropna().astype(str).str.strip().replace("", pd.NA).dropna().nunique()
     cnt_hom = df_hom["nrPM (Hom)"].dropna().astype(str).str.strip().replace("", pd.NA).dropna().nunique()
@@ -6396,21 +6396,21 @@ if active_page == "Avaliadores Pendentes":
     col_av1, col_av2, col_av3 = st.columns(3)
     with col_av1:
         st.markdown(f'<div class="kpi-card kpi-total">'
-                    '<div class="label">ðŸ‘¤ Avaliador 1 (AV1)</div>'
+                    '<div class="label">👤 Avaliador 1 (AV1)</div>'
                     f'<div class="value">{fmt_num(cnt_av1)}</div>'
-                    '<div class="sub">Avaliadores com pendÃªncia de AV1</div>'
+                    '<div class="sub">Avaliadores com pendência de AV1</div>'
                     '</div>', unsafe_allow_html=True)
     with col_av2:
         st.markdown(f'<div class="kpi-card kpi-parc">'
-                    '<div class="label">ðŸ‘¥ Avaliador 2 (AV2)</div>'
+                    '<div class="label">👥 Avaliador 2 (AV2)</div>'
                     f'<div class="value">{fmt_num(cnt_av2)}</div>'
-                    '<div class="sub">Avaliadores com pendÃªncia de AV2</div>'
+                    '<div class="sub">Avaliadores com pendência de AV2</div>'
                     '</div>', unsafe_allow_html=True)
     with col_av3:
         st.markdown(f'<div class="kpi-card kpi-hom">'
-                    '<div class="label">âš–ï¸ Homologador (HOM)</div>'
+                    '<div class="label">⚖️ Homologador (HOM)</div>'
                     f'<div class="value">{fmt_num(cnt_hom)}</div>'
-                    '<div class="sub">Homologadores com pendÃªncia de HOM</div>'
+                    '<div class="sub">Homologadores com pendência de HOM</div>'
                     '</div>', unsafe_allow_html=True)
 
     st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
@@ -6434,7 +6434,7 @@ if active_page == "Avaliadores Pendentes":
         av1[k].update(nome=r["Nome (Av1)"],posto=r["Posto (Av1)"],rpm=r["RPM (Av1)"],unid=r["Unid. Principal (Av1)"])
 
 
-        if r["SituaÃ§Ã£o ComissÃ£o"]=="ComissÃ£o Atual": av1[k]["CA"]+=1
+        if r["Situação Comissão"]=="Comissão Atual": av1[k]["CA"]+=1
 
 
         else: av1[k]["NP"]+=1
@@ -6458,10 +6458,10 @@ if active_page == "Avaliadores Pendentes":
         av2[k].update(nome=r["Nome (Av2)"],posto=r["Posto (Av2)"],rpm=r["RPM (Av2)"],unid=r["Unid. Principal (Av2)"])
 
 
-        is_ca = r["SituaÃ§Ã£o ComissÃ£o"]=="ComissÃ£o Atual"
+        is_ca = r["Situação Comissão"]=="Comissão Atual"
 
 
-        if r["Status AvaliaÃ§Ã£o"]=="Aberta":
+        if r["Status Avaliação"]=="Aberta":
 
 
             if is_ca: av2[k]["CA_ab"]+=1
@@ -6485,13 +6485,13 @@ if active_page == "Avaliadores Pendentes":
     # AV1
 
 
-    st.markdown('<div class="section-hdr">ðŸ‘¤ AVALIADOR 1 â€” AvaliaÃ§Ãµes Em Aberto</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-hdr">👤 AVALIADOR 1 — Avaliações Em Aberto</div>', unsafe_allow_html=True)
 
 
-    tb1_rows = [{"NÂº PM":k,"Nome":d["nome"],"Posto":d["posto"],"RPM":d["rpm"],
+    tb1_rows = [{"Nº PM":k,"Nome":d["nome"],"Posto":d["posto"],"RPM":d["rpm"],
 
 
-        "Unid. Principal":d["unid"],"CAâ€”Aberta":d["CA"],"NPâ€”Aberta":d["NP"],
+        "Unid. Principal":d["unid"],"CA—Aberta":d["CA"],"NP—Aberta":d["NP"],
 
 
         "Total AV1":d["CA"]+d["NP"]} for k,d in av1.items() if d["CA"]+d["NP"]>0]
@@ -6505,11 +6505,11 @@ if active_page == "Avaliadores Pendentes":
 
     k1,k2,k3 = st.columns([2,2,1])
     k1.metric("Avaliadores pendentes (AV1)", len(tb1))
-    k2.metric("Total avaliaÃ§Ãµes Em Aberto", tb1["Total AV1"].sum() if not tb1.empty else 0)
+    k2.metric("Total avaliações Em Aberto", tb1["Total AV1"].sum() if not tb1.empty else 0)
     with k3:
         st.markdown("<br>", unsafe_allow_html=True)
         if not tb1.empty:
-            st.download_button("â¬‡ï¸ AV1 (CSV)", tb1.to_csv(index=False,sep=";",encoding="utf-8-sig").encode("utf-8-sig"), f"av1_{now_br().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv", type="primary", use_container_width=True)
+            st.download_button("⬇️ AV1 (CSV)", tb1.to_csv(index=False,sep=";",encoding="utf-8-sig").encode("utf-8-sig"), f"av1_{now_br().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv", type="primary", use_container_width=True)
 
 
     if not tb1.empty:
@@ -6547,7 +6547,7 @@ if active_page == "Avaliadores Pendentes":
         if has_select:
 
 
-            st.write("ðŸ’¡ *Dica: Clique em uma linha da tabela abaixo para abrir as avaliaÃ§Ãµes deste avaliador.*")
+            st.write("💡 *Dica: Clique em uma linha da tabela abaixo para abrir as avaliações deste avaliador.*")
 
 
             event1 = st.dataframe(
@@ -6583,7 +6583,7 @@ if active_page == "Avaliadores Pendentes":
                 idx = rows1[0]
 
 
-                selected_pm = tb1.iloc[idx]["NÂº PM"]
+                selected_pm = tb1.iloc[idx]["Nº PM"]
 
 
                 selected_nome = tb1.iloc[idx]["Nome"]
@@ -6595,7 +6595,7 @@ if active_page == "Avaliadores Pendentes":
             st.dataframe(tb1_disp, use_container_width=True, height=260)
 
 
-            sel_nome = st.selectbox("ðŸ”Ž Selecione um Avaliador 1 para ver as avaliaÃ§Ãµes:", ["-- Selecione --"] + list(tb1["Nome"].unique()), key="sel_tb1")
+            sel_nome = st.selectbox("🔎 Selecione um Avaliador 1 para ver as avaliações:", ["-- Selecione --"] + list(tb1["Nome"].unique()), key="sel_tb1")
 
 
             if sel_nome != "-- Selecione --":
@@ -6604,7 +6604,7 @@ if active_page == "Avaliadores Pendentes":
                 row_sel = tb1[tb1["Nome"] == sel_nome].iloc[0]
 
 
-                selected_pm = row_sel["NÂº PM"]
+                selected_pm = row_sel["Nº PM"]
 
 
                 selected_nome = row_sel["Nome"]
@@ -6619,7 +6619,7 @@ if active_page == "Avaliadores Pendentes":
             df_det1 = df_ab[df_ab["nrPM (Av1)"] == selected_pm].copy()
 
 
-            st.markdown(f"#### ðŸ“‹ AvaliaÃ§Ãµes pendentes de AV1: **{selected_nome}** ({selected_pm})")
+            st.markdown(f"#### 📋 Avaliações pendentes de AV1: **{selected_nome}** ({selected_pm})")
 
 
             cols_det1 = ["nrPM (Avaliado)", "Posto/Grad. (Avaliado)", "Nome (Avaliado)",
@@ -6628,19 +6628,19 @@ if active_page == "Avaliadores Pendentes":
                          "Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)",
 
 
-                         "Status AvaliaÃ§Ã£o", "SituaÃ§Ã£o ComissÃ£o", "Data AV1"]
+                         "Status Avaliação", "Situação Comissão", "Data AV1"]
 
 
             cols_ok1 = [c for c in cols_det1 if c in df_det1.columns]
 
 
-            safe_df(df_det1[cols_ok1].reset_index(drop=True).style.map(color_status, subset=["Status AvaliaÃ§Ã£o"]), height=180)
+            safe_df(df_det1[cols_ok1].reset_index(drop=True).style.map(color_status, subset=["Status Avaliação"]), height=180)
 
 
             
 
 
-            # BotÃµes de download lado a lado para esta lista filtrada especÃ­fica
+            # Botões de download lado a lado para esta lista filtrada específica
 
 
             dl1, dl2 = st.columns(2)
@@ -6652,7 +6652,7 @@ if active_page == "Avaliadores Pendentes":
                 st.download_button(
 
 
-                    "â¬‡ï¸ Baixar esta lista (Excel .xlsx)",
+                    "⬇️ Baixar esta lista (Excel .xlsx)",
 
 
                     df_to_xlsx(df_det1[cols_ok1]),
@@ -6676,7 +6676,7 @@ if active_page == "Avaliadores Pendentes":
                 st.download_button(
 
 
-                    "â¬‡ï¸ Baixar esta lista (CSV)",
+                    "⬇️ Baixar esta lista (CSV)",
 
 
                     df_det1[cols_ok1].to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
@@ -6698,7 +6698,7 @@ if active_page == "Avaliadores Pendentes":
 
 
 
-    else: st.success("âœ… Nenhum AV1 com pendÃªncias!")
+    else: st.success("✅ Nenhum AV1 com pendências!")
 
 
 
@@ -6707,16 +6707,16 @@ if active_page == "Avaliadores Pendentes":
     # AV2
 
 
-    st.markdown('<div class="section-hdr">ðŸ‘¤ AVALIADOR 2 â€” Em Aberto + Parcialmente Encerrada</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-hdr">👤 AVALIADOR 2 — Em Aberto + Parcialmente Encerrada</div>', unsafe_allow_html=True)
 
 
-    tb2_rows = [{"NÂº PM":k,"Nome":d["nome"],"Posto":d["posto"],"RPM":d["rpm"],
+    tb2_rows = [{"Nº PM":k,"Nome":d["nome"],"Posto":d["posto"],"RPM":d["rpm"],
 
 
-        "Unid. Principal":d["unid"],"CAâ€”Aberta":d["CA_ab"],"CAâ€”Parc.Enc.":d["CA_pe"],
+        "Unid. Principal":d["unid"],"CA—Aberta":d["CA_ab"],"CA—Parc.Enc.":d["CA_pe"],
 
 
-        "NPâ€”Aberta":d["NP_ab"],"NPâ€”Parc.Enc.":d["NP_pe"],
+        "NP—Aberta":d["NP_ab"],"NP—Parc.Enc.":d["NP_pe"],
 
 
         "Total AV2":d["CA_ab"]+d["CA_pe"]+d["NP_ab"]+d["NP_pe"]} for k,d in av2.items()
@@ -6733,11 +6733,11 @@ if active_page == "Avaliadores Pendentes":
 
     k1,k2,k3 = st.columns([2,2,1])
     k1.metric("Avaliadores pendentes (AV2)", len(tb2))
-    k2.metric("Total pendÃªncias AV2", tb2["Total AV2"].sum() if not tb2.empty else 0)
+    k2.metric("Total pendências AV2", tb2["Total AV2"].sum() if not tb2.empty else 0)
     with k3:
         st.markdown("<br>", unsafe_allow_html=True)
         if not tb2.empty:
-            st.download_button("â¬‡ï¸ AV2 (CSV)", tb2.to_csv(index=False,sep=";",encoding="utf-8-sig").encode("utf-8-sig"), f"av2_{now_br().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv", type="primary", use_container_width=True)
+            st.download_button("⬇️ AV2 (CSV)", tb2.to_csv(index=False,sep=";",encoding="utf-8-sig").encode("utf-8-sig"), f"av2_{now_br().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv", type="primary", use_container_width=True)
 
 
     if not tb2.empty:
@@ -6775,7 +6775,7 @@ if active_page == "Avaliadores Pendentes":
         if has_select:
 
 
-            st.write("ðŸ’¡ *Dica: Clique em uma linha da tabela abaixo para abrir as avaliaÃ§Ãµes deste avaliador.*")
+            st.write("💡 *Dica: Clique em uma linha da tabela abaixo para abrir as avaliações deste avaliador.*")
 
 
             event2 = st.dataframe(
@@ -6811,7 +6811,7 @@ if active_page == "Avaliadores Pendentes":
                 idx = rows2[0]
 
 
-                selected_pm2 = tb2.iloc[idx]["NÂº PM"]
+                selected_pm2 = tb2.iloc[idx]["Nº PM"]
 
 
                 selected_nome2 = tb2.iloc[idx]["Nome"]
@@ -6823,7 +6823,7 @@ if active_page == "Avaliadores Pendentes":
             st.dataframe(tb2_disp, use_container_width=True, height=260)
 
 
-            sel_nome2 = st.selectbox("ðŸ”Ž Selecione um Avaliador 2 para ver as avaliaÃ§Ãµes:", ["-- Selecione --"] + list(tb2["Nome"].unique()), key="sel_tb2")
+            sel_nome2 = st.selectbox("🔎 Selecione um Avaliador 2 para ver as avaliações:", ["-- Selecione --"] + list(tb2["Nome"].unique()), key="sel_tb2")
 
 
             if sel_nome2 != "-- Selecione --":
@@ -6832,7 +6832,7 @@ if active_page == "Avaliadores Pendentes":
                 row_sel2 = tb2[tb2["Nome"] == sel_nome2].iloc[0]
 
 
-                selected_pm2 = row_sel2["NÂº PM"]
+                selected_pm2 = row_sel2["Nº PM"]
 
 
                 selected_nome2 = row_sel2["Nome"]
@@ -6847,7 +6847,7 @@ if active_page == "Avaliadores Pendentes":
             df_det2 = df_pe[df_pe["nrPM (Av2)"] == selected_pm2].copy()
 
 
-            st.markdown(f"#### ðŸ“‹ AvaliaÃ§Ãµes pendentes de AV2: **{selected_nome2}** ({selected_pm2})")
+            st.markdown(f"#### 📋 Avaliações pendentes de AV2: **{selected_nome2}** ({selected_pm2})")
 
 
             cols_det2 = ["nrPM (Avaliado)", "Posto/Grad. (Avaliado)", "Nome (Avaliado)",
@@ -6856,19 +6856,19 @@ if active_page == "Avaliadores Pendentes":
                          "Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)",
 
 
-                         "Status AvaliaÃ§Ã£o", "SituaÃ§Ã£o ComissÃ£o", "Data AV1", "Data AV2"]
+                         "Status Avaliação", "Situação Comissão", "Data AV1", "Data AV2"]
 
 
             cols_ok2 = [c for c in cols_det2 if c in df_det2.columns]
 
 
-            safe_df(df_det2[cols_ok2].reset_index(drop=True).style.map(color_status, subset=["Status AvaliaÃ§Ã£o"]), height=180)
+            safe_df(df_det2[cols_ok2].reset_index(drop=True).style.map(color_status, subset=["Status Avaliação"]), height=180)
 
 
             
 
 
-            # BotÃµes de download lado a lado para esta lista filtrada especÃ­fica
+            # Botões de download lado a lado para esta lista filtrada específica
 
 
             dl1, dl2 = st.columns(2)
@@ -6880,7 +6880,7 @@ if active_page == "Avaliadores Pendentes":
                 st.download_button(
 
 
-                    "â¬‡ï¸ Baixar esta lista (Excel .xlsx)",
+                    "⬇️ Baixar esta lista (Excel .xlsx)",
 
 
                     df_to_xlsx(df_det2[cols_ok2]),
@@ -6904,7 +6904,7 @@ if active_page == "Avaliadores Pendentes":
                 st.download_button(
 
 
-                    "â¬‡ï¸ Baixar esta lista (CSV)",
+                    "⬇️ Baixar esta lista (CSV)",
 
 
                     df_det2[cols_ok2].to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
@@ -6929,7 +6929,7 @@ if active_page == "Avaliadores Pendentes":
 
 
 
-    else: st.success("âœ… Nenhum AV2 com pendÃªncias!")
+    else: st.success("✅ Nenhum AV2 com pendências!")
 
 
 
@@ -6941,7 +6941,7 @@ if active_page == "Avaliadores Pendentes":
     st.markdown(
 
 
-        '<div class="section-hdr-hom">ðŸ›ï¸ HOMOLOGADOR â€” AvaliaÃ§Ãµes com DivergÃªncia Aguardando Nota de HomologaÃ§Ã£o</div>',
+        '<div class="section-hdr-hom">🏛️ HOMOLOGADOR — Avaliações com Divergência Aguardando Nota de Homologação</div>',
 
 
         unsafe_allow_html=True)
@@ -6953,7 +6953,7 @@ if active_page == "Avaliadores Pendentes":
 
 
 
-    # â”€â”€ Tabela agregada por Homologador (mesmo modelo AV1/AV2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Tabela agregada por Homologador (mesmo modelo AV1/AV2) ──────────────────
 
 
     hom_map = defaultdict(lambda: {"nome":"","posto":"","rpm":"","unid":"","CA":0,"NP":0})
@@ -6962,7 +6962,7 @@ if active_page == "Avaliadores Pendentes":
     for _, r in df_hom.iterrows():
 
 
-        k = str(r.get("nrPM (Hom)", "")).strip() or "NÃ£o identificado"
+        k = str(r.get("nrPM (Hom)", "")).strip() or "Não identificado"
 
 
         hom_map[k]["nome"]  = r.get("Nome (Hom)", "")
@@ -6977,7 +6977,7 @@ if active_page == "Avaliadores Pendentes":
         hom_map[k]["unid"]  = r.get("Unid. Principal (Hom)", "")
 
 
-        if r["SituaÃ§Ã£o ComissÃ£o"] == "ComissÃ£o Atual":
+        if r["Situação Comissão"] == "Comissão Atual":
 
 
             hom_map[k]["CA"] += 1
@@ -6992,13 +6992,13 @@ if active_page == "Avaliadores Pendentes":
 
 
 
-    tb3_rows = [{"NÂº PM": k, "Nome": d["nome"], "Posto": d["posto"],
+    tb3_rows = [{"Nº PM": k, "Nome": d["nome"], "Posto": d["posto"],
 
 
                  "RPM": d["rpm"], "Unid. Principal": d["unid"],
 
 
-                 "CAâ€”Hom.Pend.": d["CA"], "NPâ€”Hom.Pend.": d["NP"],
+                 "CA—Hom.Pend.": d["CA"], "NP—Hom.Pend.": d["NP"],
 
 
                  "Total HOM": d["CA"] + d["NP"]}
@@ -7017,15 +7017,15 @@ if active_page == "Avaliadores Pendentes":
 
 
     k1, k2, k3, k4 = st.columns([1,1,1,1])
-    k1.metric("Homologadores com pendÃªncia", len(tb3))
+    k1.metric("Homologadores com pendência", len(tb3))
     k2.metric("Total aguardando HOM", len(df_hom))
     k3.metric("CA / NP pendentes",
-              f"{(df_hom['SituaÃ§Ã£o ComissÃ£o']=='ComissÃ£o Atual').sum()} / "
-              f"{(df_hom['SituaÃ§Ã£o ComissÃ£o']=='Nota ProvisÃ³ria').sum()}")
+              f"{(df_hom['Situação Comissão']=='Comissão Atual').sum()} / "
+              f"{(df_hom['Situação Comissão']=='Nota Provisória').sum()}")
     with k4:
         st.markdown("<br>", unsafe_allow_html=True)
         if not tb3.empty:
-            st.download_button("â¬‡ï¸ Homologadores (CSV)", tb3.to_csv(index=False,sep=";",encoding="utf-8-sig").encode("utf-8-sig"), f"homologadores_{now_br().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv", type="primary", use_container_width=True)
+            st.download_button("⬇️ Homologadores (CSV)", tb3.to_csv(index=False,sep=";",encoding="utf-8-sig").encode("utf-8-sig"), f"homologadores_{now_br().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv", type="primary", use_container_width=True)
 
 
 
@@ -7066,7 +7066,7 @@ if active_page == "Avaliadores Pendentes":
         if has_select:
 
 
-            st.write("ðŸ’¡ *Dica: Clique em uma linha da tabela abaixo para abrir as avaliaÃ§Ãµes deste homologador.*")
+            st.write("💡 *Dica: Clique em uma linha da tabela abaixo para abrir as avaliações deste homologador.*")
 
 
             event3 = st.dataframe(
@@ -7102,7 +7102,7 @@ if active_page == "Avaliadores Pendentes":
                 idx = rows3[0]
 
 
-                selected_pm3 = tb3.iloc[idx]["NÂº PM"]
+                selected_pm3 = tb3.iloc[idx]["Nº PM"]
 
 
                 selected_nome3 = tb3.iloc[idx]["Nome"]
@@ -7114,7 +7114,7 @@ if active_page == "Avaliadores Pendentes":
             st.dataframe(tb3_disp, use_container_width=True, height=280)
 
 
-            sel_nome3 = st.selectbox("ðŸ”Ž Selecione um Homologador para ver as avaliaÃ§Ãµes:", ["-- Selecione --"] + list(tb3["Nome"].unique()), key="sel_tb3")
+            sel_nome3 = st.selectbox("🔎 Selecione um Homologador para ver as avaliações:", ["-- Selecione --"] + list(tb3["Nome"].unique()), key="sel_tb3")
 
 
             if sel_nome3 != "-- Selecione --":
@@ -7123,7 +7123,7 @@ if active_page == "Avaliadores Pendentes":
                 row_sel3 = tb3[tb3["Nome"] == sel_nome3].iloc[0]
 
 
-                selected_pm3 = row_sel3["NÂº PM"]
+                selected_pm3 = row_sel3["Nº PM"]
 
 
                 selected_nome3 = row_sel3["Nome"]
@@ -7138,7 +7138,7 @@ if active_page == "Avaliadores Pendentes":
             df_det3 = df_hom[df_hom["nrPM (Hom)"] == selected_pm3].copy()
 
 
-            st.markdown(f"#### ðŸ“‹ AvaliaÃ§Ãµes pendentes do Homologador: **{selected_nome3}** ({selected_pm3})")
+            st.markdown(f"#### 📋 Avaliações pendentes do Homologador: **{selected_nome3}** ({selected_pm3})")
 
 
             cols_det3 = ["nrPM (Avaliado)", "Posto/Grad. (Avaliado)", "Nome (Avaliado)",
@@ -7147,19 +7147,19 @@ if active_page == "Avaliadores Pendentes":
                          "Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)",
 
 
-                         "Status AvaliaÃ§Ã£o", "SituaÃ§Ã£o ComissÃ£o", "Data AV1", "Data AV2", "Data HOM"]
+                         "Status Avaliação", "Situação Comissão", "Data AV1", "Data AV2", "Data HOM"]
 
 
             cols_ok3 = [c for c in cols_det3 if c in df_det3.columns]
 
 
-            safe_df(df_det3[cols_ok3].reset_index(drop=True).style.map(color_status, subset=["Status AvaliaÃ§Ã£o"]), height=180)
+            safe_df(df_det3[cols_ok3].reset_index(drop=True).style.map(color_status, subset=["Status Avaliação"]), height=180)
 
 
             
 
 
-            # BotÃµes de download lado a lado para esta lista filtrada especÃ­fica
+            # Botões de download lado a lado para esta lista filtrada específica
 
 
             dl1, dl2 = st.columns(2)
@@ -7171,7 +7171,7 @@ if active_page == "Avaliadores Pendentes":
                 st.download_button(
 
 
-                    "â¬‡ï¸ Baixar esta lista (Excel .xlsx)",
+                    "⬇️ Baixar esta lista (Excel .xlsx)",
 
 
                     df_to_xlsx(df_det3[cols_ok3]),
@@ -7195,7 +7195,7 @@ if active_page == "Avaliadores Pendentes":
                 st.download_button(
 
 
-                    "â¬‡ï¸ Baixar esta lista (CSV)",
+                    "⬇️ Baixar esta lista (CSV)",
 
 
                     df_det3[cols_ok3].to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
@@ -7219,7 +7219,7 @@ if active_page == "Avaliadores Pendentes":
         st.download_button(
 
 
-            "â¬‡ï¸ Homologadores pendentes (CSV)",
+            "⬇️ Homologadores pendentes (CSV)",
 
 
             tb3.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
@@ -7231,19 +7231,19 @@ if active_page == "Avaliadores Pendentes":
     else:
 
 
-        st.success("âœ… Nenhum Homologador com pendÃªncias!")
+        st.success("✅ Nenhum Homologador com pendências!")
 
 
 
 
 
-    # â”€â”€ Lista detalhada das avaliaÃ§Ãµes em HomologaÃ§Ã£o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Lista detalhada das avaliações em Homologação ──────────────────────────
 
 
     if not df_hom.empty:
 
 
-        with st.expander(f"ðŸ“‹ Ver {len(df_hom)} avaliaÃ§Ã£o(Ãµes) pendentes de homologaÃ§Ã£o", expanded=False):
+        with st.expander(f"📋 Ver {len(df_hom)} avaliação(ões) pendentes de homologação", expanded=False):
 
 
             cols_det = ["nrPM (Avaliado)", "Posto/Grad. (Avaliado)", "Nome (Avaliado)",
@@ -7252,10 +7252,10 @@ if active_page == "Avaliadores Pendentes":
                         "Unidade RPM (Avaliado)", "Unidade Principal (Avaliado)",
 
 
-                        "Status AvaliaÃ§Ã£o", "SituaÃ§Ã£o ComissÃ£o",
+                        "Status Avaliação", "Situação Comissão",
 
 
-                        "Data AV1", "Data AV2", "Data HOM", "CertificaÃ§Ã£o Homologador",
+                        "Data AV1", "Data AV2", "Data HOM", "Certificação Homologador",
 
 
                         "nrPM (Hom)", "Posto (Hom)", "Nome (Hom)", "RPM (Hom)",
@@ -7279,7 +7279,7 @@ if active_page == "Avaliadores Pendentes":
                 .reset_index(drop=True)
 
 
-                .style.map(color_sit, subset=["SituaÃ§Ã£o ComissÃ£o"]),
+                .style.map(color_sit, subset=["Situação Comissão"]),
 
 
                 height=340)
@@ -7288,7 +7288,7 @@ if active_page == "Avaliadores Pendentes":
             st.download_button(
 
 
-                "â¬‡ï¸ Lista detalhada (CSV)",
+                "⬇️ Lista detalhada (CSV)",
 
 
                 df_hom[cols_ok].to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
@@ -7300,19 +7300,19 @@ if active_page == "Avaliadores Pendentes":
 
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ══════════════════════════════════════════════════════════════════════════════
 
 
-# TAB 5 â€” GERAR RELATÃ“RIO (geraÃ§Ã£o 100% em memÃ³ria â€” funciona local e na nuvem)
+# TAB 5 — GERAR RELATÓRIO (geração 100% em memória — funciona local e na nuvem)
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ══════════════════════════════════════════════════════════════════════════════
 
 
 
 
 
-# â”€â”€ Motor de geraÃ§Ã£o de Excel em memÃ³ria â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Motor de geração de Excel em memória ─────────────────────────────────────
 
 
 STATUS_BG_XL = {
@@ -7321,7 +7321,7 @@ STATUS_BG_XL = {
     "Encerrada":             "70AD47",
 
 
-    "HomologaÃ§Ã£o":           "FFD966",
+    "Homologação":           "FFD966",
 
 
     "Parcialmente Encerrada":"FF8C00",
@@ -7333,13 +7333,13 @@ STATUS_BG_XL = {
 }
 
 
-SIT_BG_XL = {"ComissÃ£o Atual": "4472C4", "Nota ProvisÃ³ria": "FFC000"}
+SIT_BG_XL = {"Comissão Atual": "4472C4", "Nota Provisória": "FFC000"}
 
 
 
 
 
-# Colunas exportadas para Excel (SEM Conceito Geral, Nota Geral, Nota HomologaÃ§Ã£o)
+# Colunas exportadas para Excel (SEM Conceito Geral, Nota Geral, Nota Homologação)
 
 
 COLS_XLS = [
@@ -7354,7 +7354,7 @@ COLS_XLS = [
     "Sit. Funcional",
 
 
-    "Data AV1", "Data AV2", "Data HOM", "CertificaÃ§Ã£o Homologador",
+    "Data AV1", "Data AV2", "Data HOM", "Certificação Homologador",
 
 
     "nrPM (Av1)", "Posto (Av1)", "Nome (Av1)", "RPM (Av1)", "Unid. Principal (Av1)",
@@ -7366,7 +7366,7 @@ COLS_XLS = [
     "nrPM (Hom)", "Posto (Hom)", "Nome (Hom)", "RPM (Hom)", "Unid. Principal (Hom)",
 
 
-    "SituaÃ§Ã£o ComissÃ£o", "Status AvaliaÃ§Ã£o",
+    "Situação Comissão", "Status Avaliação",
 
 
 ]
@@ -7510,7 +7510,7 @@ def _write_data_rows(ws, df, cols, s):
             cell.alignment = s["center"] if ci > 7 else s["left"]
 
 
-            if col == "Status AvaliaÃ§Ã£o" and val in STATUS_BG_XL:
+            if col == "Status Avaliação" and val in STATUS_BG_XL:
 
 
                 cell.fill = PatternFill("solid", fgColor=STATUS_BG_XL[val])
@@ -7522,7 +7522,7 @@ def _write_data_rows(ws, df, cols, s):
                                   color="FFFFFF" if val == "Aberta" else "000000")
 
 
-            elif col == "SituaÃ§Ã£o ComissÃ£o" and val in SIT_BG_XL:
+            elif col == "Situação Comissão" and val in SIT_BG_XL:
 
 
                 cell.fill = PatternFill("solid", fgColor=SIT_BG_XL[val])
@@ -7531,7 +7531,7 @@ def _write_data_rows(ws, df, cols, s):
                 cell.font = Font(bold=True, name="Calibri", size=9,
 
 
-                                  color="FFFFFF" if val == "ComissÃ£o Atual" else "000000")
+                                  color="FFFFFF" if val == "Comissão Atual" else "000000")
 
 
 
@@ -7579,7 +7579,7 @@ def _auto_widths(ws, df, cols):
 def _write_data_sheet(ws, df, titulo, cols, s):
 
 
-    """Escreve tÃ­tulo + cabeÃ§alhos + dados em uma aba."""
+    """Escreve título + cabeçalhos + dados em uma aba."""
 
 
     df_c = df[[c for c in cols if c in df.columns]].reset_index(drop=True)
@@ -7609,13 +7609,13 @@ def _write_data_sheet(ws, df, titulo, cols, s):
 def _write_avaliadores_sheet(ws, df_unit, s, df_global=None, titulo_unidade=""):
 
 
-    """Aba Avaliadores Pendentes: avaliadores lotados na unidade com pendÃªncias."""
+    """Aba Avaliadores Pendentes: avaliadores lotados na unidade com pendências."""
 
 
     from openpyxl.styles import PatternFill, Font, Alignment
 
 
-    _write_title(ws, "AVALIADORES PENDENTES â€” LOTADOS NA UNIDADE", 14, s)
+    _write_title(ws, "AVALIADORES PENDENTES — LOTADOS NA UNIDADE", 14, s)
 
 
 
@@ -7633,25 +7633,25 @@ def _write_avaliadores_sheet(ws, df_unit, s, df_global=None, titulo_unidade=""):
 
     if df_global is not None and not is_geral:
 
-        df_ab = df_global[(df_global["Status AvaliaÃ§Ã£o"] == "Aberta") & (df_global["RPM (Av1)"] == titulo_unidade)]
+        df_ab = df_global[(df_global["Status Avaliação"] == "Aberta") & (df_global["RPM (Av1)"] == titulo_unidade)]
 
 
-        df_pe = df_global[(df_global["Status AvaliaÃ§Ã£o"].isin(["Aberta", "Parcialmente Encerrada"])) & (df_global["RPM (Av2)"] == titulo_unidade)]
+        df_pe = df_global[(df_global["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada"])) & (df_global["RPM (Av2)"] == titulo_unidade)]
 
 
-        df_hom = df_global[(df_global["Status AvaliaÃ§Ã£o"] == "HomologaÃ§Ã£o") & (df_global["RPM (Hom)"] == titulo_unidade)]
+        df_hom = df_global[(df_global["Status Avaliação"] == "Homologação") & (df_global["RPM (Hom)"] == titulo_unidade)]
 
 
     else:
 
 
-        df_ab = df_unit[df_unit["Status AvaliaÃ§Ã£o"] == "Aberta"]
+        df_ab = df_unit[df_unit["Status Avaliação"] == "Aberta"]
 
 
-        df_pe = df_unit[df_unit["Status AvaliaÃ§Ã£o"].isin(["Aberta", "Parcialmente Encerrada"])]
+        df_pe = df_unit[df_unit["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada"])]
 
 
-        df_hom = df_unit[df_unit["Status AvaliaÃ§Ã£o"] == "HomologaÃ§Ã£o"]
+        df_hom = df_unit[df_unit["Status Avaliação"] == "Homologação"]
 
 
 
@@ -7675,7 +7675,7 @@ def _write_avaliadores_sheet(ws, df_unit, s, df_global=None, titulo_unidade=""):
                       rpm=r.get("RPM (Av1)",""), unid=r.get("Unid. Principal (Av1)",""))
 
 
-        if r["SituaÃ§Ã£o ComissÃ£o"] == "ComissÃ£o Atual": av1[k]["CA"] += 1
+        if r["Situação Comissão"] == "Comissão Atual": av1[k]["CA"] += 1
 
 
         else: av1[k]["NP"] += 1
@@ -7702,10 +7702,10 @@ def _write_avaliadores_sheet(ws, df_unit, s, df_global=None, titulo_unidade=""):
                       rpm=r.get("RPM (Av2)",""), unid=r.get("Unid. Principal (Av2)",""))
 
 
-        is_ca = r["SituaÃ§Ã£o ComissÃ£o"] == "ComissÃ£o Atual"
+        is_ca = r["Situação Comissão"] == "Comissão Atual"
 
 
-        if r["Status AvaliaÃ§Ã£o"] == "Aberta":
+        if r["Status Avaliação"] == "Aberta":
 
 
             if is_ca: av2[k]["CA_ab"] += 1
@@ -7741,7 +7741,7 @@ def _write_avaliadores_sheet(ws, df_unit, s, df_global=None, titulo_unidade=""):
                       rpm=r.get("RPM (Hom)",""), unid=r.get("Unid. Principal (Hom)",""))
 
 
-        if r["SituaÃ§Ã£o ComissÃ£o"] == "ComissÃ£o Atual": hom[k]["CA"] += 1
+        if r["Situação Comissão"] == "Comissão Atual": hom[k]["CA"] += 1
 
 
         else: hom[k]["NP"] += 1
@@ -7753,10 +7753,10 @@ def _write_avaliadores_sheet(ws, df_unit, s, df_global=None, titulo_unidade=""):
     row_num = 3
 
 
-    # CabeÃ§alho seÃ§Ã£o AV1
+    # Cabeçalho seção AV1
 
 
-    titles_av1 = ["NÂº PM","Posto","Nome","RPM","Unidade","CAâ€”Aberta","NPâ€”Aberta","Total AV1"]
+    titles_av1 = ["Nº PM","Posto","Nome","RPM","Unidade","CA—Aberta","NP—Aberta","Total AV1"]
 
 
     fill_av1 = PatternFill("solid", fgColor="1F3864")
@@ -7774,7 +7774,7 @@ def _write_avaliadores_sheet(ws, df_unit, s, df_global=None, titulo_unidade=""):
     ws.merge_cells(start_row=row_num-1, start_column=1, end_row=row_num-1, end_column=8)
 
 
-    lbl = ws.cell(row_num-1, 1, "AVALIADOR 1 â€” AvaliaÃ§Ãµes Em Aberto")
+    lbl = ws.cell(row_num-1, 1, "AVALIADOR 1 — Avaliações Em Aberto")
 
 
     lbl.fill = PatternFill("solid", fgColor="2E5090"); lbl.font = Font(bold=True, color="FFFFFF", name="Calibri", size=11)
@@ -7816,16 +7816,16 @@ def _write_avaliadores_sheet(ws, df_unit, s, df_global=None, titulo_unidade=""):
     row_num += 2
 
 
-    # CabeÃ§alho seÃ§Ã£o AV2
+    # Cabeçalho seção AV2
 
 
-    titles_av2 = ["NÂº PM","Posto","Nome","RPM","Unidade","CAâ€”Ab.","CAâ€”PE","NPâ€”Ab.","NPâ€”PE","Total AV2"]
+    titles_av2 = ["Nº PM","Posto","Nome","RPM","Unidade","CA—Ab.","CA—PE","NP—Ab.","NP—PE","Total AV2"]
 
 
     ws.merge_cells(start_row=row_num, start_column=1, end_row=row_num, end_column=10)
 
 
-    lbl2 = ws.cell(row_num, 1, "AVALIADOR 2 â€” Em Aberto + Parcialmente Encerrada")
+    lbl2 = ws.cell(row_num, 1, "AVALIADOR 2 — Em Aberto + Parcialmente Encerrada")
 
 
     lbl2.fill = PatternFill("solid", fgColor="2E5090"); lbl2.font = Font(bold=True, color="FFFFFF", name="Calibri", size=11)
@@ -7879,16 +7879,16 @@ def _write_avaliadores_sheet(ws, df_unit, s, df_global=None, titulo_unidade=""):
     row_num += 2
 
 
-    # CabeÃ§alho seÃ§Ã£o HOM
+    # Cabeçalho seção HOM
 
 
-    titles_hom = ["NÂº PM","Posto","Nome","RPM","Unidade","CAâ€”Pend.","NPâ€”Pend.","Total HOM"]
+    titles_hom = ["Nº PM","Posto","Nome","RPM","Unidade","CA—Pend.","NP—Pend.","Total HOM"]
 
 
     ws.merge_cells(start_row=row_num, start_column=1, end_row=row_num, end_column=8)
 
 
-    lbl3 = ws.cell(row_num, 1, "HOMOLOGADOR â€” AvaliaÃ§Ãµes com DivergÃªncia Aguardando Nota")
+    lbl3 = ws.cell(row_num, 1, "HOMOLOGADOR — Avaliações com Divergência Aguardando Nota")
 
 
     lbl3.fill = PatternFill("solid", fgColor="7B3F00"); lbl3.font = Font(bold=True, color="FFFFFF", name="Calibri", size=11)
@@ -7960,37 +7960,37 @@ def _write_avaliadores_sheet(ws, df_unit, s, df_global=None, titulo_unidade=""):
 def _write_resumo_sheet(ws, df, titulo, s):
 
 
-    """Aba Resumo: grade CA Ã— Status e NP Ã— Status com cores."""
+    """Aba Resumo: grade CA × Status e NP × Status com cores."""
 
 
     from openpyxl.styles import PatternFill, Font, Alignment
 
 
-    _write_title(ws, f"RESUMO â€” {titulo}", 5, s)
+    _write_title(ws, f"RESUMO — {titulo}", 5, s)
 
 
 
 
 
-    STATUS_ORD = ["Aberta", "Parcialmente Encerrada", "HomologaÃ§Ã£o", "Encerrada"]
+    STATUS_ORD = ["Aberta", "Parcialmente Encerrada", "Homologação", "Encerrada"]
 
 
-    ca = df[df["SituaÃ§Ã£o ComissÃ£o"] == "ComissÃ£o Atual"]
+    ca = df[df["Situação Comissão"] == "Comissão Atual"]
 
 
-    np_ = df[df["SituaÃ§Ã£o ComissÃ£o"] == "Nota ProvisÃ³ria"]
+    np_ = df[df["Situação Comissão"] == "Nota Provisória"]
 
 
 
 
 
-    fill_ca  = PatternFill("solid", fgColor="4472C4")   # azul  â€” ComissÃ£o Atual
+    fill_ca  = PatternFill("solid", fgColor="4472C4")   # azul  — Comissão Atual
 
 
-    fill_np  = PatternFill("solid", fgColor="FFC000")   # amarelo â€” Nota ProvisÃ³ria
+    fill_np  = PatternFill("solid", fgColor="FFC000")   # amarelo — Nota Provisória
 
 
-    fill_tot = PatternFill("solid", fgColor="1F3864")   # azul escuro â€” Total
+    fill_tot = PatternFill("solid", fgColor="1F3864")   # azul escuro — Total
 
 
     fill_st  = {
@@ -8002,7 +8002,7 @@ def _write_resumo_sheet(ws, df, titulo, s):
         "Parcialmente Encerrada": PatternFill("solid", fgColor="FF8C00"),
 
 
-        "HomologaÃ§Ã£o":            PatternFill("solid", fgColor="FFD966"),
+        "Homologação":            PatternFill("solid", fgColor="FFD966"),
 
 
         "Encerrada":              PatternFill("solid", fgColor="70AD47"),
@@ -8029,10 +8029,10 @@ def _write_resumo_sheet(ws, df, titulo, s):
     r = 3
 
 
-    # CabeÃ§alho da tabela
+    # Cabeçalho da tabela
 
 
-    headers = ["STATUS / SITUAÃ‡ÃƒO", "COMISSÃƒO ATUAL âœ…", "NOTA PROVISÃ“RIA âš ï¸",
+    headers = ["STATUS / SITUAÇÃO", "COMISSÃO ATUAL ✅", "NOTA PROVISÓRIA ⚠️",
 
 
                "TOTAL STATUS", "% do Total"]
@@ -8068,10 +8068,10 @@ def _write_resumo_sheet(ws, df, titulo, s):
     for st in STATUS_ORD:
 
 
-        ca_n  = (ca["Status AvaliaÃ§Ã£o"] == st).sum()
+        ca_n  = (ca["Status Avaliação"] == st).sum()
 
 
-        np_n  = (np_["Status AvaliaÃ§Ã£o"] == st).sum()
+        np_n  = (np_["Status Avaliação"] == st).sum()
 
 
         tot_n = ca_n + np_n
@@ -8092,7 +8092,7 @@ def _write_resumo_sheet(ws, df, titulo, s):
         c0.fill = fill_st.get(st, PatternFill()); c0.border = thin
 
 
-        c0.font = black_bold if st in ("HomologaÃ§Ã£o","Parcialmente Encerrada","Encerrada") else white_bold
+        c0.font = black_bold if st in ("Homologação","Parcialmente Encerrada","Encerrada") else white_bold
 
 
         c0.alignment = center_bold
@@ -8188,10 +8188,10 @@ def _write_resumo_sheet(ws, df, titulo, s):
     for ci, (txt, fill, fnt) in enumerate([
 
 
-        ("COMISSÃƒO ATUAL â€” Policial estÃ¡ lotado na unidade avaliadora (CA)", fill_ca, white_bold),
+        ("COMISSÃO ATUAL — Policial está lotado na unidade avaliadora (CA)", fill_ca, white_bold),
 
 
-        ("NOTA PROVISÃ“RIA â€” Policial transferido; nota pode mudar (NP)",     fill_np, black_bold),
+        ("NOTA PROVISÓRIA — Policial transferido; nota pode mudar (NP)",     fill_np, black_bold),
 
 
     ], 1):
@@ -8236,19 +8236,19 @@ def _write_analise_sheet(ws, df, titulo, s):
 
 
 
-    _write_title(ws, f"ANÃLISE â€” {titulo}", 6, s)
+    _write_title(ws, f"ANÁLISE — {titulo}", 6, s)
 
 
 
 
 
-    STATUS_ORD = ["Aberta", "Parcialmente Encerrada", "HomologaÃ§Ã£o", "Encerrada"]
+    STATUS_ORD = ["Aberta", "Parcialmente Encerrada", "Homologação", "Encerrada"]
 
 
-    ca  = df[df["SituaÃ§Ã£o ComissÃ£o"] == "ComissÃ£o Atual"]
+    ca  = df[df["Situação Comissão"] == "Comissão Atual"]
 
 
-    np_ = df[df["SituaÃ§Ã£o ComissÃ£o"] == "Nota ProvisÃ³ria"]
+    np_ = df[df["Situação Comissão"] == "Nota Provisória"]
 
 
     total = len(df)
@@ -8275,7 +8275,7 @@ def _write_analise_sheet(ws, df, titulo, s):
         "Parcialmente Encerrada": PatternFill("solid", fgColor="FF8C00"),
 
 
-        "HomologaÃ§Ã£o":            PatternFill("solid", fgColor="FFD966"),
+        "Homologação":            PatternFill("solid", fgColor="FFD966"),
 
 
         "Encerrada":              PatternFill("solid", fgColor="70AD47"),
@@ -8299,13 +8299,13 @@ def _write_analise_sheet(ws, df, titulo, s):
 
 
 
-    # â”€â”€ CabeÃ§alho da tabela â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Cabeçalho da tabela ────────────────────────────────────────────────────
 
 
     r = 3
 
 
-    headers = ["STATUS", "COMISSÃƒO ATUAL", "NOTA PROVISÃ“RIA", "TOTAL", "%"]
+    headers = ["STATUS", "COMISSÃO ATUAL", "NOTA PROVISÓRIA", "TOTAL", "%"]
 
 
     col_fills = [fill_tot, fill_ca, fill_np, fill_tot, fill_tot]
@@ -8335,19 +8335,19 @@ def _write_analise_sheet(ws, df, titulo, s):
 
 
 
-    # â”€â”€ Dados por Status â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Dados por Status ───────────────────────────────────────────────────────
 
 
-    data_start_row = r  # usado pelo grÃ¡fico
+    data_start_row = r  # usado pelo gráfico
 
 
     for st in STATUS_ORD:
 
 
-        ca_n  = int((ca["Status AvaliaÃ§Ã£o"] == st).sum())
+        ca_n  = int((ca["Status Avaliação"] == st).sum())
 
 
-        np_n  = int((np_["Status AvaliaÃ§Ã£o"] == st).sum())
+        np_n  = int((np_["Status Avaliação"] == st).sum())
 
 
         tot_n = ca_n + np_n
@@ -8464,10 +8464,10 @@ def _write_analise_sheet(ws, df, titulo, s):
     for txt, fll, fnt in [
 
 
-        ("COMISSÃƒO ATUAL â€” Policial lotado na unidade avaliadora", fill_ca, white_bold),
+        ("COMISSÃO ATUAL — Policial lotado na unidade avaliadora", fill_ca, white_bold),
 
 
-        ("NOTA PROVISÃ“RIA â€” Policial transferido; nota pode mudar", fill_np, black_bold),
+        ("NOTA PROVISÓRIA — Policial transferido; nota pode mudar", fill_np, black_bold),
 
 
     ]:
@@ -8494,13 +8494,13 @@ def _write_analise_sheet(ws, df, titulo, s):
 
 
 
-    # â”€â”€ GrÃ¡fico 1: Pizza por Status (Total por status - 3D) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Gráfico 1: Pizza por Status (Total por status - 3D) ─────────────────────────
 
 
     pie1 = PieChart3D()
 
 
-    pie1.title  = "Status das AvaliaÃ§Ãµes"
+    pie1.title  = "Status das Avaliações"
 
 
     pie1.style  = 10
@@ -8515,7 +8515,7 @@ def _write_analise_sheet(ws, df, titulo, s):
 
 
 
-    # Dados: coluna 4 (TOTAL) linhas data_start_row atÃ© data_end_row
+    # Dados: coluna 4 (TOTAL) linhas data_start_row até data_end_row
 
 
     data1 = Reference(ws, min_col=4, min_row=data_start_row, max_row=data_end_row)
@@ -8587,7 +8587,7 @@ def _write_analise_sheet(ws, df, titulo, s):
 
 
 
-    # Posiciona o grÃ¡fico na coluna G linha 3
+    # Posiciona o gráfico na coluna G linha 3
 
 
     ws.add_chart(pie1, "G3")
@@ -8632,19 +8632,19 @@ def _build_workbook(df_unit: pd.DataFrame, titulo: str, df_global: pd.DataFrame 
         sensitive_cols = [c for c in [
 
 
-            "Conceito Geral", "Nota Geral", "Nota HomologaÃ§Ã£o",
+            "Conceito Geral", "Nota Geral", "Nota Homologação",
 
 
-            "CompetÃªncia 1", "Conceito Comp.1", "Nota Comp.1",
+            "Competência 1", "Conceito Comp.1", "Nota Comp.1",
 
 
-            "CompetÃªncia 2", "Conceito Comp.2", "Nota Comp.2",
+            "Competência 2", "Conceito Comp.2", "Nota Comp.2",
 
 
-            "CompetÃªncia 3", "Conceito Comp.3", "Nota Comp.3",
+            "Competência 3", "Conceito Comp.3", "Nota Comp.3",
 
 
-            "CompetÃªncia 4", "Conceito Comp.4", "Nota Comp.4"
+            "Competência 4", "Conceito Comp.4", "Nota Comp.4"
 
 
         ] if c in df_unit.columns]
@@ -8671,34 +8671,34 @@ def _build_workbook(df_unit: pd.DataFrame, titulo: str, df_global: pd.DataFrame 
 
 
 
-    # Aba 1 â€” Geral
+    # Aba 1 — Geral
 
 
     ws1 = wb.active; ws1.title = "Geral"
 
 
-    _write_data_sheet(ws1, df_unit, f"AVALIAÃ‡Ã•ES â€” {titulo}", cols, s)
+    _write_data_sheet(ws1, df_unit, f"AVALIAÇÕES — {titulo}", cols, s)
 
 
 
 
 
-    # Aba 2 â€” AvaliaÃ§Ãµes Pendentes (Aberta, Parcialmente Encerrada e HomologaÃ§Ã£o)
+    # Aba 2 — Avaliações Pendentes (Aberta, Parcialmente Encerrada e Homologação)
 
 
-    ws2 = wb.create_sheet("AvaliaÃ§Ãµes Pendentes")
+    ws2 = wb.create_sheet("Avaliações Pendentes")
 
 
-    df_pend = df_unit[df_unit["Status AvaliaÃ§Ã£o"].isin(["Aberta", "Parcialmente Encerrada", "HomologaÃ§Ã£o"]) & df_unit["Sit. Funcional"].isin(SITUACOES_ALVO)]
+    df_pend = df_unit[df_unit["Status Avaliação"].isin(["Aberta", "Parcialmente Encerrada", "Homologação"]) & df_unit["Sit. Funcional"].isin(SITUACOES_ALVO)]
 
 
-    _write_data_sheet(ws2, df_pend, f"AVALIAÃ‡Ã•ES PENDENTES â€” {titulo}", cols, s)
+    _write_data_sheet(ws2, df_pend, f"AVALIAÇÕES PENDENTES — {titulo}", cols, s)
 
 
 
 
 
-    # Aba 3 â€” Avaliadores Pendentes
+    # Aba 3 — Avaliadores Pendentes
 
 
     ws3 = wb.create_sheet("Avaliadores Pendentes")
@@ -8710,10 +8710,10 @@ def _build_workbook(df_unit: pd.DataFrame, titulo: str, df_global: pd.DataFrame 
 
 
 
-    # Aba 4 â€” AnÃ¡lise (tabela + grÃ¡ficos de pizza)
+    # Aba 4 — Análise (tabela + gráficos de pizza)
 
 
-    ws4 = wb.create_sheet("AnÃ¡lise")
+    ws4 = wb.create_sheet("Análise")
 
 
     _write_analise_sheet(ws4, df_unit, titulo, s)
@@ -8738,14 +8738,14 @@ def _build_workbook(df_unit: pd.DataFrame, titulo: str, df_global: pd.DataFrame 
 
 
 def _gerar_zip_bytes(df_full: pd.DataFrame, modo: str, units_sel: list) -> tuple:
-    """Gera ZIP com planilhas Excel em memÃ³ria e retorna (bytes, filename)."""
+    """Gera ZIP com planilhas Excel em memória e retorna (bytes, filename)."""
     zip_buf  = io.BytesIO()
     zip_name = f"AADP_2026_{now_br().strftime('%Y%m%d_%H%M%S')}.zip"
 
     with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
         if modo in ("all", "geral"):
             zf.writestr("Analise_Avaliacoes_Geral.xlsx",
-                        _build_workbook(df_full, "GERAL â€” AADP 2026", df_full))
+                        _build_workbook(df_full, "GERAL — AADP 2026", df_full))
         if modo in ("all", "units"):
             targets = units_sel if units_sel else sorted(
                 df_full["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key)
@@ -8760,97 +8760,97 @@ def _gerar_zip_bytes(df_full: pd.DataFrame, modo: str, units_sel: list) -> tuple
     return zip_buf.read(), zip_name
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# TAB 5 â€” GERAR RELATÃ“RIO EXCEL
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-if active_page == "Gerar RelatÃ³rio":
-    st.markdown("### ðŸ“¥ Gerar RelatÃ³rio Excel")
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 5 — GERAR RELATÓRIO EXCEL
+# ══════════════════════════════════════════════════════════════════════════════
+if active_page == "Gerar Relatório":
+    st.markdown("### 📥 Gerar Relatório Excel")
     
     if active_role in ("P1", "SADM"):
-        st.warning("âš ï¸ VocÃª nÃ£o possui permissÃ£o para acessar esta funcionalidade.")
+        st.warning("⚠️ Você não possui permissão para acessar esta funcionalidade.")
     else:
         if "excel_modo_rel" not in st.session_state:
             st.session_state.excel_modo_rel = "Completo"
             
-        st.markdown("<p style='font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; color: #9b8a5c;'>Tipo de relatÃ³rio:</p>", unsafe_allow_html=True)
+        st.markdown("<p style='font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; color: #9b8a5c;'>Tipo de relatório:</p>", unsafe_allow_html=True)
         st.markdown("<div class='excel-scope-marker'></div>", unsafe_allow_html=True)
         
         col_ex1, col_ex2, col_ex3 = st.columns(3)
         with col_ex1:
             is_ex1 = (st.session_state.excel_modo_rel == "Completo")
             btn_ex1_type = "primary" if is_ex1 else "secondary"
-            if st.button("ðŸŒ\nCompleto\n(Geral + RPMs)", key="btn_excel_scope_completo", use_container_width=True, type=btn_ex1_type):
+            if st.button("🌐\nCompleto\n(Geral + RPMs)", key="btn_excel_scope_completo", use_container_width=True, type=btn_ex1_type):
                 st.session_state.excel_modo_rel = "Completo"
                 st.rerun()
         with col_ex2:
             is_ex2 = (st.session_state.excel_modo_rel == "Somente Geral")
             btn_ex2_type = "primary" if is_ex2 else "secondary"
-            if st.button("ðŸ“‹\nGeral\n(Somente Geral)", key="btn_excel_scope_geral", use_container_width=True, type=btn_ex2_type):
+            if st.button("📋\nGeral\n(Somente Geral)", key="btn_excel_scope_geral", use_container_width=True, type=btn_ex2_type):
                 st.session_state.excel_modo_rel = "Somente Geral"
                 st.rerun()
         with col_ex3:
-            is_ex3 = (st.session_state.excel_modo_rel == "Unidades RPM especÃ­ficas")
+            is_ex3 = (st.session_state.excel_modo_rel == "Unidades RPM específicas")
             btn_ex3_type = "primary" if is_ex3 else "secondary"
-            if st.button("ðŸŽ¯\nEspecÃ­ficas\n(Filtrar Unidades)", key="btn_excel_scope_especifica", use_container_width=True, type=btn_ex3_type):
-                st.session_state.excel_modo_rel = "Unidades RPM especÃ­ficas"
+            if st.button("🎯\nEspecíficas\n(Filtrar Unidades)", key="btn_excel_scope_especifica", use_container_width=True, type=btn_ex3_type):
+                st.session_state.excel_modo_rel = "Unidades RPM específicas"
                 st.rerun()
                 
         modo_rel = st.session_state.excel_modo_rel
     
         units_sel = []
-        if "especÃ­ficas" in modo_rel:
+        if "específicas" in modo_rel:
             all_rpms_sorted = sorted(df_full["Unidade RPM (Avaliado)"].dropna().unique(),
                                       key=rpm_sort_key)
             units_sel = st.multiselect("Selecione as Unidades RPM:", all_rpms_sorted,
                                         placeholder="Escolha uma ou mais unidades...")
             if units_sel:
                 n_prev = sum((df_full["Unidade RPM (Avaliado)"]==u).sum() for u in units_sel)
-                st.markdown(f"<small>ðŸ“Š {len(units_sel)} unidade(s) Â· {fmt_num(n_prev)} registros</small>",
+                st.markdown(f"<small>📊 {len(units_sel)} unidade(s) · {fmt_num(n_prev)} registros</small>",
                             unsafe_allow_html=True)
     
         st.markdown("---")
     
-        if "especÃ­ficas" in modo_rel and not units_sel:
-            st.warning("âš ï¸ Selecione ao menos uma Unidade RPM.")
+        if "específicas" in modo_rel and not units_sel:
+            st.warning("⚠️ Selecione ao menos uma Unidade RPM.")
         else:
-            if st.button("ðŸš€ Gerar e Baixar RelatÃ³rio", type="primary", use_container_width=True):
+            if st.button("🚀 Gerar e Baixar Relatório", type="primary", use_container_width=True):
                 modo_code = ("geral" if "Somente" in modo_rel
-                             else "units" if "especÃ­ficas" in modo_rel else "all")
-                with st.spinner("â³ Gerando planilhas Excel... aguarde."):
+                             else "units" if "específicas" in modo_rel else "all")
+                with st.spinner("⏳ Gerando planilhas Excel... aguarde."):
                     try:
                         zip_bytes, zip_name = _gerar_zip_bytes(df_full, modo_code, units_sel)
-                        st.success(f"âœ… ZIP gerado com sucesso! ({len(zip_bytes)//1024:,} KB)")
+                        st.success(f"✅ ZIP gerado com sucesso! ({len(zip_bytes)//1024:,} KB)")
                         log_action(st.session_state.user_pm, "EXPORTAR_EXCEL", f"Modo: {modo_code}, Unidades: {units_sel}")
                         st.download_button(
-                            label=f"â¬‡ï¸ Baixar {zip_name}",
+                            label=f"⬇️ Baixar {zip_name}",
                             data=zip_bytes,
                             file_name=zip_name,
                             mime="application/zip",
                             use_container_width=True,
                         )
                     except Exception as ex:
-                        st.error(f"âŒ Erro na geraÃ§Ã£o: {ex}")
+                        st.error(f"❌ Erro na geração: {ex}")
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# TAB 6 â€” HOMOLOGAÃ‡ÃƒO RELATÃ“RIO WORD (.DOCX)
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-if active_page == "RelatÃ³rio Word":
-    st.markdown("### ðŸ“„ RelatÃ³rio Word (.docx)")
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 6 — HOMOLOGAÇÃO RELATÓRIO WORD (.DOCX)
+# ══════════════════════════════════════════════════════════════════════════════
+if active_page == "Relatório Word":
+    st.markdown("### 📄 Relatório Word (.docx)")
     df_word = df_full
                 
     if df_word is not None:
         st.markdown("---")
         
         if active_role in ("SADM",):
-            st.warning("âš ï¸ VocÃª nÃ£o possui permissÃ£o para acessar esta funcionalidade.")
+            st.warning("⚠️ Você não possui permissão para acessar esta funcionalidade.")
         else:
-            st.markdown("<h4 style='font-size: 1.35rem; font-weight: bold; margin-bottom: 12px; color: #9b8a5c;'>ConfiguraÃ§Ãµes do RelatÃ³rio</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='font-size: 1.35rem; font-weight: bold; margin-bottom: 12px; color: #9b8a5c;'>Configurações do Relatório</h4>", unsafe_allow_html=True)
             
             if "rel_scope" not in st.session_state:
                 st.session_state.rel_scope = "Geral RPM" if active_role in ("ADMINISTRADOR", "GESTOR") else f"Geral Subordinadas da {active_rpm}"
                 
-            st.markdown("<p style='font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; color: #9b8a5c;'>Escopo do RelatÃ³rio:</p>", unsafe_allow_html=True)
+            st.markdown("<p style='font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; color: #9b8a5c;'>Escopo do Relatório:</p>", unsafe_allow_html=True)
             st.markdown("<div class='report-scope-marker'></div>", unsafe_allow_html=True)
             
             selected_rpms = []
@@ -8860,63 +8860,63 @@ if active_page == "RelatÃ³rio Word":
                 with col_sc1:
                     is_sc1 = (st.session_state.rel_scope == "Geral RPM")
                     btn_sc1_type = "primary" if is_sc1 else "secondary"
-                    if st.button("ðŸ¢\nGeral RPM\n(UDI/UDG Principais)", key="btn_scope_geral_rpm", use_container_width=True, type=btn_sc1_type):
+                    if st.button("🏢\nGeral RPM\n(UDI/UDG Principais)", key="btn_scope_geral_rpm", use_container_width=True, type=btn_sc1_type):
                         st.session_state.rel_scope = "Geral RPM"
                         st.rerun()
                 with col_sc2:
                     is_sc2 = (st.session_state.rel_scope == "Geral Subordinadas")
                     btn_sc2_type = "primary" if is_sc2 else "secondary"
-                    if st.button("ðŸŒ\nGeral Subordinadas\n(UDI/UDG + Subordinadas)", key="btn_scope_geral_sub", use_container_width=True, type=btn_sc2_type):
+                    if st.button("🌐\nGeral Subordinadas\n(UDI/UDG + Subordinadas)", key="btn_scope_geral_sub", use_container_width=True, type=btn_sc2_type):
                         st.session_state.rel_scope = "Geral Subordinadas"
                         st.rerun()
                 with col_sc3:
-                    is_sc3 = (st.session_state.rel_scope == "Por RPM especÃ­fica")
+                    is_sc3 = (st.session_state.rel_scope == "Por RPM específica")
                     btn_sc3_type = "primary" if is_sc3 else "secondary"
-                    if st.button("ðŸŽ¯\nPor RPM especÃ­fica\n(Filtrar por Unidades)", key="btn_scope_especifica", use_container_width=True, type=btn_sc3_type):
-                        st.session_state.rel_scope = "Por RPM especÃ­fica"
+                    if st.button("🎯\nPor RPM específica\n(Filtrar por Unidades)", key="btn_scope_especifica", use_container_width=True, type=btn_sc3_type):
+                        st.session_state.rel_scope = "Por RPM específica"
                         st.rerun()
                         
                 rel_scope = st.session_state.rel_scope
-                if "especÃ­fica" in rel_scope:
+                if "específica" in rel_scope:
                     unique_rpms = sorted(df_word["Unidade RPM (Avaliado)"].dropna().unique().tolist(), key=rpm_sort_key)
-                    selected_rpms = st.multiselect("Selecione as Unidades UDI/UDG para o relatÃ³rio:", unique_rpms)
+                    selected_rpms = st.multiselect("Selecione as Unidades UDI/UDG para o relatório:", unique_rpms)
                     
             elif active_role == "P1":
                 # For P1, we force general subordinates and hide the UI
                 st.session_state.rel_scope = f"Geral Subordinadas da {active_rpm}"
                 rel_scope = st.session_state.rel_scope
 
-            # ðŸš€ BotÃ£o de GeraÃ§Ã£o em Destaque no InÃ­cio da PÃ¡gina
-            if "especÃ­fica" in rel_scope and not selected_rpms:
-                st.warning("âš ï¸ Selecione ao menos uma unidade para gerar o relatÃ³rio.")
+            # 🚀 Botão de Geração em Destaque no Início da Página
+            if "específica" in rel_scope and not selected_rpms:
+                st.warning("⚠️ Selecione ao menos uma unidade para gerar o relatório.")
             else:
-                if st.button("ðŸš€ Gerar e Baixar RelatÃ³rio Word", key="btn_word_gen", type="primary", use_container_width=True):
-                    with st.spinner("â³ Gerando relatÃ³rio executivo Word com grÃ¡ficos... (Isso pode levar alguns instantes)"):
+                if st.button("🚀 Gerar e Baixar Relatório Word", key="btn_word_gen", type="primary", use_container_width=True):
+                    with st.spinner("⏳ Gerando relatório executivo Word com gráficos... (Isso pode levar alguns instantes)"):
                         try:
                             from gerar_relatorio_word import generate_word_report
                             mode_code = "geral_rpm" if "Geral RPM" in rel_scope else "geral_subordinadas" if "Geral Subordinadas" in rel_scope else "especifica"
                             doc_bytes = generate_word_report(df_word, mode_code, selected_rpms, user_role=active_role)
-                            st.success("âœ… RelatÃ³rio Word gerado com sucesso!")
+                            st.success("✅ Relatório Word gerado com sucesso!")
                             log_action(active_pm, "EXPORTAR_WORD", f"Modo: {mode_code}, RPMs: {selected_rpms}")
                             doc_name = f"Relatorio_Executivo_AADP2026_{now_br().strftime('%Y%m%d_%H%M%S')}.docx"
                             st.download_button(
-                                label=f"â¬‡ï¸ Baixar {doc_name}",
+                                label=f"⬇️ Baixar {doc_name}",
                                 data=doc_bytes,
                                 file_name=doc_name,
                                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                                 use_container_width=True
                             )
                         except Exception as ex:
-                            st.error(f"âŒ Erro ao gerar o relatÃ³rio: {ex}")
+                            st.error(f"❌ Erro ao gerar o relatório: {ex}")
                             
             st.markdown("---")
             
-            # â”€â”€ PRÃ‰-VISUALIZAÃ‡ÃƒO DE GRÃFICOS DO WORD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            st.markdown("<h4 style='font-size: 1.25rem; font-weight: bold; margin-top: 15px; margin-bottom: 12px; color: #9b8a5c;'>ðŸ“Š PrÃ©-visualizaÃ§Ã£o dos GrÃ¡ficos do RelatÃ³rio</h4>", unsafe_allow_html=True)
+            # ── PRÉ-VISUALIZAÇÃO DE GRÁFICOS DO WORD ──────────────────────────────────
+            st.markdown("<h4 style='font-size: 1.25rem; font-weight: bold; margin-top: 15px; margin-bottom: 12px; color: #9b8a5c;'>📊 Pré-visualização dos Gráficos do Relatório</h4>", unsafe_allow_html=True)
             
             show_preview = True
-            if "especÃ­fica" in rel_scope and not selected_rpms:
-                st.info("ðŸ’¡ Selecione ao menos uma UDI/UDG acima para visualizar a prÃ©-visualizaÃ§Ã£o dos grÃ¡ficos.")
+            if "específica" in rel_scope and not selected_rpms:
+                st.info("💡 Selecione ao menos uma UDI/UDG acima para visualizar a pré-visualização dos gráficos.")
                 show_preview = False
                 
             if show_preview:
@@ -8930,34 +8930,34 @@ if active_page == "RelatÃ³rio Word":
                 mask_empty = df_word_clean["Unidade Principal (Avaliado)"] == ""
                 df_word_clean.loc[mask_empty, "Unidade Principal (Avaliado)"] = df_word_clean.loc[mask_empty, "Unidade RPM (Avaliado)"]
                 
-                # Filtrar pelo escopo do relatÃ³rio
-                if "especÃ­fica" in rel_scope:
+                # Filtrar pelo escopo do relatório
+                if "específica" in rel_scope:
                     df_escopo = df_word_clean[df_word_clean["Unidade RPM (Avaliado)"].isin(selected_rpms)].copy()
                     units_to_render = selected_rpms
                 else:
                     df_escopo = df_word_clean
                     units_to_render = sorted(df_word_clean["Unidade RPM (Avaliado)"].dropna().unique().tolist(), key=rpm_sort_key)
                 
-                # Tipo de prÃ©-visualizaÃ§Ã£o
+                # Tipo de pré-visualização
                 if active_role == "P1":
-                    st.info("ðŸ’¡ **Nota:** O botÃ£o de download acima sempre gerarÃ¡ o relatÃ³rio completo com **TODAS** as unidades subordinadas da sua RPM.")
+                    st.info("💡 **Nota:** O botão de download acima sempre gerará o relatório completo com **TODAS** as unidades subordinadas da sua RPM.")
                     sub_units_available = sorted(df_escopo["Unidade Principal (Avaliado)"].dropna().unique().tolist())
-                    selected_subs = st.multiselect("Filtrar prÃ©-visualizaÃ§Ã£o por Subunidade(s) especÃ­fica(s) (Opcional):", sub_units_available, key="p1_prev_sub_filter")
+                    selected_subs = st.multiselect("Filtrar pré-visualização por Subunidade(s) específica(s) (Opcional):", sub_units_available, key="p1_prev_sub_filter")
                     prev_type = "P1_Custom"
                 else:
                     prev_type = st.selectbox(
-                        "Selecione o nÃ­vel de detalhamento dos grÃ¡ficos para visualizaÃ§Ã£o:",
-                        ["ðŸŒ Geral (Toda a PMMG + GrÃ¡ficos de cada UDI/UDG)", "ðŸ¢ Por UDI/UDG especÃ­fica (RPM + GrÃ¡ficos das Subunidades)"],
+                        "Selecione o nível de detalhamento dos gráficos para visualização:",
+                        ["🌍 Geral (Toda a PMMG + Gráficos de cada UDI/UDG)", "🏢 Por UDI/UDG específica (RPM + Gráficos das Subunidades)"],
                         key="word_prev_type"
                     )
                 
                 from gerar_relatorio_word import create_status_pie, create_comissao_bar, create_pending_units_bar
                 import tempfile
                 
-                if prev_type == "ðŸŒ Geral (Toda a PMMG + GrÃ¡ficos de cada UDI/UDG)":
-                    with st.spinner("â³ Gerando prÃ©via dos grÃ¡ficos de toda a PMMG..."):
-                        # 1. VisÃ£o Geral do Estado
-                        st.markdown("<h5 style='font-size: 1.25rem; font-weight: bold; color: #9b8a5c; margin-top: 15px; margin-bottom: 10px;'>1. VisÃ£o Geral do Estado</h5>", unsafe_allow_html=True)
+                if prev_type == "🌍 Geral (Toda a PMMG + Gráficos de cada UDI/UDG)":
+                    with st.spinner("⏳ Gerando prévia dos gráficos de toda a PMMG..."):
+                        # 1. Visão Geral do Estado
+                        st.markdown("<h5 style='font-size: 1.25rem; font-weight: bold; color: #9b8a5c; margin-top: 15px; margin-bottom: 10px;'>1. Visão Geral do Estado</h5>", unsafe_allow_html=True)
                         
                         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f_pie:
                             t_pie = f_pie.name
@@ -8973,13 +8973,13 @@ if active_page == "RelatÃ³rio Word":
                             
                             c_sp1, c1, c2, c_sp2 = st.columns([1, 2, 2, 1])
                             with c1:
-                                st.image(t_pie, caption="Status das AvaliaÃ§Ãµes - Geral", use_container_width=True)
+                                st.image(t_pie, caption="Status das Avaliações - Geral", use_container_width=True)
                             with c2:
-                                st.image(t_bar, caption="SituaÃ§Ã£o da ComissÃ£o - Geral", use_container_width=True)
+                                st.image(t_bar, caption="Situação da Comissão - Geral", use_container_width=True)
                             
                             c_p_sp1, c_p, c_p_sp2 = st.columns([1, 2, 1])
                             with c_p:
-                                st.image(t_pend, caption="PendÃªncias Acumuladas por UDI/UDG", use_container_width=True)
+                                st.image(t_pend, caption="Pendências Acumuladas por UDI/UDG", use_container_width=True)
                         finally:
                             for p in [t_pie, t_bar, t_pend]:
                                 try:
@@ -8994,8 +8994,8 @@ if active_page == "RelatÃ³rio Word":
                                 st.markdown(
                                     f"""
                                     <div style='background-color: #3e3825; padding: 8px 12px; border-left: 5px solid #9b8a5c; border-radius: 4px; margin-top: 20px; margin-bottom: 10px;'>
-                                        <span style='font-size: 1.15rem; font-weight: bold; color: #f5f5f5;'>ðŸ¢ Unidade Principal: {rpm}</span>
-                                        <span style='font-size: 0.95rem; color: #cbbb8f; margin-left: 10px;'>({len(df_rpm):,} avaliaÃ§Ãµes)</span>
+                                        <span style='font-size: 1.15rem; font-weight: bold; color: #f5f5f5;'>🏢 Unidade Principal: {rpm}</span>
+                                        <span style='font-size: 0.95rem; color: #cbbb8f; margin-left: 10px;'>({len(df_rpm):,} avaliações)</span>
                                     </div>
                                     """,
                                     unsafe_allow_html=True
@@ -9018,8 +9018,8 @@ if active_page == "RelatÃ³rio Word":
                                             if os.path.exists(p): os.remove(p)
                                         except Exception: pass
                                         
-                elif prev_type == "ðŸ¢ Por UDI/UDG especÃ­fica (RPM + GrÃ¡ficos das Subunidades)":
-                    # Por UDI/UDG especÃ­fica (RPM + GrÃ¡ficos das Subunidades)
+                elif prev_type == "🏢 Por UDI/UDG específica (RPM + Gráficos das Subunidades)":
+                    # Por UDI/UDG específica (RPM + Gráficos das Subunidades)
                     rpms_available = sorted(df_escopo["Unidade RPM (Avaliado)"].dropna().unique().tolist(), key=rpm_sort_key)
                     if rpms_available:
                         selected_rpm = st.selectbox("Selecione a UDI/UDG (RPM) para detalhar:", rpms_available, key="prev_select_rpm")
@@ -9027,13 +9027,13 @@ if active_page == "RelatÃ³rio Word":
                         df_rpm = df_escopo[df_escopo["Unidade RPM (Avaliado)"] == selected_rpm]
                         
                         if not df_rpm.empty:
-                            with st.spinner(f"â³ Gerando grÃ¡ficos de {selected_rpm} e suas subordinadas..."):
-                                # 1. GrÃ¡ficos da Unidade Principal
+                            with st.spinner(f"⏳ Gerando gráficos de {selected_rpm} e suas subordinadas..."):
+                                # 1. Gráficos da Unidade Principal
                                 st.markdown(
                                     f"""
                                     <div style='background-color: #3e3825; padding: 10px 15px; border-left: 5px solid #9b8a5c; border-radius: 4px; margin-top: 20px; margin-bottom: 15px;'>
-                                        <span style='font-size: 1.25rem; font-weight: bold; color: #f5f5f5;'>ðŸ¢ Unidade Principal: {selected_rpm}</span>
-                                        <span style='font-size: 1.0rem; color: #cbbb8f; margin-left: 10px;'>({len(df_rpm):,} avaliaÃ§Ãµes)</span>
+                                        <span style='font-size: 1.25rem; font-weight: bold; color: #f5f5f5;'>🏢 Unidade Principal: {selected_rpm}</span>
+                                        <span style='font-size: 1.0rem; color: #cbbb8f; margin-left: 10px;'>({len(df_rpm):,} avaliações)</span>
                                     </div>
                                     """,
                                     unsafe_allow_html=True
@@ -9057,7 +9057,7 @@ if active_page == "RelatÃ³rio Word":
                                             if os.path.exists(p): os.remove(p)
                                         except Exception: pass
                                         
-                                # 2. GrÃ¡ficos das Subunidades (Subordinadas)
+                                # 2. Gráficos das Subunidades (Subordinadas)
                                 st.markdown(f"<h5 style='font-size: 1.15rem; font-weight: bold; color: #9b8a5c; margin-top: 25px; margin-bottom: 10px;'>2.1 Unidades Subordinadas de {selected_rpm}</h5>", unsafe_allow_html=True)
                                 unique_subs = sorted(df_rpm["Unidade Principal (Avaliado)"].dropna().unique().tolist())
                                 for sub in unique_subs:
@@ -9066,8 +9066,8 @@ if active_page == "RelatÃ³rio Word":
                                         st.markdown(
                                             f"""
                                             <div style='background-color: #26231b; padding: 6px 10px; border-left: 3px solid #ff9f43; border-radius: 4px; margin-top: 15px; margin-bottom: 8px;'>
-                                                <span style='font-size: 1.05rem; font-weight: bold; color: #f5f5f5;'>â–  Subunidade: {sub}</span>
-                                                <span style='font-size: 0.9rem; color: #ff9f43; margin-left: 10px;'>({len(df_sub):,} avaliaÃ§Ãµes)</span>
+                                                <span style='font-size: 1.05rem; font-weight: bold; color: #f5f5f5;'>■ Subunidade: {sub}</span>
+                                                <span style='font-size: 0.9rem; color: #ff9f43; margin-left: 10px;'>({len(df_sub):,} avaliações)</span>
                                             </div>
                                             """,
                                             unsafe_allow_html=True
@@ -9090,19 +9090,19 @@ if active_page == "RelatÃ³rio Word":
                                                     if os.path.exists(p): os.remove(p)
                                                 except Exception: pass
                         else:
-                            st.info("Sem dados disponÃ­veis para a unidade selecionada.")
+                            st.info("Sem dados disponíveis para a unidade selecionada.")
                     else:
-                        st.info("Nenhuma UDI/UDG disponÃ­vel no escopo atual.")
+                        st.info("Nenhuma UDI/UDG disponível no escopo atual.")
                 
                 elif prev_type == "P1_Custom":
                     df_rpm = df_escopo[df_escopo["Unidade RPM (Avaliado)"] == active_rpm]
                     if not df_rpm.empty:
-                        with st.spinner(f"â³ Gerando grÃ¡ficos das subordinadas de {active_rpm}..."):
+                        with st.spinner(f"⏳ Gerando gráficos das subordinadas de {active_rpm}..."):
                             unique_subs = sorted(df_rpm["Unidade Principal (Avaliado)"].dropna().unique().tolist())
                             if selected_subs:
                                 unique_subs = [s for s in unique_subs if s in selected_subs]
                                 
-                            st.markdown(f"<h5 style='font-size: 1.15rem; font-weight: bold; color: #9b8a5c; margin-top: 10px; margin-bottom: 10px;'>GrÃ¡ficos das Unidades Subordinadas</h5>", unsafe_allow_html=True)
+                            st.markdown(f"<h5 style='font-size: 1.15rem; font-weight: bold; color: #9b8a5c; margin-top: 10px; margin-bottom: 10px;'>Gráficos das Unidades Subordinadas</h5>", unsafe_allow_html=True)
                             
                             for sub in unique_subs:
                                 df_sub = df_rpm[df_rpm["Unidade Principal (Avaliado)"] == sub]
@@ -9110,8 +9110,8 @@ if active_page == "RelatÃ³rio Word":
                                     st.markdown(
                                         f"""
                                         <div style='background-color: #26231b; padding: 6px 10px; border-left: 3px solid #ff9f43; border-radius: 4px; margin-top: 15px; margin-bottom: 8px;'>
-                                            <span style='font-size: 1.05rem; font-weight: bold; color: #f5f5f5;'>â–  Subunidade: {sub}</span>
-                                            <span style='font-size: 0.9rem; color: #ff9f43; margin-left: 10px;'>({len(df_sub):,} avaliaÃ§Ãµes)</span>
+                                            <span style='font-size: 1.05rem; font-weight: bold; color: #f5f5f5;'>■ Subunidade: {sub}</span>
+                                            <span style='font-size: 0.9rem; color: #ff9f43; margin-left: 10px;'>({len(df_sub):,} avaliações)</span>
                                         </div>
                                         """,
                                         unsafe_allow_html=True
@@ -9134,41 +9134,41 @@ if active_page == "RelatÃ³rio Word":
                                                 if os.path.exists(p): os.remove(p)
                                             except Exception: pass
                     else:
-                        st.info("Sem dados disponÃ­veis.")
+                        st.info("Sem dados disponíveis.")
             st.markdown("---")
             
-            # O botÃ£o foi reposicionado no inÃ­cio da pÃ¡gina
+            # O botão foi reposicionado no início da página
             pass
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# TAB 7 â€” PAINEL ADMINISTRADOR
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# TAB 7 â€” AUDITORIA DE NOTAS
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 7 — PAINEL ADMINISTRADOR
+# ══════════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 7 — AUDITORIA DE NOTAS
+# ══════════════════════════════════════════════════════════════════════════════
 if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
-    st.markdown("### ðŸ“Š Auditoria de Notas")
+    st.markdown("### 📊 Auditoria de Notas")
     _role_audit = sidebar_active_role
     active_rpm   = st.session_state.get("simulated_rpm", st.session_state.get("user_rpm", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_rpm", "")
     _user_unit  = st.session_state.get("simulated_unit", st.session_state.get("user_unit", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_unit", "")
 
     # Obter caminhos dos arquivos locais e Drive
-    fonte = cfg.get("fonte_dados", "ðŸ“ Pasta local / Servidor")
+    fonte = cfg.get("fonte_dados", "📁 Pasta local / Servidor")
     drive_master_xlsx_id = cfg.get("drive_master_xlsx_id", "")
     
-    if fonte == "â˜ï¸ Google Drive":
+    if fonte == "☁️ Google Drive":
         master_xlsx_path = os.path.join(str(DADOS_DIR), "Analise avaliacoes completa.xlsx")
         if not drive_master_xlsx_id:
-            st.error("âŒ ID da Planilha Mestre no Google Drive nÃ£o configurado!")
-            st.warning("âš ï¸ Configure a chave `drive_master_xlsx_id` nas configuraÃ§Ãµes (st.secrets ou config_aadp.json) para habilitar o download automÃ¡tico da auditoria online.")
+            st.error("❌ ID da Planilha Mestre no Google Drive não configurado!")
+            st.warning("⚠️ Configure a chave `drive_master_xlsx_id` nas configurações (st.secrets ou config_aadp.json) para habilitar o download automático da auditoria online.")
             st.stop()
     else:
         # Modo pasta local
         master_xlsx_path = os.path.join(str(Path(DADOS_DIR).parent), "Analise avaliacoes completa.xlsx")
         if not os.path.exists(master_xlsx_path):
-            st.error("âŒ Arquivo consolidado nÃ£o encontrado localmente!")
-            st.warning(f"Certifique-se de que o arquivo `Analise avaliacoes completa.xlsx` estÃ¡ na pasta raiz do projeto: `{str(Path(DADOS_DIR).parent)}`")
+            st.error("❌ Arquivo consolidado não encontrado localmente!")
+            st.warning(f"Certifique-se de que o arquivo `Analise avaliacoes completa.xlsx` está na pasta raiz do projeto: `{str(Path(DADOS_DIR).parent)}`")
             st.stop()
             
     with st.spinner("Carregando dados da Planilha Mestre de Auditoria..."):
@@ -9182,18 +9182,18 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
         st.error(f"Erro ao carregar auditoria: {err}")
         st.stop()
         
-    # â”€â”€ Escopo por perfil â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    # ADMINISTRADOR / GESTOR â†’ acesso integral (visÃ£o de toda a PMMG)
-    # P1                     â†’ filtrado pelo RPM do usuÃ¡rio (UDI / UDG)
-    # SADM                   â†’ filtrado pela Unidade Principal do usuÃ¡rio
+    # ── Escopo por perfil ─────────────────────────────────────────────────────
+    # ADMINISTRADOR / GESTOR → acesso integral (visão de toda a PMMG)
+    # P1                     → filtrado pelo RPM do usuário (UDI / UDG)
+    # SADM                   → filtrado pela Unidade Principal do usuário
     
-    # Garantir que as colunas SIGEF nÃ£o sejam perdidas e que colunas nÃ£o se dupliquem
+    # Garantir que as colunas SIGEF não sejam perdidas e que colunas não se dupliquem
     base_cols = [
-        "NR PM", "Posto/GraduaÃ§Ã£o", "Nome Completo", "Quadro",
+        "NR PM", "Posto/Graduação", "Nome Completo", "Quadro",
         "Sit. Funcional",
         "Nome RPM", "Nome Unidade Principal",
         "Conceito", "Reg. Adicional", "Ano Base", "Ord. Almanaque",
-        "Qtd AvaliaÃ§Ãµes", "Todas AvaliaÃ§Ãµes Foram Encerradas?", "Nota Final - MÃ©dia AritmÃ©tica",
+        "Qtd Avaliações", "Todas Avaliações Foram Encerradas?", "Nota Final - Média Aritmética",
         "Nota SIRH", "Auditoria"
     ]
     actual_base = [c for c in base_cols if c in df_audit.columns]
@@ -9206,9 +9206,9 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
             df_audit_disp = df_audit_disp[
                 df_audit_disp["Nome RPM"].astype(str).str.upper() == str(active_rpm).upper()
             ]
-            st.info(f"ðŸ”’ Exibindo apenas registros da sua UDI/UDG: **{active_rpm}**")
+            st.info(f"🔒 Exibindo apenas registros da sua UDI/UDG: **{active_rpm}**")
         else:
-            st.warning("âš ï¸ RPM do usuÃ¡rio nÃ£o identificado. Contate o administrador.")
+            st.warning("⚠️ RPM do usuário não identificado. Contate o administrador.")
             st.stop()
 
     elif _role_audit == "SADM":
@@ -9217,9 +9217,9 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
             df_audit_disp = df_audit_disp[
                 df_audit_disp["Nome Unidade Principal"].astype(str).str.upper() == str(_user_unit).upper()
             ]
-            st.info(f"ðŸ”’ Exibindo apenas registros da sua Unidade Principal: **{_user_unit}**")
+            st.info(f"🔒 Exibindo apenas registros da sua Unidade Principal: **{_user_unit}**")
         else:
-            st.warning("âš ï¸ Unidade Principal do usuÃ¡rio nÃ£o identificada. Contate o administrador.")
+            st.warning("⚠️ Unidade Principal do usuário não identificada. Contate o administrador.")
             st.stop()
 
     else:
@@ -9229,12 +9229,12 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
         if unid_filter:
             df_audit_disp = df_audit_disp[df_audit_disp["Nome Unidade Principal"].isin(unid_filter)]
 
-    # â”€â”€ CARDS DE RESUMO DA AUDITORIA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    # 1. Total militares com avaliaÃ§Ãµes abertas e sem nota final encerrada
-    c1_mask = (df_audit_disp['Todas AvaliaÃ§Ãµes Foram Encerradas?'].astype(str).str.upper() == 'NAO')
+    # ── CARDS DE RESUMO DA AUDITORIA ──────────────────────────────────────────
+    # 1. Total militares com avaliações abertas e sem nota final encerrada
+    c1_mask = (df_audit_disp['Todas Avaliações Foram Encerradas?'].astype(str).str.upper() == 'NAO')
     card1_count = len(df_audit_disp[c1_mask])
     
-    # 2. Total militares com todas avaliaÃ§Ãµes encerradas e com nota final
+    # 2. Total militares com todas avaliações encerradas e com nota final
     def is_numeric_grade(val):
         try:
             if val is None or str(val).strip() in ("", "-", "None", "nan"):
@@ -9244,10 +9244,10 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
         except ValueError:
             return False
 
-    c2_mask = (df_audit_disp['Todas AvaliaÃ§Ãµes Foram Encerradas?'].astype(str).str.upper() == 'SIM') &                (df_audit_disp['Nota Final - MÃ©dia AritmÃ©tica'].apply(is_numeric_grade))
+    c2_mask = (df_audit_disp['Todas Avaliações Foram Encerradas?'].astype(str).str.upper() == 'SIM') &                (df_audit_disp['Nota Final - Média Aritmética'].apply(is_numeric_grade))
     card2_count = len(df_audit_disp[c2_mask])
     
-    # 3. MÃ©dia da Nota da Unidade (mÃ©dia aritmÃ©tica de todas as notas finais jÃ¡ encerradas do banco geral)
+    # 3. Média da Nota da Unidade (média aritmética de todas as notas finais já encerradas do banco geral)
     df_evals_audit = df_full.copy()
     if _role_audit == "P1":
         if active_rpm:
@@ -9264,8 +9264,8 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
     if len(df_evals_audit) == 0:
         card3_val = "0,00"
     else:
-        # Apenas notas de avaliaÃ§Ãµes encerradas
-        df_encerradas = df_evals_audit[df_evals_audit["Status AvaliaÃ§Ã£o"].astype(str).str.upper().str.strip() == "ENCERRADA"]
+        # Apenas notas de avaliações encerradas
+        df_encerradas = df_evals_audit[df_evals_audit["Status Avaliação"].astype(str).str.upper().str.strip() == "ENCERRADA"]
         grades = pd.to_numeric(df_encerradas["Nota Geral"].astype(str).str.replace(",", "."), errors="coerce").dropna()
         if len(grades) > 0:
             card3_avg = grades.mean()
@@ -9281,9 +9281,9 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
     col_k1, col_k2, col_k3 = st.columns(3)
     with col_k1:
         st.markdown('<div class="kpi-card kpi-aberta">'
-                    '<div class="label">MILITARES COM PENDÃŠNCIAS / AVALIAÃ‡Ã•ES ABERTAS</div>'
+                    '<div class="label">MILITARES COM PENDÊNCIAS / AVALIAÇÕES ABERTAS</div>'
                     f'<div class="value">{fmt_num(card1_count)}</div>'
-                    '<div class="sub">Militares com pendÃªncias de encerramento</div>'
+                    '<div class="sub">Militares com pendências de encerramento</div>'
                     '</div>', unsafe_allow_html=True)
     with col_k2:
         st.markdown('<div class="kpi-card kpi-enc">'
@@ -9293,14 +9293,14 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
                     '</div>', unsafe_allow_html=True)
     with col_k3:
         st.markdown('<div class="kpi-card kpi-ca">'
-                    '<div class="label">MÃ‰DIA DAS NOTAS FINAIS</div>'
+                    '<div class="label">MÉDIA DAS NOTAS FINAIS</div>'
                     f'<div class="value">{card3_val}</div>'
-                    '<div class="sub">MÃ©dia aritmÃ©tica das notas encerradas</div>'
+                    '<div class="sub">Média aritmética das notas encerradas</div>'
                     '</div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    st.markdown(f"##### ConteÃºdo da Planilha Mestre Consolidada ({fmt_num(len(df_audit_disp))} registros)")
+    st.markdown(f"##### Conteúdo da Planilha Mestre Consolidada ({fmt_num(len(df_audit_disp))} registros)")
     
     # Exibir a planilha de auditoria diretamente!
     safe_df(df_audit_disp, height=540,
@@ -9308,7 +9308,7 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
 
 
 if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
-    st.markdown("### ðŸ“Š Dados Consolidados")
+    st.markdown("### 📊 Dados Consolidados")
     st.markdown("---")
     
     st.markdown("""
@@ -9384,16 +9384,16 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
     """, unsafe_allow_html=True)
     
     drive_master_xlsx_id = cfg.get("drive_master_xlsx_id", "")
-    fonte = cfg.get("fonte_dados", "ðŸ“ Pasta local / Servidor")
+    fonte = cfg.get("fonte_dados", "📁 Pasta local / Servidor")
     
-    if fonte == "â˜ï¸ Google Drive":
+    if fonte == "☁️ Google Drive":
         master_xlsx_path = os.path.join(str(DADOS_DIR), "Analise avaliacoes completa.xlsx")
     else:
         master_xlsx_path = os.path.join(str(Path(DADOS_DIR).parent), "Analise avaliacoes completa.xlsx")
         
     df_audit = None
             
-    # Obter variÃ¡veis de perfil do usuÃ¡rio (considerando simulaÃ§Ã£o)
+    # Obter variáveis de perfil do usuário (considerando simulação)
     _role_consol = sidebar_active_role.upper()
     active_rpm = st.session_state.get("simulated_rpm", st.session_state.get("user_rpm", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_rpm", "")
     _user_unit = st.session_state.get("simulated_unit", st.session_state.get("user_unit", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_unit", "")
@@ -9421,7 +9421,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
             mil_nao = 0
             mean_val = 0.0
         else:
-            is_enc = (df_sub_evals["Status AvaliaÃ§Ã£o"].astype(str).str.upper().str.strip() == "ENCERRADA")
+            is_enc = (df_sub_evals["Status Avaliação"].astype(str).str.upper().str.strip() == "ENCERRADA")
             
             pm_col = df_sub_evals["nrPM (Avaliado)"]
             all_enc = is_enc.groupby(pm_col).all()
@@ -9429,7 +9429,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
             mil_sim = int(all_enc.sum())
             mil_nao = int((~all_enc).sum())
             
-            # MÃ©dia simples da coluna Nota Geral (apenas encerradas)
+            # Média simples da coluna Nota Geral (apenas encerradas)
             df_enc = df_sub_evals[is_enc]
             grades = pd.to_numeric(df_enc["Nota Geral"].astype(str).str.replace(",", "."), errors="coerce").dropna()
             mean_val = float(grades.mean()) if len(grades) > 0 else 0.0
@@ -9438,33 +9438,33 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
 
 
         n_total = len(df_sub_evals)
-        n_enc = (df_sub_evals["Status AvaliaÃ§Ã£o"] == "Encerrada").sum()
-        n_aberta = (df_sub_evals["Status AvaliaÃ§Ã£o"] == "Aberta").sum()
-        n_parc = (df_sub_evals["Status AvaliaÃ§Ã£o"] == "Parcialmente Encerrada").sum()
-        n_hom = (df_sub_evals["Status AvaliaÃ§Ã£o"] == "HomologaÃ§Ã£o").sum()
+        n_enc = (df_sub_evals["Status Avaliação"] == "Encerrada").sum()
+        n_aberta = (df_sub_evals["Status Avaliação"] == "Aberta").sum()
+        n_parc = (df_sub_evals["Status Avaliação"] == "Parcialmente Encerrada").sum()
+        n_hom = (df_sub_evals["Status Avaliação"] == "Homologação").sum()
 
         return {
-            "AvaliaÃ§Ãµes Realizadas": n_total,
-            "ComissÃ£o Atual": (df_sub_evals["SituaÃ§Ã£o ComissÃ£o"] == "ComissÃ£o Atual").sum(),
-            "Nota ProvisÃ³ria": (df_sub_evals["SituaÃ§Ã£o ComissÃ£o"] == "Nota ProvisÃ³ria").sum(),
+            "Avaliações Realizadas": n_total,
+            "Comissão Atual": (df_sub_evals["Situação Comissão"] == "Comissão Atual").sum(),
+            "Nota Provisória": (df_sub_evals["Situação Comissão"] == "Nota Provisória").sum(),
             "Encerradas": n_enc,
             "Abertas": n_aberta,
             "Parcialmente Encerradas": n_parc,
-            "HomologaÃ§Ã£o": n_hom,
+            "Homologação": n_hom,
             "AV1 Pendente": n_aberta,
             "AV2 Pendente": n_parc,
             "HOM Pendente": n_hom,
             "Militares Encerrados": mil_sim,
             "Militares Pendentes": mil_nao,
-            "MÃ©dia Notas": mean_val
+            "Média Notas": mean_val
         }
         
     all_rpms = sorted(df_evals_source["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key)
     
-    # â”€â”€ PAINEL DE EXPORTAÃ‡ÃƒO CONSOLIDADA POR PERFIL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── PAINEL DE EXPORTAÇÃO CONSOLIDADA POR PERFIL ──────────────────────────
     col_title_consol, col_btn_consol = st.columns([3, 1])
     with col_title_consol:
-        st.markdown("<h4 style='font-size: 1.2rem; color: #9b8a5c; margin-bottom: 8px;'>ðŸ“¥ Exportar RelatÃ³rio Consolidado</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='font-size: 1.2rem; color: #9b8a5c; margin-bottom: 8px;'>📥 Exportar Relatório Consolidado</h4>", unsafe_allow_html=True)
     btn_container_consol = col_btn_consol.empty()
     
     enable_export = True
@@ -9472,30 +9472,30 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
     selected_subs_rel = None
     
     if _role_consol in ("ADMINISTRADOR", "GESTOR"):
-        escopo_rel = st.radio("Selecione o escopo da exportaÃ§Ã£o:", ["ðŸŒ Geral (Todas as RPMs)", "ðŸ¢ Por RPM especÃ­fica"], horizontal=True, key="escopo_rel_consolidado")
-        if "especÃ­fica" in escopo_rel:
+        escopo_rel = st.radio("Selecione o escopo da exportação:", ["🌐 Geral (Todas as RPMs)", "🏢 Por RPM específica"], horizontal=True, key="escopo_rel_consolidado")
+        if "específica" in escopo_rel:
             selected_rpms_rel = st.multiselect("Selecione as Unidades RPM/UDG para exportar:", all_rpms, default=[])
             if not selected_rpms_rel:
-                st.warning("âš ï¸ Selecione ao menos uma unidade para habilitar a exportaÃ§Ã£o.")
+                st.warning("⚠️ Selecione ao menos uma unidade para habilitar a exportação.")
                 enable_export = False
                 
     elif _role_consol == "P1":
-        escopo_rel = st.radio("Selecione o escopo da exportaÃ§Ã£o:", [f"ðŸŒ Geral (Todas as Subordinadas da {active_rpm})", "ðŸ¢ Por Unidade subordinada especÃ­fica"], horizontal=True, key="escopo_rel_consolidado")
+        escopo_rel = st.radio("Selecione o escopo da exportação:", [f"🌐 Geral (Todas as Subordinadas da {active_rpm})", "🏢 Por Unidade subordinada específica"], horizontal=True, key="escopo_rel_consolidado")
         
         all_subs_in_rpm = sorted(df_evals_source["Unidade Principal (Avaliado)"].dropna().unique())
         selected_subs_rel = all_subs_in_rpm
-        if "especÃ­fica" in escopo_rel:
+        if "específica" in escopo_rel:
             selected_subs_rel = st.multiselect("Selecione as Unidades Subordinadas para exportar:", all_subs_in_rpm, default=[])
             if not selected_subs_rel:
-                st.warning("âš ï¸ Selecione ao menos uma unidade subordinada para habilitar a exportaÃ§Ã£o.")
+                st.warning("⚠️ Selecione ao menos uma unidade subordinada para habilitar a exportação.")
                 enable_export = False
                 
     elif _role_consol == "SADM":
         selected_subs_rel = [_user_unit]
-        st.info(f"â„¹ï¸ O relatÃ³rio consolidado conterÃ¡ exclusivamente os dados da sua Unidade: **{_user_unit}**.")
+        st.info(f"ℹ️ O relatório consolidado conterá exclusivamente os dados da sua Unidade: **{_user_unit}**.")
         
     if enable_export:
-        # Gerar planilha consolidada em memÃ³ria
+        # Gerar planilha consolidada em memória
         def export_consolidated_xlsx(df_evals, df_audit, rpms_to_export, role=_role_consol, subs_to_export=selected_subs_rel):
             import io
             import openpyxl
@@ -9514,14 +9514,14 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                     return None
 
             def get_eval_grade(row):
-                h = get_numeric_value(row.get("Nota HomologaÃ§Ã£o"))
+                h = get_numeric_value(row.get("Nota Homologação"))
                 g = get_numeric_value(row.get("Nota Geral"))
                 return h if h is not None else g
 
             def get_militares_counts(df_sub):
                 if len(df_sub) == 0:
                     return 0, 0, 0.0
-                is_enc = (df_sub["Status AvaliaÃ§Ã£o"].astype(str).str.upper().str.strip() == "ENCERRADA")
+                is_enc = (df_sub["Status Avaliação"].astype(str).str.upper().str.strip() == "ENCERRADA")
                 
                 pm_col = df_sub["nrPM (Avaliado)"]
                 all_enc = is_enc.groupby(pm_col).all()
@@ -9529,7 +9529,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                 mil_sim = int(all_enc.sum())
                 mil_nao = int((~all_enc).sum())
                 
-                # MÃ©dia simples da coluna Nota Geral (apenas encerradas)
+                # Média simples da coluna Nota Geral (apenas encerradas)
                 df_enc = df_sub[is_enc]
                 grades = pd.to_numeric(df_enc["Nota Geral"].astype(str).str.replace(",", "."), errors="coerce").dropna()
                 mean_val = float(grades.mean()) if len(grades) > 0 else 0.0
@@ -9538,18 +9538,18 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
 
                     
             headers = [
-                "Unidade Principal (RPM/UDG)", "Total AvaliaÃ§Ãµes", "ComissÃ£o Atual", "Nota ProvisÃ³ria",
-                "Encerradas", "Abertas", "Parcialmente Encerradas", "HomologaÃ§Ã£o",
+                "Unidade Principal (RPM/UDG)", "Total Avaliações", "Comissão Atual", "Nota Provisória",
+                "Encerradas", "Abertas", "Parcialmente Encerradas", "Homologação",
                 "AV1 Pendentes", "AV2 Pendentes", "HOM Pendentes",
-                "Militares Encerrados", "Militares Pendentes", "MÃ©dia Notas"
+                "Militares Encerrados", "Militares Pendentes", "Média Notas"
             ]
             
             if role == "SADM":
                 ws1 = wb.create_sheet("Consolidado Unidade")
-                headers_sadm = ["Unidade Principal", "Total AvaliaÃ§Ãµes", "ComissÃ£o Atual", "Nota ProvisÃ³ria",
-                                "Encerradas", "Abertas", "Parcialmente Encerradas", "HomologaÃ§Ã£o",
+                headers_sadm = ["Unidade Principal", "Total Avaliações", "Comissão Atual", "Nota Provisória",
+                                "Encerradas", "Abertas", "Parcialmente Encerradas", "Homologação",
                                 "AV1 Pendentes", "AV2 Pendentes", "HOM Pendentes",
-                                "Militares Encerrados", "Militares Pendentes", "MÃ©dia Notas"]
+                                "Militares Encerrados", "Militares Pendentes", "Média Notas"]
                 ws1.append(headers_sadm)
                 sheets_list = [ws1]
             else:
@@ -9579,15 +9579,15 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                 sub_row = [
                     _user_unit,
                     len(df_sub_evals),
-                    (df_sub_evals["SituaÃ§Ã£o ComissÃ£o"] == "ComissÃ£o Atual").sum(),
-                    (df_sub_evals["SituaÃ§Ã£o ComissÃ£o"] == "Nota ProvisÃ³ria").sum(),
-                    (df_sub_evals["Status AvaliaÃ§Ã£o"] == "Encerrada").sum(),
-                    (df_sub_evals["Status AvaliaÃ§Ã£o"] == "Aberta").sum(),
-                    (df_sub_evals["Status AvaliaÃ§Ã£o"] == "Parcialmente Encerrada").sum(),
-                    (df_sub_evals["Status AvaliaÃ§Ã£o"] == "HomologaÃ§Ã£o").sum(),
-                    (df_sub_evals["Status AvaliaÃ§Ã£o"] == "Aberta").sum(),
-                    (df_sub_evals["Status AvaliaÃ§Ã£o"] == "Parcialmente Encerrada").sum(),
-                    (df_sub_evals["Status AvaliaÃ§Ã£o"] == "HomologaÃ§Ã£o").sum(),
+                    (df_sub_evals["Situação Comissão"] == "Comissão Atual").sum(),
+                    (df_sub_evals["Situação Comissão"] == "Nota Provisória").sum(),
+                    (df_sub_evals["Status Avaliação"] == "Encerrada").sum(),
+                    (df_sub_evals["Status Avaliação"] == "Aberta").sum(),
+                    (df_sub_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
+                    (df_sub_evals["Status Avaliação"] == "Homologação").sum(),
+                    (df_sub_evals["Status Avaliação"] == "Aberta").sum(),
+                    (df_sub_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
+                    (df_sub_evals["Status Avaliação"] == "Homologação").sum(),
                     mil_sim,
                     mil_nao,
                     round(mean_val, 2)
@@ -9605,15 +9605,15 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                     rpm_row = [
                         rpm,
                         len(df_rpm_evals),
-                        (df_rpm_evals["SituaÃ§Ã£o ComissÃ£o"] == "ComissÃ£o Atual").sum(),
-                        (df_rpm_evals["SituaÃ§Ã£o ComissÃ£o"] == "Nota ProvisÃ³ria").sum(),
-                        (df_rpm_evals["Status AvaliaÃ§Ã£o"] == "Encerrada").sum(),
-                        (df_rpm_evals["Status AvaliaÃ§Ã£o"] == "Aberta").sum(),
-                        (df_rpm_evals["Status AvaliaÃ§Ã£o"] == "Parcialmente Encerrada").sum(),
-                        (df_rpm_evals["Status AvaliaÃ§Ã£o"] == "HomologaÃ§Ã£o").sum(),
-                        (df_rpm_evals["Status AvaliaÃ§Ã£o"] == "Aberta").sum(),
-                        (df_rpm_evals["Status AvaliaÃ§Ã£o"] == "Parcialmente Encerrada").sum(),
-                        (df_rpm_evals["Status AvaliaÃ§Ã£o"] == "HomologaÃ§Ã£o").sum(),
+                        (df_rpm_evals["Situação Comissão"] == "Comissão Atual").sum(),
+                        (df_rpm_evals["Situação Comissão"] == "Nota Provisória").sum(),
+                        (df_rpm_evals["Status Avaliação"] == "Encerrada").sum(),
+                        (df_rpm_evals["Status Avaliação"] == "Aberta").sum(),
+                        (df_rpm_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
+                        (df_rpm_evals["Status Avaliação"] == "Homologação").sum(),
+                        (df_rpm_evals["Status Avaliação"] == "Aberta").sum(),
+                        (df_rpm_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
+                        (df_rpm_evals["Status Avaliação"] == "Homologação").sum(),
                         mil_sim,
                         mil_nao,
                         round(mean_val, 2)
@@ -9631,15 +9631,15 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                             rpm,
                             sub,
                             len(sub_evals),
-                            (sub_evals["SituaÃ§Ã£o ComissÃ£o"] == "ComissÃ£o Atual").sum(),
-                            (sub_evals["SituaÃ§Ã£o ComissÃ£o"] == "Nota ProvisÃ³ria").sum(),
-                            (sub_evals["Status AvaliaÃ§Ã£o"] == "Encerrada").sum(),
-                            (sub_evals["Status AvaliaÃ§Ã£o"] == "Aberta").sum(),
-                            (sub_evals["Status AvaliaÃ§Ã£o"] == "Parcialmente Encerrada").sum(),
-                            (sub_evals["Status AvaliaÃ§Ã£o"] == "HomologaÃ§Ã£o").sum(),
-                            (sub_evals["Status AvaliaÃ§Ã£o"] == "Aberta").sum(),
-                            (sub_evals["Status AvaliaÃ§Ã£o"] == "Parcialmente Encerrada").sum(),
-                            (sub_evals["Status AvaliaÃ§Ã£o"] == "HomologaÃ§Ã£o").sum(),
+                            (sub_evals["Situação Comissão"] == "Comissão Atual").sum(),
+                            (sub_evals["Situação Comissão"] == "Nota Provisória").sum(),
+                            (sub_evals["Status Avaliação"] == "Encerrada").sum(),
+                            (sub_evals["Status Avaliação"] == "Aberta").sum(),
+                            (sub_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
+                            (sub_evals["Status Avaliação"] == "Homologação").sum(),
+                            (sub_evals["Status Avaliação"] == "Aberta").sum(),
+                            (sub_evals["Status Avaliação"] == "Parcialmente Encerrada").sum(),
+                            (sub_evals["Status Avaliação"] == "Homologação").sum(),
                             sub_mil_sim,
                             sub_mil_nao,
                             round(sub_mean_val, 2)
@@ -9660,7 +9660,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
         xlsx_consolidated = export_consolidated_xlsx(df_evals_source, df_audit_source, selected_rpms_rel)
         with btn_container_consol:
             st.download_button(
-                label="ðŸ“¥ Baixar Planilha Consolidada (Excel .xlsx)",
+                label="📥 Baixar Planilha Consolidada (Excel .xlsx)",
                 data=xlsx_consolidated,
                 file_name=f"Relatorio_Consolidado_AADP_{now_br().strftime('%Y%m%d_%H%M%S')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -9671,7 +9671,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
         
     st.markdown("---")
     
-    # â”€â”€ GRÃFICO GERAL DE RPMs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── GRÁFICO GERAL DE RPMs ─────────────────────────────────────────────────
     chart_data = []
     all_grades = pd.to_numeric(df_evals_source["Nota Geral"].astype(str).str.replace(",", "."), errors="coerce").dropna()
     general_avg = float(all_grades.mean()) if len(all_grades) > 0 else 0.0
@@ -9681,38 +9681,38 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
         if len(df_rpm_evals) > 0:
             rpm_grades = pd.to_numeric(df_rpm_evals["Nota Geral"].astype(str).str.replace(",", "."), errors="coerce").dropna()
             rpm_avg = float(rpm_grades.mean()) if len(rpm_grades) > 0 else 0.0
-            chart_data.append({"RPM": rpm, "MÃ©dia": rpm_avg})
+            chart_data.append({"RPM": rpm, "Média": rpm_avg})
             
     df_chart = pd.DataFrame(chart_data)
     if not df_chart.empty:
-        # Calcular y_min dinÃ¢mico para zoom elegante entre 9 e 10
-        min_val = df_chart["MÃ©dia"].min()
+        # Calcular y_min dinâmico para zoom elegante entre 9 e 10
+        min_val = df_chart["Média"].min()
         import math
         y_min = max(0.0, math.floor(min_val * 10) / 10.0 - 0.1)
         if y_min > 8.5:
-            y_min = 8.5  # dÃ¡ uma margem elegante abaixo de 9.0
+            y_min = 8.5  # dá uma margem elegante abaixo de 9.0
 
         fig_gen = px.bar(
             df_chart, 
             x="RPM", 
-            y="MÃ©dia", 
-            text=[f"{v:.2f}".replace(".", ",") for v in df_chart["MÃ©dia"]],
-            labels={"MÃ©dia": "MÃ©dia das Notas", "RPM": "RPM/UDG"},
+            y="Média", 
+            text=[f"{v:.2f}".replace(".", ",") for v in df_chart["Média"]],
+            labels={"Média": "Média das Notas", "RPM": "RPM/UDG"},
             color_discrete_sequence=["#9b8a5c"]
         )
-        # Linha tracejada da MÃ©dia Geral
+        # Linha tracejada da Média Geral
         fig_gen.add_hline(
             y=general_avg, 
             line_dash="dash", 
             line_color="#ff6b6b"
         )
-        # RÃ³tulo de texto fora do grÃ¡fico (margem direita)
+        # Rótulo de texto fora do gráfico (margem direita)
         fig_gen.add_annotation(
             xref="paper",
             yref="y",
             x=1.01,
             y=general_avg,
-            text=f"MÃ©dia Geral<br><b>{general_avg:.2f}</b>".replace(".", ","),
+            text=f"Média Geral<br><b>{general_avg:.2f}</b>".replace(".", ","),
             showarrow=False,
             font=dict(color="#ff6b6b", size=9, family="sans-serif"),
             xanchor="left",
@@ -9744,7 +9744,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                 title=None
             ),
             bargap=0.45,
-            margin=dict(l=30, r=100, t=30, b=50),  # Margem direita expandida para o rÃ³tulo
+            margin=dict(l=30, r=100, t=30, b=50),  # Margem direita expandida para o rótulo
             height=250
         )
         st.plotly_chart(fig_gen, use_container_width=True)
@@ -9757,25 +9757,25 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
         
         rpm_metrics = compute_metrics(df_rpm_evals, df_rpm_audit)
         
-        total_evals = rpm_metrics["AvaliaÃ§Ãµes Realizadas"]
+        total_evals = rpm_metrics["Avaliações Realizadas"]
         enc_evals = rpm_metrics["Encerradas"]
-        avg_grade = rpm_metrics["MÃ©dia Notas"]
+        avg_grade = rpm_metrics["Média Notas"]
         
         avg_grade_str = f"{avg_grade:.2f}".replace(".", ",")
-        exp_header = f"ðŸ¢ **{rpm}** &nbsp;&nbsp;&nbsp;&nbsp; `Total: {fmt_num(total_evals)}` &nbsp;&nbsp; `Encerradas: {fmt_num(enc_evals)}` &nbsp;&nbsp; `MÃ©dia: {avg_grade_str}`"
+        exp_header = f"🏢 **{rpm}** &nbsp;&nbsp;&nbsp;&nbsp; `Total: {fmt_num(total_evals)}` &nbsp;&nbsp; `Encerradas: {fmt_num(enc_evals)}` &nbsp;&nbsp; `Média: {avg_grade_str}`"
         
         with st.expander(exp_header):
             # Linha 1: 4 Cards principais
             k_c1, k_c2, k_c3, k_c4 = st.columns(4)
             with k_c1:
                 st.markdown(f'<div class="kpi-card kpi-total">'
-                            f'<div class="label">Total AvaliaÃ§Ãµes</div>'
+                            f'<div class="label">Total Avaliações</div>'
                             f'<div class="value">{fmt_num(total_evals)}</div>'
-                            f'<div class="sub">ComissÃ£o: {fmt_num(rpm_metrics["ComissÃ£o Atual"])} CA | {fmt_num(rpm_metrics["Nota ProvisÃ³ria"])} NP</div>'
+                            f'<div class="sub">Comissão: {fmt_num(rpm_metrics["Comissão Atual"])} CA | {fmt_num(rpm_metrics["Nota Provisória"])} NP</div>'
                             f'</div>', unsafe_allow_html=True)
             with k_c2:
                 st.markdown(f'<div class="kpi-card kpi-aberta">'
-                            f'<div class="label">PendÃªncias Funcionais</div>'
+                            f'<div class="label">Pendências Funcionais</div>'
                             f'<div class="value" style="font-size: 1.05rem; line-height: 1.35; font-weight: 700; margin-top: 6px; margin-bottom: 6px;">'
                             f'<span style="color: #ff6b6b !important;">AVALIADOR 1: {fmt_num(rpm_metrics["AV1 Pendente"])}</span><br>'
                             f'<span style="color: #ff9f43 !important;">AVALIADOR 2: {fmt_num(rpm_metrics["AV2 Pendente"])}</span><br>'
@@ -9786,14 +9786,14 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                 st.markdown(f'<div class="kpi-card kpi-parc">'
                             f'<div class="label">Militares Pendentes</div>'
                             f'<div class="value">{fmt_num(rpm_metrics["Militares Pendentes"])}</div>'
-                            f'<div class="sub">Militar com avaliaÃ§Ãµes nÃ£o encerradas</div>'
+                            f'<div class="sub">Militar com avaliações não encerradas</div>'
                             f'</div>', unsafe_allow_html=True)
             with k_c4:
                 avg_grade_str = f"{avg_grade:.2f}".replace(".", ",")
                 st.markdown(f'<div class="kpi-card kpi-ca">'
-                            f'<div class="label">MÃ©dia das Notas</div>'
+                            f'<div class="label">Média das Notas</div>'
                             f'<div class="value">{avg_grade_str}</div>'
-                            f'<div class="sub">MÃ©dia aritmÃ©tica final consolidada</div>'
+                            f'<div class="sub">Média aritmética final consolidada</div>'
                             f'</div>', unsafe_allow_html=True)
                             
             st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
@@ -9802,31 +9802,31 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
             q_c1, q_c2, q_c3, q_c4 = st.columns(4)
             with q_c1:
                 st.markdown(f'<div class="kpi-card kpi-enc">'
-                            f'<div class="label">ðŸŸ¢ Encerradas</div>'
+                            f'<div class="label">🟢 Encerradas</div>'
                             f'<div class="value">{fmt_num(enc_evals)}</div>'
-                            f'<div class="sub">AvaliaÃ§Ãµes finalizadas</div>'
+                            f'<div class="sub">Avaliações finalizadas</div>'
                             f'</div>', unsafe_allow_html=True)
             with q_c2:
                 st.markdown(f'<div class="kpi-card kpi-aberta">'
-                            f'<div class="label">ðŸ”´ Abertas</div>'
+                            f'<div class="label">🔴 Abertas</div>'
                             f'<div class="value">{fmt_num(rpm_metrics["Abertas"])}</div>'
                             f'<div class="sub">Sem nota ou AV1 pendente</div>'
                             f'</div>', unsafe_allow_html=True)
             with q_c3:
                 st.markdown(f'<div class="kpi-card kpi-parc">'
-                            f'<div class="label">ðŸŸ  Parcialmente Enc.</div>'
+                            f'<div class="label">🟠 Parcialmente Enc.</div>'
                             f'<div class="value">{fmt_num(rpm_metrics["Parcialmente Encerradas"])}</div>'
                             f'<div class="sub">Aguardando AV2</div>'
                             f'</div>', unsafe_allow_html=True)
             with q_c4:
                 st.markdown(f'<div class="kpi-card kpi-hom">'
-                            f'<div class="label">ðŸŸ¡ HomologaÃ§Ã£o</div>'
-                            f'<div class="value">{fmt_num(rpm_metrics["HomologaÃ§Ã£o"])}</div>'
+                            f'<div class="label">🟡 Homologação</div>'
+                            f'<div class="value">{fmt_num(rpm_metrics["Homologação"])}</div>'
                             f'<div class="sub">Aguardando Homologador</div>'
                             f'</div>', unsafe_allow_html=True)
                             
             st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
-            st.markdown("##### ðŸ“ Detalhamento de Unidades Subordinadas")
+            st.markdown("##### 📁 Detalhamento de Unidades Subordinadas")
             
             sub_rows = []
             unique_subs = sorted(df_rpm_evals["Unidade Principal (Avaliado)"].dropna().unique())
@@ -9846,37 +9846,37 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
             if sub_rows:
                 df_sub_table = pd.DataFrame(sub_rows)
                 
-                # Renderizar o grÃ¡fico das subunidades com zoom e design premium
-                st.markdown("###### ðŸ“Š MÃ©dia de Notas por Subunidade")
+                # Renderizar o gráfico das subunidades com zoom e design premium
+                st.markdown("###### 📊 Média de Notas por Subunidade")
                 
-                # Calcular y_min dinÃ¢mico para zoom elegante das subunidades
-                sub_min_val = df_sub_table["MÃ©dia Notas"].min()
+                # Calcular y_min dinâmico para zoom elegante das subunidades
+                sub_min_val = df_sub_table["Média Notas"].min()
                 import math
                 y_min_sub = max(0.0, math.floor(sub_min_val * 10) / 10.0 - 0.1)
                 if y_min_sub > 8.5:
-                    y_min_sub = 8.5  # dÃ¡ uma margem elegante abaixo de 9.0
+                    y_min_sub = 8.5  # dá uma margem elegante abaixo de 9.0
 
                 fig_sub = px.bar(
                     df_sub_table,
                     x="Unidade Subordinada",
-                    y="MÃ©dia Notas",
-                    text=[f"{v:.2f}".replace(".", ",") for v in df_sub_table["MÃ©dia Notas"]],
-                    labels={"MÃ©dia Notas": "MÃ©dia das Notas", "Unidade Subordinada": "Subunidade"},
+                    y="Média Notas",
+                    text=[f"{v:.2f}".replace(".", ",") for v in df_sub_table["Média Notas"]],
+                    labels={"Média Notas": "Média das Notas", "Unidade Subordinada": "Subunidade"},
                     color_discrete_sequence=["#9b8a5c"]
                 )
-                # Linha tracejada da MÃ©dia da RPM
+                # Linha tracejada da Média da RPM
                 fig_sub.add_hline(
                     y=avg_grade,
                     line_dash="dash",
                     line_color="#ff9f43"
                 )
-                # RÃ³tulo de texto fora do grÃ¡fico (margem direita)
+                # Rótulo de texto fora do gráfico (margem direita)
                 fig_sub.add_annotation(
                     xref="paper",
                     yref="y",
                     x=1.01,
                     y=avg_grade,
-                    text=f"MÃ©dia {rpm}<br><b>{avg_grade:.2f}</b>".replace(".", ","),
+                    text=f"Média {rpm}<br><b>{avg_grade:.2f}</b>".replace(".", ","),
                     showarrow=False,
                     font=dict(color="#ff9f43", size=9, family="sans-serif"),
                     xanchor="left",
@@ -9908,30 +9908,30 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                         title=None
                     ),
                     bargap=0.45,
-                    margin=dict(l=30, r=100, t=30, b=50),  # Margem direita expandida para o rÃ³tulo
+                    margin=dict(l=30, r=100, t=30, b=50),  # Margem direita expandida para o rótulo
                     height=220
                 )
                 st.plotly_chart(fig_sub, use_container_width=True)
                 
-                # Reordenar colunas para colocar a mÃ©dia das notas logo apÃ³s o nome da unidade subordinada
+                # Reordenar colunas para colocar a média das notas logo após o nome da unidade subordinada
                 cols_ordered = [
-                    "Unidade Subordinada", "MÃ©dia Notas", "AvaliaÃ§Ãµes Realizadas",
-                    "ComissÃ£o Atual", "Nota ProvisÃ³ria", "Encerradas", "Abertas",
-                    "Parcialmente Encerradas", "HomologaÃ§Ã£o", "AV1 Pendente",
+                    "Unidade Subordinada", "Média Notas", "Avaliações Realizadas",
+                    "Comissão Atual", "Nota Provisória", "Encerradas", "Abertas",
+                    "Parcialmente Encerradas", "Homologação", "AV1 Pendente",
                     "AV2 Pendente", "HOM Pendente", "Militares Encerrados", "Militares Pendentes"
                 ]
                 cols_ordered = [c for c in cols_ordered if c in df_sub_table.columns]
                 df_sub_table = df_sub_table[cols_ordered]
                 
                 df_sub_table_disp = df_sub_table.rename(columns={
-                    "MÃ©dia Notas": "MÃ©dia das<br>Notas",
-                    "AvaliaÃ§Ãµes Realizadas": "Total<br>AvaliaÃ§Ãµes",
-                    "ComissÃ£o Atual": "ComissÃ£o<br>Atual",
-                    "Nota ProvisÃ³ria": "Nota<br>ProvisÃ³ria",
+                    "Média Notas": "Média das<br>Notas",
+                    "Avaliações Realizadas": "Total<br>Avaliações",
+                    "Comissão Atual": "Comissão<br>Atual",
+                    "Nota Provisória": "Nota<br>Provisória",
                     "Encerradas": "Encerradas",
                     "Abertas": "Abertas",
                     "Parcialmente Encerradas": "Parcialmente<br>Encerradas",
-                    "HomologaÃ§Ã£o": "HomologaÃ§Ã£o",
+                    "Homologação": "Homologação",
                     "AV1 Pendente": "Avaliador 1<br>Pendente",
                     "AV2 Pendente": "Avaliador 2<br>Pendente",
                     "HOM Pendente": "Homologador<br>Pendente",
@@ -9940,7 +9940,7 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                 })
                 
                 styler = df_sub_table_disp.style.format({
-                    "MÃ©dia das<br>Notas": lambda x: f"{x:.2f}".replace(".", ",")
+                    "Média das<br>Notas": lambda x: f"{x:.2f}".replace(".", ",")
                 })
                 
                 try:
@@ -9953,12 +9953,12 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
                 
                 styler = styler.set_table_attributes('class="consolidated-table"')
                 
-                cols_gold = [c for c in ["MÃ©dia das<br>Notas"] if c in df_sub_table_disp.columns]
-                cols_grey = [c for c in ["Total<br>AvaliaÃ§Ãµes", "ComissÃ£o<br>Atual", "Nota<br>ProvisÃ³ria", "Avaliador 1<br>Pendente", "Avaliador 2<br>Pendente", "Homologador<br>Pendente"] if c in df_sub_table_disp.columns]
+                cols_gold = [c for c in ["Média das<br>Notas"] if c in df_sub_table_disp.columns]
+                cols_grey = [c for c in ["Total<br>Avaliações", "Comissão<br>Atual", "Nota<br>Provisória", "Avaliador 1<br>Pendente", "Avaliador 2<br>Pendente", "Homologador<br>Pendente"] if c in df_sub_table_disp.columns]
                 cols_green = [c for c in ["Encerradas", "Militares<br>Encerrados"] if c in df_sub_table_disp.columns]
                 cols_red = [c for c in ["Abertas", "Militares<br>Pendentes"] if c in df_sub_table_disp.columns]
                 cols_orange = [c for c in ["Parcialmente<br>Encerradas"] if c in df_sub_table_disp.columns]
-                cols_yellow = [c for c in ["HomologaÃ§Ã£o"] if c in df_sub_table_disp.columns]
+                cols_yellow = [c for c in ["Homologação"] if c in df_sub_table_disp.columns]
                 
                 if cols_gold: styler = styler.map(lambda x: 'color: #9b8a5c; font-weight: bold; text-align: center;', subset=cols_gold)
                 if cols_grey: styler = styler.map(lambda x: 'color: #a0a0a0; text-align: center;', subset=cols_grey)
@@ -10021,64 +10021,64 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
 
 
 if active_page == "Painel Administrador" and st.session_state.user_role == "ADMINISTRADOR":
-    st.markdown("### âš™ï¸ Painel Administrador")
+    st.markdown("### ⚙️ Painel Administrador")
     
     tab_pending, tab_active, tab_logs = st.tabs([
-        "â³ SolicitaÃ§Ãµes de Cadastro Pendentes",
-        "ðŸ‘¥ Gerenciar/Alterar UsuÃ¡rios Cadastrados",
-        "ðŸ“œ Auditoria"
+        "⏳ Solicitações de Cadastro Pendentes",
+        "👥 Gerenciar/Alterar Usuários Cadastrados",
+        "📜 Auditoria"
     ])
     
-    # â”€â”€ 1) SolicitaÃ§Ãµes de Cadastro Pendentes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── 1) Solicitações de Cadastro Pendentes ────────────────────────────────
     with tab_pending:
-        st.markdown("#### â³ SolicitaÃ§Ãµes de Cadastro Pendentes")
+        st.markdown("#### ⏳ Solicitações de Cadastro Pendentes")
         pend_list = db_get_pending_users()
         
         if not pend_list:
-            st.info("NÃ£o hÃ¡ solicitaÃ§Ãµes pendentes no momento.")
+            st.info("Não há solicitações pendentes no momento.")
         else:
             for pm, name, rank, rpm, unit, function, created_at in pend_list:
                 pm_str = str(pm)
                 with st.container():
                     st.markdown(f"**{rank} {name}** (PM: `{pm_str}`)")
-                    st.markdown(f"RPM: `{rpm}` | Unidade: `{unit}` | FunÃ§Ã£o: `{function}` | Data: `{created_at}`")
+                    st.markdown(f"RPM: `{rpm}` | Unidade: `{unit}` | Função: `{function}` | Data: `{created_at}`")
                     
                     c_role = st.selectbox("Selecione o perfil de acesso:", ["P1", "SADM", "Gestor", "ADMINISTRADOR"], key=f"role_{pm_str}")
                     
                     col_ap, col_rec, _ = st.columns([1, 1, 4])
-                    if col_ap.button("âœ… Autorizar Acesso", key=f"ap_{pm_str}", type="primary"):
+                    if col_ap.button("✅ Autorizar Acesso", key=f"ap_{pm_str}", type="primary"):
                         target_rpm = "Gestor" if c_role in ("Gestor", "ADMINISTRADOR") else rpm
                         db_approve_user(pm_str, c_role, target_rpm)
                         log_action("ADM", "AUTORIZAR_ACESSO", f"Usuario {pm_str} ({name}) aprovado como {c_role}")
                         st.success(f"Acesso de {name} autorizado com sucesso!")
                         st.rerun()
-                    if col_rec.button("âŒ Recusar", key=f"rec_{pm_str}", type="secondary"):
+                    if col_rec.button("❌ Recusar", key=f"rec_{pm_str}", type="secondary"):
                         db_reject_user(pm_str)
                         log_action("ADM", "RECUSAR_CADASTRO", f"Cadastro do usuario {pm_str} ({name}) recusado")
                         st.warning(f"Cadastro de {name} recusado!")
                         st.rerun()
                     st.markdown("---")
                     
-    # â”€â”€ 2) Gerenciar/Alterar UsuÃ¡rios Cadastrados â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── 2) Gerenciar/Alterar Usuários Cadastrados ────────────────────────────
     with tab_active:
-        st.markdown("#### ðŸ‘¥ Gerenciar / Alterar UsuÃ¡rios Cadastrados")
+        st.markdown("#### 👥 Gerenciar / Alterar Usuários Cadastrados")
         
-        # --- SincronizaÃ§Ã£o manual com SIGEF ---
-        if st.button("ðŸ”„ Sincronizar Cadastros com SIGEF (Atualiza Ã“rgÃ£os/Unidades)", use_container_width=True, key="btn_sync_sigef"):
-            with st.spinner("â³ Sincronizando dados com a base SIGEF..."):
+        # --- Sincronização manual com SIGEF ---
+        if st.button("🔄 Sincronizar Cadastros com SIGEF (Atualiza Órgãos/Unidades)", use_container_width=True, key="btn_sync_sigef"):
+            with st.spinner("⏳ Sincronizando dados com a base SIGEF..."):
                 sync_users_with_sigef()
-            st.success("âœ… Cadastros sincronizados com a base SIGEF com sucesso!")
+            st.success("✅ Cadastros sincronizados com a base SIGEF com sucesso!")
             st.rerun()
             
         st.markdown("---")
         
-        # --- SIMULADOR DE VISÃƒO DE TELA ---
-        st.markdown("##### ðŸ•µï¸ Simulador de VisÃ£o de Tela")
+        # --- SIMULADOR DE VISÃO DE TELA ---
+        st.markdown("##### 🕵️ Simulador de Visão de Tela")
         sim_users = db_get_simulator_users()
         
         if st.session_state.get("simulation_active", False):
-            st.warning(f"ðŸ•µï¸ **SimulaÃ§Ã£o Ativa**: VocÃª estÃ¡ visualizando o sistema como **{st.session_state.simulated_name}** ({st.session_state.simulated_role}).")
-            if st.button("âŒ Parar SimulaÃ§Ã£o / Voltar ao normal", type="secondary", use_container_width=True, key="btn_stop_sim"):
+            st.warning(f"🕵️ **Simulação Ativa**: Você está visualizando o sistema como **{st.session_state.simulated_name}** ({st.session_state.simulated_role}).")
+            if st.button("❌ Parar Simulação / Voltar ao normal", type="secondary", use_container_width=True, key="btn_stop_sim"):
                 st.session_state.simulation_active = False
                 st.session_state.simulated_pm = ""
                 st.session_state.simulated_name = ""
@@ -10094,10 +10094,10 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                 sim_options.append(f"{u[2]} {u[1]} ({u[3]} - {u[4]}) [PM: {u[0]}]")
             
             selected_sim_user = st.selectbox(
-                "Selecione um usuÃ¡rio cadastrado para simular a visÃ£o dele:",
+                "Selecione um usuário cadastrado para simular a visão dele:",
                 sim_options,
                 index=None,
-                placeholder="Escolha um usuÃ¡rio...",
+                placeholder="Escolha um usuário...",
                 key="sim_user_select"
             )
             
@@ -10133,23 +10133,27 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
         else:
             df_act = pd.DataFrame(active_list, columns=["Nº PM", "Posto/Grad.", "Nome", "RPM", "Unidade Principal", "Setor", "Perfil", "Data Cadastro"])
             
+            # Reordenar para Nº PM / Posto/Grad. / Nome primeiro
+            col_order = ["Nº PM", "Posto/Grad.", "Nome", "RPM", "Unidade Principal", "Setor", "Perfil", "Data Cadastro"]
+            df_act = df_act[[c for c in col_order if c in df_act.columns]]
+            
             # Filtragem se houver termo digitado
             if filter_pm:
-                df_act = df_act[df_act["NÂº PM"].astype(str).str.contains(filter_pm)]
+                df_act = df_act[df_act["Nº PM"].astype(str).str.contains(filter_pm)]
                 
             if df_act.empty:
-                st.info("Nenhum usuÃ¡rio cadastrado encontrado com o NÂº PM informado.")
+                st.info("Nenhum usuário cadastrado encontrado com o Nº PM informado.")
             else:
                 st.dataframe(clean_none_values(df_act), use_container_width=True, hide_index=True)
                 
-                st.markdown("##### âš™ï¸ Gerenciar / Alterar Cadastro:")
+                st.markdown("##### ⚙️ Gerenciar / Alterar Cadastro:")
                 
-                user_options = [f"{row['Posto/Grad.']} {row['Nome']} (PM: {row['NÂº PM']})" for _, row in df_act.iterrows()]
-                selected_user_label = st.selectbox("Escolha o usuÃ¡rio para gerenciar:", user_options, key="manage_user_select")
+                user_options = [f"{row['Posto/Grad.']} {row['Nome']} (PM: {row['Nº PM']})" for _, row in df_act.iterrows()]
+                selected_user_label = st.selectbox("Escolha o usuário para gerenciar:", user_options, key="manage_user_select")
                 
                 if selected_user_label:
                     m_pm = selected_user_label.split(" (PM: ")[1].rstrip(")")
-                    matching_rows = df_act[df_act["NÂº PM"].astype(str).str.strip() == str(m_pm).strip()]
+                    matching_rows = df_act[df_act["Nº PM"].astype(str).str.strip() == str(m_pm).strip()]
                     if not matching_rows.empty:
                         row_sel = matching_rows.iloc[0]
                         
@@ -10175,30 +10179,30 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                         
                         col_save, col_rev = st.columns(2)
                         with col_save:
-                            if st.button("ðŸ’¾ Salvar AlteraÃ§Ãµes", type="primary", use_container_width=True, key=f"save_edit_{m_pm}"):
+                            if st.button("💾 Salvar Alterações", type="primary", use_container_width=True, key=f"save_edit_{m_pm}"):
                                 db_update_user_role_rpm(m_pm, new_role, new_rpm)
                                 log_action("ADM", "ALTERAR_CADASTRO", f"Usuario {m_pm} alterado para Perfil: {new_role}, RPM: {new_rpm}")
-                                st.success("âœ… AlteraÃ§Ãµes salvas com sucesso!")
+                                st.success("✅ Alterações salvas com sucesso!")
                                 st.rerun()
                         with col_rev:
-                            if st.button("ðŸš« Revogar Acesso", type="secondary", use_container_width=True, key=f"revoke_edit_{m_pm}"):
+                            if st.button("🚫 Revogar Acesso", type="secondary", use_container_width=True, key=f"revoke_edit_{m_pm}"):
                                 db_revoke_user(m_pm)
                                 log_action("ADM", "REVOGAR_ACESSO", f"Acesso do usuario {m_pm} revogado")
-                                st.warning("ðŸš« Acesso revogado com sucesso!")
+                                st.warning("🚫 Acesso revogado com sucesso!")
                                 st.rerun()
                     else:
-                        st.error("Erro ao selecionar usuÃ¡rio. O cache pode estar desatualizado.")
+                        st.error("Erro ao selecionar usuário. O cache pode estar desatualizado.")
                         st.stop()
                         
-    # â”€â”€ 3) Auditoria â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── 3) Auditoria ─────────────────────────────────────────────────────────
     with tab_logs:
-        st.markdown("#### ðŸ“œ Auditoria de Atividades / Logs")
+        st.markdown("#### 📜 Auditoria de Atividades / Logs")
     
-        # Buscar lista de usuÃ¡rios Ãºnicos que possuem aÃ§Ãµes nos logs
+        # Buscar lista de usuários únicos que possuem ações nos logs
         logged_pms = db_get_logs_pms()
     
-        # Mapear PM para Nome de forma amigÃ¡vel
-        user_map = {"Todos": "Todos os UsuÃ¡rios"}
+        # Mapear PM para Nome de forma amigável
+        user_map = {"Todos": "Todos os Usuários"}
         for pm_id in logged_pms:
             u_row = db_get_user_info(pm_id)
             if u_row:
@@ -10214,10 +10218,10 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
             key="filter_log_user"
         )
     
-        # Filtro de perÃ­odo por data
+        # Filtro de período por data
         col_d1, col_d2 = st.columns(2)
         with col_d1:
-            start_date = st.date_input("Data de inÃ­cio:", value=now_br().date() - timedelta(days=7), key="log_start_date")
+            start_date = st.date_input("Data de início:", value=now_br().date() - timedelta(days=7), key="log_start_date")
         with col_d2:
             end_date = st.date_input("Data de fim:", value=now_br().date(), key="log_end_date")
         
@@ -10227,7 +10231,7 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
         df_logs = db_get_logs_df(sel_log_user, start_str, end_str)
     
         if df_logs.empty:
-            st.info("Nenhum log registrado para a seleÃ§Ã£o.")
+            st.info("Nenhum log registrado para a seleção.")
         else:
             df_logs_disp = df_logs.copy()
             df_logs_disp.index = range(1, len(df_logs_disp) + 1)
@@ -10239,7 +10243,7 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
         col_l1, col_l2 = st.columns(2)
         with col_l1:
             st.download_button(
-                "â¬‡ï¸ Baixar Logs Filtrados (Excel .xlsx)",
+                "⬇️ Baixar Logs Filtrados (Excel .xlsx)",
                 dl_log_xlsx,
                 f"logs_{sel_log_user}_{now_br().strftime('%Y%m%d_%H%M')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -10247,48 +10251,49 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
             )
         with col_l2:
             st.download_button(
-                "â¬‡ï¸ Baixar Logs Filtrados (CSV)",
+                "⬇️ Baixar Logs Filtrados (CSV)",
                 dl_log_csv,
                 f"logs_{sel_log_user}_{now_br().strftime('%Y%m%d_%H%M')}.csv",
                 mime="text/csv",
                 key="dl_logs_csv"
             )
 
-    # â”€â”€ 4) ComissÃµes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-if active_page == "ComissÃµes" and sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
-    st.markdown("### âš–ï¸ AnÃ¡lise de ComissÃµes")
+    # ── 4) Comissões ─────────────────────────────────────────────────────────
+if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
+    st.markdown("### ⚖️ Análise de Comissões")
     
     @st.cache_data(show_spinner=False)
-    def load_comissoes_tab_data(_db_path, _drive_av_id, _drive_si_id):
+    def load_comissoes_tab_data():
         import pandas as pd
-        import os
-        import tempfile
         
-        cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
-        if _drive_av_id and _drive_si_id:
-            sigef_path = os.path.join(cache_dir, "SIGEF.csv")
-            comissao_path = os.path.join(cache_dir, "avaliacoes.csv")
-        else:
-            sigef_path = os.path.join(_db_path, "SIGEF.csv")
-            comissao_path = os.path.join(_db_path, "avaliacoes.csv")
+        def get_gdrive_url(url):
+            if 'drive.google.com' in url and '/view' in url:
+                try:
+                    return f"https://drive.google.com/uc?export=download&id={url.split('/d/')[1].split('/view')[0]}"
+                except Exception:
+                    pass
+            return url
             
+        # Para usar o Google Drive (Caminho B), substitua os nomes de arquivo abaixo 
+        # pelos links de compartilhamento gerados ("Qualquer pessoa com o link pode ver").
+        # Ex: comissao_path = get_gdrive_url('https://drive.google.com/file/d/1234.../view?usp=sharing')
+        sigef_path = get_gdrive_url('https://drive.google.com/file/d/10Ld_4XEz9b4kI_T6TC9W19tQdtBJCz5F/view?usp=sharing')
+        comissao_path = get_gdrive_url('https://drive.google.com/file/d/12Ba_czEzw-eae1jShXpASn3WzJjZe2Wx/view?usp=sharing')
         try:
             df_sigef = pd.read_csv(sigef_path, sep=';', encoding='cp1252', dtype=str, on_bad_lines='skip', index_col=False)
         except Exception:
-            df_sigef = pd.DataFrame()
-            
+            return pd.DataFrame(), pd.DataFrame()
         try:
             df_com = pd.read_csv(comissao_path, sep=';', encoding='cp1252', dtype=str, on_bad_lines='skip', index_col=False)
         except Exception:
             df_com = pd.DataFrame()
-            
         return df_sigef, df_com
 
     with st.spinner("Carregando bases de dados (SIGEF e Comissões)..."):
-        df_sigef, df_com = load_comissoes_tab_data(db_path, drive_av_id, drive_si_id)
+        df_sigef, df_com = load_comissoes_tab_data()
 
     if df_sigef.empty:
-        st.error("Erro: SIGEF.csv nÃ£o encontrado ou ilegÃ­vel.")
+        st.error("Erro: SIGEF.csv não encontrado ou ilegível.")
     else:
         def _c_get_pm(val):
             if pd.isna(val): return ""
@@ -10313,13 +10318,13 @@ if active_page == "ComissÃµes" and sidebar_active_role.upper() in ("ADMINISTRA
                 
             pms = {av1, av2, hom}
             if len(pms) == 1:
-                return "COMPLETA (COMISSÃƒO ÃšNICA)"
+                return "COMPLETA (COMISSÃO ÚNICA)"
             elif len(pms) == 2:
                 return "COMPLETA (2 MEMBROS)"
             elif len(pms) == 3:
                 return "COMPLETA (3 MEMBROS)"
                 
-            return "COMPLETA (PADRÃƒO INCORRETO)"
+            return "COMPLETA (PADRÃO INCORRETO)"
 
         def _c_aadp_category(sit):
             sit = str(sit).strip().upper()
@@ -10339,37 +10344,37 @@ if active_page == "ComissÃµes" and sidebar_active_role.upper() in ("ADMINISTRA
             df_merge = df_sigef.copy()
             for col in ['nrPM (Avaliador1)', 'nrPM (Avaliador2)', 'nrPM (Homologador)']:
                 df_merge[col] = ""
-            for col in ['Unidade RPM Atual (Avaliado)', 'Unidade Principal Atual (Avaliado)', 'Posto/GraduaÃ§Ã£o (Avaliado)']:
+            for col in ['Unidade RPM Atual (Avaliado)', 'Unidade Principal Atual (Avaliado)', 'Posto/Graduação (Avaliado)']:
                 df_merge[col] = None
 
-        df_merge['Status da ComissÃ£o'] = df_merge.apply(_c_classify_com, axis=1)
+        df_merge['Status da Comissão'] = df_merge.apply(_c_classify_com, axis=1)
         df_merge['Tipo AADP'] = df_merge['SIT. FUNCIONAL'].apply(_c_aadp_type)
         df_merge['Categoria AADP'] = df_merge['SIT. FUNCIONAL'].apply(_c_aadp_category)
 
         df_merge['RPM Final'] = df_merge['Unidade RPM Atual (Avaliado)'].fillna(df_merge['NOME RPM'])
-        df_merge['RPM Final'] = df_merge['RPM Final'].replace({'NÃƒO': 'DINT', 'AUDI SET': 'AUD SET'})
+        df_merge['RPM Final'] = df_merge['RPM Final'].replace({'NÃO': 'DINT', 'AUDI SET': 'AUD SET'})
         df_merge['Unidade Principal Final'] = df_merge['Unidade Principal Atual (Avaliado)'].fillna(df_merge['NOME UNIDADE PRINCIPAL'])
-        df_merge['Posto/GraduaÃ§Ã£o Final'] = df_merge['Posto/GraduaÃ§Ã£o (Avaliado)'].fillna(df_merge['POSTO/GRADUACAO'])
+        df_merge['Posto/Graduação Final'] = df_merge['Posto/Graduação (Avaliado)'].fillna(df_merge['POSTO/GRADUACAO'])
         df_merge = df_merge[df_merge['SIT. FUNCIONAL'] != 'JUIZ/TJM']
-        df_merge['SituaÃ§Ã£o AADP'] = df_merge['Status da ComissÃ£o'].apply(lambda x: 'Completa' if str(x).upper().startswith('COMPLETA') else 'Incompleta')
+        df_merge['Situação AADP'] = df_merge['Status da Comissão'].apply(lambda x: 'Completa' if str(x).upper().startswith('COMPLETA') else 'Incompleta')
         
-        # Alerta de PraÃ§a em FunÃ§Ã£o de Avaliador 2 e Homologador
+        # Alerta de Praça em Função de Avaliador 2 e Homologador
         pracas_regex = r"(SOLDADO|CABO|3 SARGENTO|2 SARGENTO|1 SARGENTO|SUBTENENTE)"
-        av2_praca = df_merge['Posto/GraduaÃ§Ã£o (Avaliador2)'].str.upper().str.contains(pracas_regex, na=False)
-        hom_praca = df_merge['Posto/GraduaÃ§Ã£o (Homologador)'].str.upper().str.contains(pracas_regex, na=False)
-        df_merge['Alerta PraÃ§a AV2/HOM'] = av2_praca | hom_praca
+        av2_praca = df_merge['Posto/Graduação (Avaliador2)'].str.upper().str.contains(pracas_regex, na=False)
+        hom_praca = df_merge['Posto/Graduação (Homologador)'].str.upper().str.contains(pracas_regex, na=False)
+        df_merge['Alerta Praça AV2/HOM'] = av2_praca | hom_praca
 
         # Alerta Hierarquia (AV1 > AV2 > HOM)
         HIERARQUIA = {
             "SOLDADO DE 2 CLASSE": 1, "SOLDADO DE 1 CLASSE": 2, "CABO": 3,
             "3 SARGENTO": 4, "2 SARGENTO": 5, "1 SARGENTO": 6, "SUBTENENTE": 7,
             "CADETE": 8, "ALUNO": 8, "ASPIRANTE A OFICIAL": 9,
-            "2 TENENTE": 10, "1 TENENTE": 11, "CAPITAO": 12, "CAPITÃƒO": 12,
+            "2 TENENTE": 10, "1 TENENTE": 11, "CAPITAO": 12, "CAPITÃO": 12,
             "MAJOR": 13, "TENENTE CORONEL": 14, "CORONEL": 15
         }
-        h1 = df_merge['Posto/GraduaÃ§Ã£o (Avaliador1)'].str.upper().str.strip().map(HIERARQUIA).fillna(-1)
-        h2 = df_merge['Posto/GraduaÃ§Ã£o (Avaliador2)'].str.upper().str.strip().map(HIERARQUIA).fillna(-1)
-        hh = df_merge['Posto/GraduaÃ§Ã£o (Homologador)'].str.upper().str.strip().map(HIERARQUIA).fillna(-1)
+        h1 = df_merge['Posto/Graduação (Avaliador1)'].str.upper().str.strip().map(HIERARQUIA).fillna(-1)
+        h2 = df_merge['Posto/Graduação (Avaliador2)'].str.upper().str.strip().map(HIERARQUIA).fillna(-1)
+        hh = df_merge['Posto/Graduação (Homologador)'].str.upper().str.strip().map(HIERARQUIA).fillna(-1)
 
         c1 = (h1 > -1) & (h2 > -1) & (h1 > h2)
         c2 = (h2 > -1) & (hh > -1) & (h2 > hh)
@@ -10377,13 +10382,13 @@ if active_page == "ComissÃµes" and sidebar_active_role.upper() in ("ADMINISTRA
         df_merge['Alerta Hierarquia'] = c1 | c2 | c3
 
         df_merge['Alerta Geral'] = 'Sem Alerta'
-        df_merge.loc[df_merge['Alerta Hierarquia'], 'Alerta Geral'] = 'âš ï¸ ALERTA HIERARQUIA'
-        df_merge.loc[df_merge['Alerta PraÃ§a AV2/HOM'], 'Alerta Geral'] = 'ðŸš¨ ALERTA PRAÃ‡A'
+        df_merge.loc[df_merge['Alerta Hierarquia'], 'Alerta Geral'] = '⚠️ ALERTA HIERARQUIA'
+        df_merge.loc[df_merge['Alerta Praça AV2/HOM'], 'Alerta Geral'] = '🚨 ALERTA PRAÇA'
 
-        # ConfiguraÃ§Ã£o da UI de Filtros e AplicaÃ§Ã£o SimultÃ¢nea (Cascata)
+        # Configuração da UI de Filtros e Aplicação Simultânea (Cascata)
         df_f = df_merge[df_merge['Tipo AADP'] == global_aadp].copy()
         
-        with st.expander("ðŸ” Filtros de ComissÃµes", expanded=True):
+        with st.expander("🔍 Filtros de Comissões", expanded=True):
             # Linha 1
             r1c1, r1c2, r1c3 = st.columns(3)
             with r1c1:
@@ -10400,7 +10405,7 @@ if active_page == "ComissÃµes" and sidebar_active_role.upper() in ("ADMINISTRA
                     rpm_filter = [active_rpm]
                     st.info(f"RPM Fixa: {active_rpm}")
                 else:
-                    rpm_filter = st.multiselect("Unidade de DireÃ§Ã£o (RPM)", rpm_list, key='rpm_key')
+                    rpm_filter = st.multiselect("Unidade de Direção (RPM)", rpm_list, key='rpm_key')
                     
             if rpm_filter: df_f = df_f[df_f['RPM Final'].isin(rpm_filter)]
                     
@@ -10417,10 +10422,10 @@ if active_page == "ComissÃµes" and sidebar_active_role.upper() in ("ADMINISTRA
 
             with r1c3:
                 curr_posto = st.session_state.get('posto_key', [])
-                postos = sorted(list(set(df_f['Posto/GraduaÃ§Ã£o Final'].dropna().unique()) | set(curr_posto)), key=lambda x: (-HIERARQUIA.get(str(x).strip().upper(), 0), str(x)))
-                posto_filter = st.multiselect("Posto/GraduaÃ§Ã£o Avaliado", postos, key='posto_key')
+                postos = sorted(list(set(df_f['Posto/Graduação Final'].dropna().unique()) | set(curr_posto)), key=lambda x: (-HIERARQUIA.get(str(x).strip().upper(), 0), str(x)))
+                posto_filter = st.multiselect("Posto/Graduação Avaliado", postos, key='posto_key')
 
-            if posto_filter: df_f = df_f[df_f['Posto/GraduaÃ§Ã£o Final'].isin(posto_filter)]
+            if posto_filter: df_f = df_f[df_f['Posto/Graduação Final'].isin(posto_filter)]
 
             # Linha 2
             r2c1, r2c2, r2c3 = st.columns(3)
@@ -10429,26 +10434,26 @@ if active_page == "ComissÃµes" and sidebar_active_role.upper() in ("ADMINISTRA
             
             with r2c1:
                 if global_aadp == "Ativa":
-                    sub_ativa_filter = st.multiselect("Categoria AADP", ["AADP Regular", "AADP SF. Restrito"], default=["AADP Regular", "AADP SF. Restrito"], help="AADP REGULAR: Militares cuja situaÃ§Ã£o funcional nÃ£o possui restriÃ§Ã£o.\nAADP SF. RESTRITO: Militares cuja situaÃ§Ã£o funcional gera alerta/restriÃ§Ã£o para avaliaÃ§Ã£o regular.")
+                    sub_ativa_filter = st.multiselect("Categoria AADP", ["AADP Regular", "AADP SF. Restrito"], default=["AADP Regular", "AADP SF. Restrito"], help="AADP REGULAR: Militares cuja situação funcional não possui restrição.\nAADP SF. RESTRITO: Militares cuja situação funcional gera alerta/restrição para avaliação regular.")
             
             if sub_ativa_filter:
                 df_f = df_f[df_f['Categoria AADP'].isin(sub_ativa_filter)]
             elif global_aadp == "Ativa":
-                df_f = df_f.iloc[0:0] # Se apagou tudo no filtro que tem default, nÃ£o mostra nada.
+                df_f = df_f.iloc[0:0] # Se apagou tudo no filtro que tem default, não mostra nada.
             
             with r2c2:
                 curr_sit = st.session_state.get('sit_aadp_key', [])
-                situacao_aadp_list = sorted(list(set(df_f['SituaÃ§Ã£o AADP'].unique()) | set(curr_sit)))
-                situacao_aadp_filter = st.multiselect("SituaÃ§Ã£o AADP", situacao_aadp_list, key='sit_aadp_key')
+                situacao_aadp_list = sorted(list(set(df_f['Situação AADP'].unique()) | set(curr_sit)))
+                situacao_aadp_filter = st.multiselect("Situação AADP", situacao_aadp_list, key='sit_aadp_key')
 
-            if situacao_aadp_filter: df_f = df_f[df_f['SituaÃ§Ã£o AADP'].isin(situacao_aadp_filter)]
+            if situacao_aadp_filter: df_f = df_f[df_f['Situação AADP'].isin(situacao_aadp_filter)]
 
             with r2c3:
                 curr_tipo = st.session_state.get('tipo_aadp_key', [])
-                tipo_aadp_list = sorted(list(set(df_f['Status da ComissÃ£o'].unique()) | set(curr_tipo)))
+                tipo_aadp_list = sorted(list(set(df_f['Status da Comissão'].unique()) | set(curr_tipo)))
                 tipo_aadp_filter = st.multiselect("Tipo AADP", tipo_aadp_list, key='tipo_aadp_key')
 
-            if tipo_aadp_filter: df_f = df_f[df_f['Status da ComissÃ£o'].isin(tipo_aadp_filter)]
+            if tipo_aadp_filter: df_f = df_f[df_f['Status da Comissão'].isin(tipo_aadp_filter)]
 
             # Linha 3
             if "AADP SF. Restrito" in sub_ativa_filter:
@@ -10457,15 +10462,15 @@ if active_page == "ComissÃµes" and sidebar_active_role.upper() in ("ADMINISTRA
                     curr_rest = st.session_state.get('sit_rest_key', [])
                     valid_rests = set(df_f[df_f['Categoria AADP'] == 'AADP SF. Restrito']['SIT. FUNCIONAL'].dropna().unique())
                     sits_restritivas = sorted(list(valid_rests | set(curr_rest)))
-                    sit_especifica = st.multiselect("SituaÃ§Ã£o Funcional (Restritiva)", sits_restritivas, key='sit_rest_key')
+                    sit_especifica = st.multiselect("Situação Funcional (Restritiva)", sits_restritivas, key='sit_rest_key')
                 with r3c2:
-                    OPCOES_ALERTA = ["Todas as ComissÃµes", "Com Qualquer Alerta", "ðŸš¨ ALERTA PRAÃ‡A", "âš ï¸ ALERTA HIERARQUIA"]
-                    alerta_filter = st.selectbox("Alertas de ComissÃ£o", OPCOES_ALERTA, key='alerta_geral', help="ALERTA PRAÃ‡A: ComissÃµes que possuem praÃ§as na funÃ§Ã£o de Avaliador 2 ou Homologador de forma incorreta.\nALERTA HIERARQUIA: Membro da comissÃ£o exercendo funÃ§Ã£o hierarquicamente de superior de forma indevida.")
+                    OPCOES_ALERTA = ["Todas as Comissões", "Com Qualquer Alerta", "🚨 ALERTA PRAÇA", "⚠️ ALERTA HIERARQUIA"]
+                    alerta_filter = st.selectbox("Alertas de Comissão", OPCOES_ALERTA, key='alerta_geral', help="ALERTA PRAÇA: Comissões que possuem praças na função de Avaliador 2 ou Homologador de forma incorreta.\nALERTA HIERARQUIA: Membro da comissão exercendo função hierarquicamente de superior de forma indevida.")
             else:
                 r3c1, r3c2, r3c3 = st.columns(3)
                 with r3c1:
-                    OPCOES_ALERTA = ["Todas as ComissÃµes", "Com Qualquer Alerta", "ðŸš¨ ALERTA PRAÃ‡A", "âš ï¸ ALERTA HIERARQUIA"]
-                    alerta_filter = st.selectbox("Alertas de ComissÃ£o", OPCOES_ALERTA, key='alerta_geral', help="ALERTA PRAÃ‡A: ComissÃµes que possuem praÃ§as na funÃ§Ã£o de Avaliador 2 ou Homologador de forma incorreta.\nALERTA HIERARQUIA: Membro da comissÃ£o exercendo funÃ§Ã£o hierarquicamente de superior de forma indevida.")
+                    OPCOES_ALERTA = ["Todas as Comissões", "Com Qualquer Alerta", "🚨 ALERTA PRAÇA", "⚠️ ALERTA HIERARQUIA"]
+                    alerta_filter = st.selectbox("Alertas de Comissão", OPCOES_ALERTA, key='alerta_geral', help="ALERTA PRAÇA: Comissões que possuem praças na função de Avaliador 2 ou Homologador de forma incorreta.\nALERTA HIERARQUIA: Membro da comissão exercendo função hierarquicamente de superior de forma indevida.")
 
             if "AADP SF. Restrito" in sub_ativa_filter and sit_especifica:
                 mask_restritiva = (df_f['Categoria AADP'] == 'AADP SF. Restrito') & (df_f['SIT. FUNCIONAL'].isin(sit_especifica))
@@ -10474,18 +10479,18 @@ if active_page == "ComissÃµes" and sidebar_active_role.upper() in ("ADMINISTRA
                 
             if alerta_filter == "Com Qualquer Alerta":
                 df_f = df_f[df_f['Alerta Geral'] != 'Sem Alerta']
-            elif alerta_filter in ["ðŸš¨ ALERTA PRAÃ‡A", "âš ï¸ ALERTA HIERARQUIA"]:
+            elif alerta_filter in ["🚨 ALERTA PRAÇA", "⚠️ ALERTA HIERARQUIA"]:
                 df_f = df_f[df_f['Alerta Geral'] == alerta_filter]
 
         # KPIs
         total_mil = len(df_f)
-        com_compl = len(df_f[df_f['Status da ComissÃ£o'].str.upper().str.startswith("COMPLETA")])
+        com_compl = len(df_f[df_f['Status da Comissão'].str.upper().str.startswith("COMPLETA")])
         com_pend = total_mil - com_compl
 
         k1, k2, k3 = st.columns(3)
         k1.metric("Total Filtrados", f"{total_mil:,}".replace(',', '.'))
-        k2.metric("ComissÃµes Completas", f"{com_compl:,}".replace(',', '.'))
-        k3.metric("ComissÃµes Incompletas/Ausentes", f"{com_pend:,}".replace(',', '.'))
+        k2.metric("Comissões Completas", f"{com_compl:,}".replace(',', '.'))
+        k3.metric("Comissões Incompletas/Ausentes", f"{com_pend:,}".replace(',', '.'))
 
         st.markdown("---")
         
@@ -10493,20 +10498,20 @@ if active_page == "ComissÃµes" and sidebar_active_role.upper() in ("ADMINISTRA
 
         # Tabela Detalhada
         st.markdown("---")
-        st.markdown("### ðŸ“‹ Tabela Detalhada de ComissÃµes")
+        st.markdown("### 📋 Tabela Detalhada de Comissões")
         cols_disp = [
-            'NUMERO', 'Posto/GraduaÃ§Ã£o Final', 'NOME SERVIDOR', 'RPM Final', 'Unidade Principal Final', 
-            'SIT. FUNCIONAL', 'Tipo AADP', 'Categoria AADP', 'Status da ComissÃ£o', 'Alerta Geral',
-            'nrPM (Avaliador1)', 'Posto/GraduaÃ§Ã£o (Avaliador1)', 'Nome Completo (Avaliador1)',
-            'nrPM (Avaliador2)', 'Posto/GraduaÃ§Ã£o (Avaliador2)', 'Nome Completo (Avaliador2)',
-            'nrPM (Homologador)', 'Posto/GraduaÃ§Ã£o (Homologador)', 'Nome Completo (Homologador)'
+            'NUMERO', 'Posto/Graduação Final', 'NOME SERVIDOR', 'RPM Final', 'Unidade Principal Final', 
+            'SIT. FUNCIONAL', 'Tipo AADP', 'Categoria AADP', 'Status da Comissão', 'Alerta Geral',
+            'nrPM (Avaliador1)', 'Posto/Graduação (Avaliador1)', 'Nome Completo (Avaliador1)',
+            'nrPM (Avaliador2)', 'Posto/Graduação (Avaliador2)', 'Nome Completo (Avaliador2)',
+            'nrPM (Homologador)', 'Posto/Graduação (Homologador)', 'Nome Completo (Homologador)'
         ]
         cols_presentes = [c for c in cols_disp if c in df_f.columns]
         df_export = df_f[cols_presentes].copy()
         
         dl_xlsx = df_to_xlsx(df_export)
         st.download_button(
-            "â¬‡ï¸ Baixar Auditoria de ComissÃµes (Excel)",
+            "⬇️ Baixar Auditoria de Comissões (Excel)",
             dl_xlsx,
             f"Auditoria_Comissoes_{now_br().strftime('%Y%m%d_%H%M')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -10515,9 +10520,9 @@ if active_page == "ComissÃµes" and sidebar_active_role.upper() in ("ADMINISTRA
         
         def highlight_alert(row):
             alerta = row.get('Alerta Geral', '')
-            if alerta == 'ðŸš¨ ALERTA PRAÃ‡A':
+            if alerta == '🚨 ALERTA PRAÇA':
                 return ['background-color: rgba(255, 0, 0, 0.3)'] * len(row)
-            elif alerta == 'âš ï¸ ALERTA HIERARQUIA':
+            elif alerta == '⚠️ ALERTA HIERARQUIA':
                 return ['background-color: rgba(255, 255, 0, 0.3); color: black'] * len(row)
             return [''] * len(row)
 
@@ -10529,20 +10534,20 @@ if active_page == "ComissÃµes" and sidebar_active_role.upper() in ("ADMINISTRA
 
         # Novo Ranking de Membros
         st.markdown("---")
-        st.markdown("### ðŸ† Ranking de Membros de ComissÃ£o")
+        st.markdown("### 🏆 Ranking de Membros de Comissão")
         
         # Preparar dados dos membros
-        df_av1 = df_f[['nrPM (Avaliador1)', 'Nome Completo (Avaliador1)', 'Posto/GraduaÃ§Ã£o (Avaliador1)']].copy()
-        df_av1.columns = ['nrPM', 'Nome Completo', 'Posto/GraduaÃ§Ã£o']
-        df_av1['FunÃ§Ã£o'] = 'Avaliador 1'
+        df_av1 = df_f[['nrPM (Avaliador1)', 'Nome Completo (Avaliador1)', 'Posto/Graduação (Avaliador1)']].copy()
+        df_av1.columns = ['nrPM', 'Nome Completo', 'Posto/Graduação']
+        df_av1['Função'] = 'Avaliador 1'
         
-        df_av2 = df_f[['nrPM (Avaliador2)', 'Nome Completo (Avaliador2)', 'Posto/GraduaÃ§Ã£o (Avaliador2)']].copy()
-        df_av2.columns = ['nrPM', 'Nome Completo', 'Posto/GraduaÃ§Ã£o']
-        df_av2['FunÃ§Ã£o'] = 'Avaliador 2'
+        df_av2 = df_f[['nrPM (Avaliador2)', 'Nome Completo (Avaliador2)', 'Posto/Graduação (Avaliador2)']].copy()
+        df_av2.columns = ['nrPM', 'Nome Completo', 'Posto/Graduação']
+        df_av2['Função'] = 'Avaliador 2'
         
-        df_hom = df_f[['nrPM (Homologador)', 'Nome Completo (Homologador)', 'Posto/GraduaÃ§Ã£o (Homologador)']].copy()
-        df_hom.columns = ['nrPM', 'Nome Completo', 'Posto/GraduaÃ§Ã£o']
-        df_hom['FunÃ§Ã£o'] = 'Homologador'
+        df_hom = df_f[['nrPM (Homologador)', 'Nome Completo (Homologador)', 'Posto/Graduação (Homologador)']].copy()
+        df_hom.columns = ['nrPM', 'Nome Completo', 'Posto/Graduação']
+        df_hom['Função'] = 'Homologador'
         
         df_members = pd.concat([df_av1, df_av2, df_hom], ignore_index=True)
         # Limpar vazios
@@ -10564,27 +10569,27 @@ if active_page == "ComissÃµes" and sidebar_active_role.upper() in ("ADMINISTRA
         
         r1c1, r1c2 = st.columns(2)
         with r1c1:
-            postos_membros = sorted(list(set(df_members['Posto/GraduaÃ§Ã£o'].dropna().unique())), key=lambda x: (-HIERARQUIA.get(str(x).strip().upper(), 0), str(x)))
-            filtro_posto_membro = st.multiselect("Posto/GraduaÃ§Ã£o do Membro", postos_membros, key='filtro_posto_ranking')
+            postos_membros = sorted(list(set(df_members['Posto/Graduação'].dropna().unique())), key=lambda x: (-HIERARQUIA.get(str(x).strip().upper(), 0), str(x)))
+            filtro_posto_membro = st.multiselect("Posto/Graduação do Membro", postos_membros, key='filtro_posto_ranking')
 
         with r1c2:
-            filtro_funcao = st.multiselect("FunÃ§Ã£o Exercida", ['Avaliador 1', 'Avaliador 2', 'Homologador'], key='filtro_funcao_ranking')
+            filtro_funcao = st.multiselect("Função Exercida", ['Avaliador 1', 'Avaliador 2', 'Homologador'], key='filtro_funcao_ranking')
 
         if filtro_posto_membro:
-            df_members = df_members[df_members['Posto/GraduaÃ§Ã£o'].isin(filtro_posto_membro)]
+            df_members = df_members[df_members['Posto/Graduação'].isin(filtro_posto_membro)]
 
         if filtro_funcao:
-            df_members = df_members[df_members['FunÃ§Ã£o'].isin(filtro_funcao)]
+            df_members = df_members[df_members['Função'].isin(filtro_funcao)]
             
         if not df_members.empty:
-            counts = df_members.groupby(['nrPM', 'Posto/GraduaÃ§Ã£o', 'Nome Completo', 'RPM', 'Unidade Principal', 'FunÃ§Ã£o']).size().unstack(fill_value=0).reset_index()
+            counts = df_members.groupby(['nrPM', 'Posto/Graduação', 'Nome Completo', 'RPM', 'Unidade Principal', 'Função']).size().unstack(fill_value=0).reset_index()
             
             for c in ['Avaliador 1', 'Avaliador 2', 'Homologador']:
                 if c not in counts.columns:
                     counts[c] = 0
                     
             counts['Total'] = counts['Avaliador 1'] + counts['Avaliador 2'] + counts['Homologador']
-            counts = counts[['nrPM', 'Posto/GraduaÃ§Ã£o', 'Nome Completo', 'RPM', 'Unidade Principal', 'Avaliador 1', 'Avaliador 2', 'Homologador', 'Total']]
+            counts = counts[['nrPM', 'Posto/Graduação', 'Nome Completo', 'RPM', 'Unidade Principal', 'Avaliador 1', 'Avaliador 2', 'Homologador', 'Total']]
             counts = counts.sort_values('Total', ascending=False)
             
             st.dataframe(counts, use_container_width=True, hide_index=True)
@@ -10592,15 +10597,15 @@ if active_page == "ComissÃµes" and sidebar_active_role.upper() in ("ADMINISTRA
             st.info("Nenhum membro encontrado com os filtros atuais.")
             
         st.markdown("---")
-        st.markdown("### ðŸ“Š GrÃ¡ficos de DistribuiÃ§Ã£o")
+        st.markdown("### 📊 Gráficos de Distribuição")
         
         c_graf1, c_graf2 = st.columns(2)
         
         with c_graf1:
-            st.markdown("**DistribuiÃ§Ã£o por Status da ComissÃ£o**")
+            st.markdown("**Distribuição por Status da Comissão**")
             import plotly.express as px
-            rotacao_grafico = st.slider("Ajuste de RotaÃ§Ã£o (Â°)", min_value=0, max_value=360, value=115, step=5, key="rot_pizza")
-            sc_df = df_f['Status da ComissÃ£o'].value_counts().reset_index()
+            rotacao_grafico = st.slider("Ajuste de Rotação (°)", min_value=0, max_value=360, value=115, step=5, key="rot_pizza")
+            sc_df = df_f['Status da Comissão'].value_counts().reset_index()
             sc_df.columns = ['Status', 'Quantidade']
             if not sc_df.empty:
                 fig_pizza = px.pie(sc_df, values='Quantidade', names='Status', hole=0.3,
@@ -10612,12 +10617,12 @@ if active_page == "ComissÃµes" and sidebar_active_role.upper() in ("ADMINISTRA
                 st.info("Sem dados.")
                 
         with c_graf2:
-            st.markdown("**Resumo por SituaÃ§Ã£o Funcional**")
+            st.markdown("**Resumo por Situação Funcional**")
             sf_df = df_f['SIT. FUNCIONAL'].value_counts().reset_index()
-            sf_df.columns = ['SituaÃ§Ã£o Funcional', 'Quantidade']
+            sf_df.columns = ['Situação Funcional', 'Quantidade']
             if not sf_df.empty:
-                fig_bar = px.bar(sf_df, x='SituaÃ§Ã£o Funcional', y='Quantidade', text='Quantidade',
-                                 color='SituaÃ§Ã£o Funcional', color_discrete_sequence=px.colors.qualitative.Set2)
+                fig_bar = px.bar(sf_df, x='Situação Funcional', y='Quantidade', text='Quantidade',
+                                 color='Situação Funcional', color_discrete_sequence=px.colors.qualitative.Set2)
                 fig_bar.update_traces(textposition='outside')
                 if len(sf_df) <= 6:
                     fig_bar.update_traces(width=0.05 * len(sf_df))
@@ -10628,8 +10633,8 @@ if active_page == "ComissÃµes" and sidebar_active_role.upper() in ("ADMINISTRA
 
 
 st.markdown("---")
-st.markdown(f"<center><small>AADP 2026 Â· PolÃ­cia Militar de Minas Gerais Â· "
-            f"ResoluÃ§Ã£o 5458/2025 Â· {now_br().strftime('%d/%m/%Y')}<br>"
+st.markdown(f"<center><small>AADP 2026 · Polícia Militar de Minas Gerais · "
+            f"Resolução 5458/2025 · {now_br().strftime('%d/%m/%Y')}<br>"
             f"DIRETORIA DE RECURSO HUMANOS - DRH6</small></center>",
             unsafe_allow_html=True)
 
