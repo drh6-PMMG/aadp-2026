@@ -10397,100 +10397,93 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
         df_f = df_merge[df_merge['Tipo AADP'] == global_aadp].copy()
         
         with st.expander("🔍 Filtros de Comissões", expanded=True):
-            # Linha 1
-            r1c1, r1c2, r1c3 = st.columns(3)
-            with r1c1:
-                import re
-                def sort_rpm(rpm_name):
-                    m = re.match(r'^(\d+)\s*RPM', str(rpm_name))
-                    if m:
-                        return (0, int(m.group(1)), str(rpm_name))
-                    return (1, 0, str(rpm_name))
-                
-                curr_rpm = st.session_state.get('rpm_key', [])
-                rpm_list = sorted(list(set(df_f['RPM Final'].dropna().unique()) | set(curr_rpm)), key=sort_rpm)
-                if sidebar_active_role in ("P1", "SADM") and active_rpm:
-                    rpm_filter = [active_rpm]
-                    st.info(f"RPM Fixa: {active_rpm}")
-                else:
-                    rpm_filter = st.multiselect("Unidade de Direção (RPM)", rpm_list, key='rpm_key')
-                    
-            if rpm_filter: df_f = df_f[df_f['RPM Final'].isin(rpm_filter)]
-                    
-            with r1c2:
-                curr_unid = st.session_state.get('unid_key', [])
-                unidades = sorted(list(set(df_f['Unidade Principal Final'].dropna().unique()) | set(curr_unid)))
-                if sidebar_active_role == "SADM" and active_unit:
-                    unid_filter = [active_unit]
-                    st.info(f"Unidade Fixa: {active_unit}")
-                else:
-                    unid_filter = st.multiselect("Unidade Principal", unidades, key='unid_key')
+            with st.form("form_filtros_comissoes"):
+                r1c1, r1c2, r1c3 = st.columns(3)
+                with r1c1:
+                    import re
+                    def sort_rpm(rpm_name):
+                        m = re.match(r'^(\d+)\s*RPM', str(rpm_name))
+                        if m:
+                            return (0, int(m.group(1)), str(rpm_name))
+                        return (1, 0, str(rpm_name))
 
-            if unid_filter: df_f = df_f[df_f['Unidade Principal Final'].isin(unid_filter)]
+                    curr_rpm = st.session_state.get('rpm_key', [])
+                    rpm_list = sorted(list(set(df_f['RPM Final'].dropna().unique()) | set(curr_rpm)), key=sort_rpm)
+                    if sidebar_active_role in ("P1", "SADM") and active_rpm:
+                        rpm_filter = [active_rpm]
+                        st.info(f"RPM Fixa: {active_rpm}")
+                    else:
+                        rpm_filter = st.multiselect("Unidade de Direção (RPM)", rpm_list, key='rpm_key')
 
-            with r1c3:
-                curr_posto = st.session_state.get('posto_key', [])
-                postos = sorted(list(set(df_f['Posto/Graduação Final'].dropna().unique()) | set(curr_posto)), key=lambda x: (-HIERARQUIA.get(str(x).strip().upper(), 0), str(x)))
-                posto_filter = st.multiselect("Posto/Graduação Avaliado", postos, key='posto_key')
+                with r1c2:
+                    curr_unid = st.session_state.get('unid_key', [])
+                    unidades = sorted(list(set(df_f['Unidade Principal Final'].dropna().unique()) | set(curr_unid)))
+                    if sidebar_active_role == "SADM" and active_unit:
+                        unid_filter = [active_unit]
+                        st.info(f"Unidade Fixa: {active_unit}")
+                    else:
+                        unid_filter = st.multiselect("Unidade Principal", unidades, key='unid_key')
 
-            if posto_filter: df_f = df_f[df_f['Posto/Graduação Final'].isin(posto_filter)]
+                with r1c3:
+                    curr_posto = st.session_state.get('posto_key', [])
+                    postos = sorted(list(set(df_f['Posto/Graduação Final'].dropna().unique()) | set(curr_posto)), key=lambda x: (-HIERARQUIA.get(str(x).strip().upper(), 0), str(x)))
+                    posto_filter = st.multiselect("Posto/Graduação Avaliado", postos, key='posto_key')
 
-            # Linha 2
-            r2c1, r2c2, r2c3 = st.columns(3)
-            sub_ativa_filter = []
-            sit_especifica = []
-            
-            with r2c1:
-                if global_aadp == "Ativa":
-                    sub_ativa_filter = st.multiselect("Categoria AADP", ["AADP Regular", "AADP SF. Restrito"], default=["AADP Regular", "AADP SF. Restrito"], help="AADP REGULAR: Militares cuja situação funcional não possui restrição.\nAADP SF. RESTRITO: Militares cuja situação funcional gera alerta/restrição para avaliação regular.")
-            
-            if sub_ativa_filter:
-                df_f = df_f[df_f['Categoria AADP'].isin(sub_ativa_filter)]
-            elif global_aadp == "Ativa":
-                df_f = df_f.iloc[0:0] # Se apagou tudo no filtro que tem default, não mostra nada.
-            
-            with r2c2:
-                curr_sit = st.session_state.get('sit_aadp_key', [])
-                situacao_aadp_list = sorted(list(set(df_f['Situação AADP'].unique()) | set(curr_sit)))
-                situacao_aadp_filter = st.multiselect("Situação AADP", situacao_aadp_list, key='sit_aadp_key')
+                r2c1, r2c2, r2c3 = st.columns(3)
+                sub_ativa_filter = []
+                sit_especifica = []
 
-            if situacao_aadp_filter: df_f = df_f[df_f['Situação AADP'].isin(situacao_aadp_filter)]
+                with r2c1:
+                    if global_aadp == "Ativa":
+                        sub_ativa_filter = st.multiselect("Categoria AADP", ["AADP Regular", "AADP SF. Restrito"], default=["AADP Regular", "AADP SF. Restrito"], help="AADP REGULAR: Militares cuja situação funcional não possui restrição.\nAADP SF. RESTRITO: Militares cuja situação funcional gera alerta/restrição para avaliação regular.")
 
-            with r2c3:
-                curr_tipo = st.session_state.get('tipo_aadp_key', [])
-                tipo_aadp_list = sorted(list(set(df_f['Status da Comissão'].unique()) | set(curr_tipo)))
-                tipo_aadp_filter = st.multiselect("Tipo AADP", tipo_aadp_list, key='tipo_aadp_key')
+                with r2c2:
+                    curr_sit = st.session_state.get('sit_aadp_key', [])
+                    situacao_aadp_list = sorted(list(set(df_f['Situação AADP'].unique()) | set(curr_sit)))
+                    situacao_aadp_filter = st.multiselect("Situação AADP", situacao_aadp_list, key='sit_aadp_key')
 
-            if tipo_aadp_filter: df_f = df_f[df_f['Status da Comissão'].isin(tipo_aadp_filter)]
+                with r2c3:
+                    curr_tipo = st.session_state.get('tipo_aadp_key', [])
+                    tipo_aadp_list = sorted(list(set(df_f['Status da Comissão'].unique()) | set(curr_tipo)))
+                    tipo_aadp_filter = st.multiselect("Tipo AADP", tipo_aadp_list, key='tipo_aadp_key')
 
-            # Linha 3
-            if "AADP SF. Restrito" in sub_ativa_filter:
                 r3c1, r3c2, r3c3 = st.columns(3)
                 with r3c1:
                     curr_rest = st.session_state.get('sit_rest_key', [])
                     valid_rests = set(df_f[df_f['Categoria AADP'] == 'AADP SF. Restrito']['SIT. FUNCIONAL'].dropna().unique())
                     sits_restritivas = sorted(list(valid_rests | set(curr_rest)))
                     sit_especifica = st.multiselect("Situação Funcional (Restritiva)", sits_restritivas, key='sit_rest_key')
+                    
                 with r3c2:
                     OPCOES_ALERTA = ["Todas as Comissões", "Com Qualquer Alerta", "🚨 ALERTA PRAÇA", "⚠️ ALERTA HIERARQUIA"]
                     alerta_filter = st.selectbox("Alertas de Comissão", OPCOES_ALERTA, key='alerta_geral', help="ALERTA PRAÇA: Comissões que possuem praças na função de Avaliador 2 ou Homologador de forma incorreta.\nALERTA HIERARQUIA: Membro da comissão exercendo função hierarquicamente de superior de forma indevida.")
-            else:
-                r3c1, r3c2, r3c3 = st.columns(3)
-                with r3c1:
-                    OPCOES_ALERTA = ["Todas as Comissões", "Com Qualquer Alerta", "🚨 ALERTA PRAÇA", "⚠️ ALERTA HIERARQUIA"]
-                    alerta_filter = st.selectbox("Alertas de Comissão", OPCOES_ALERTA, key='alerta_geral', help="ALERTA PRAÇA: Comissões que possuem praças na função de Avaliador 2 ou Homologador de forma incorreta.\nALERTA HIERARQUIA: Membro da comissão exercendo função hierarquicamente de superior de forma indevida.")
 
-            if "AADP SF. Restrito" in sub_ativa_filter and sit_especifica:
-                mask_restritiva = (df_f['Categoria AADP'] == 'AADP SF. Restrito') & (df_f['SIT. FUNCIONAL'].isin(sit_especifica))
-                mask_not_restritiva = (df_f['Categoria AADP'] != 'AADP SF. Restrito')
-                df_f = df_f[mask_restritiva | mask_not_restritiva]
-                
-            if alerta_filter == "Com Qualquer Alerta":
-                df_f = df_f[df_f['Alerta Geral'] != 'Sem Alerta']
-            elif alerta_filter in ["🚨 ALERTA PRAÇA", "⚠️ ALERTA HIERARQUIA"]:
-                df_f = df_f[df_f['Alerta Geral'] == alerta_filter]
+                submit_filtros = st.form_submit_button("Aplicar Filtros 🚀", use_container_width=True)
 
-        # KPIs
+        # Aplicando filtros após formulário
+        if rpm_filter: df_f = df_f[df_f['RPM Final'].isin(rpm_filter)]
+        if unid_filter: df_f = df_f[df_f['Unidade Principal Final'].isin(unid_filter)]
+        if posto_filter: df_f = df_f[df_f['Posto/Graduação Final'].isin(posto_filter)]
+        
+        if sub_ativa_filter:
+            df_f = df_f[df_f['Categoria AADP'].isin(sub_ativa_filter)]
+        elif global_aadp == "Ativa":
+            df_f = df_f.iloc[0:0]
+            
+        if situacao_aadp_filter: df_f = df_f[df_f['Situação AADP'].isin(situacao_aadp_filter)]
+        if tipo_aadp_filter: df_f = df_f[df_f['Status da Comissão'].isin(tipo_aadp_filter)]
+        
+        if "AADP SF. Restrito" in sub_ativa_filter and sit_especifica:
+            mask_restritiva = (df_f['Categoria AADP'] == 'AADP SF. Restrito') & (df_f['SIT. FUNCIONAL'].isin(sit_especifica))
+            mask_not_restritiva = (df_f['Categoria AADP'] != 'AADP SF. Restrito')
+            df_f = df_f[mask_restritiva | mask_not_restritiva]
+
+        if alerta_filter == "Com Qualquer Alerta":
+            df_f = df_f[df_f['Alerta Geral'] != 'Sem Alerta']
+        elif alerta_filter in ["🚨 ALERTA PRAÇA", "⚠️ ALERTA HIERARQUIA"]:
+            df_f = df_f[df_f['Alerta Geral'] == alerta_filter]
+
+    # KPIs
         total_mil = len(df_f)
         com_compl = len(df_f[df_f['Status da Comissão'].str.upper().str.startswith("COMPLETA")])
         com_pend = total_mil - com_compl
