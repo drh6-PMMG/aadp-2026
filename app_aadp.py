@@ -9515,7 +9515,6 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
 
             def get_eval_grade(row):
                 h = get_numeric_value(row.get("Nota Homologação"))
-                g = get_numeric_value(row.get("Nota Geral"))
                 return h if h is not None else g
 
             def get_militares_counts(df_sub):
@@ -10518,12 +10517,12 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
         cols_presentes = [c for c in cols_disp if c in df_f.columns]
         df_export = df_f[cols_presentes].copy()
         
-        dl_xlsx = df_to_xlsx(df_export)
+        csv_data = df_export.to_csv(index=False, sep=';').encode('utf-8-sig')
         st.download_button(
-            "⬇️ Baixar Auditoria de Comissões (Excel)",
-            dl_xlsx,
-            f"Auditoria_Comissoes_{now_br().strftime('%Y%m%d_%H%M')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Baixar Auditoria de Comissoes (CSV Rapido)",
+        csv_data,
+        f"Auditoria_Comissoes_{now_br().strftime('%Y%m%d_%H%M')}.csv",
+        mime="text/csv",
             type="primary"
         )
         
@@ -10536,7 +10535,9 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
             return [''] * len(row)
 
         if not df_export.empty:
-            styled_df = df_export.style.apply(highlight_alert, axis=1)
+            if len(df_export) > 1500:
+                st.warning('Aviso: Exibindo apenas as primeiras 1.500 linhas na tela. Baixe o CSV acima para visualizar todos.')
+            styled_df = df_export.head(1500).style.apply(highlight_alert, axis=1)
             st.dataframe(styled_df, use_container_width=True, hide_index=True)
         else:
             st.dataframe(df_export, use_container_width=True, hide_index=True)
