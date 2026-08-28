@@ -2192,9 +2192,13 @@ def get_cached_users():
 
 
         refresh_db_cache()
-
-
-    return st.session_state.db_users
+    
+    users = st.session_state.db_users
+    latest = {}
+    for u in users:
+        pm = str(u["pm"]).strip()
+        latest[pm] = u
+    return list(latest.values())
 
 
 
@@ -4333,7 +4337,6 @@ if not st.session_state.authenticated:
                             st.session_state.forgot_password_mode = False
                             st.session_state.forgot_step2 = False
                             st.session_state.forgot_target_pm = None
-                            st.session_state.auth_mode_radio = "📝 Solicitar Cadastro"
                             st.rerun()
                 else:
                     st.write("Informe o seu Nº PM para verificar seu cadastro:")
@@ -10030,7 +10033,13 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
     
     # ── 1) Solicitações de Cadastro Pendentes ────────────────────────────────
     with tab_pending:
-        st.markdown("#### ⏳ Solicitações de Cadastro Pendentes")
+        col_t1, col_t2 = st.columns([3, 1])
+        with col_t1:
+            st.markdown('#### ⏳ Solicitações de Cadastro Pendentes')
+        with col_t2:
+            if st.button('🔄 Atualizar Lista', use_container_width=True, key='refresh_pendentes'):
+                refresh_db_cache()
+                st.rerun()
         pend_list = db_get_pending_users()
         
         if not pend_list:
@@ -10342,11 +10351,24 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
 
         df_sigef['NUMERO_CLEAN'] = df_sigef['NUMERO'].apply(_c_get_pm)
         df_sigef = df_sigef[df_sigef['NUMERO_CLEAN'] != ""]
+        
+        dup_s = df_sigef.duplicated(subset=['NUMERO_CLEAN'], keep=False)
+        if dup_s.any():
+            d_pms = list(df_sigef.loc[dup_s, 'NUMERO_CLEAN'].unique())
+            d_str = ', '.join(d_pms[:15]) + (f' (e mais {len(d_pms)-15})' if len(d_pms)>15 else '')
+            st.error(f'⚠️ Atenção! Foram detectados **{len(d_pms)}** PMs DUPLICADOS na planilha do **SIGEF** (ex: {d_str}). Apenas a última ocorrência de cada militar foi validada.')
+        df_sigef = df_sigef.drop_duplicates(subset=['NUMERO_CLEAN'], keep='last')
 
         if not df_com.empty:
             df_com['nrPM_Avaliado_CLEAN'] = df_com['nrPM (Avaliado)'].apply(_c_get_pm)
             df_com = df_com[df_com['nrPM_Avaliado_CLEAN'] != ""]
-            df_com = df_com.drop_duplicates(subset=['nrPM_Avaliado_CLEAN'], keep='first')
+            
+            dup_c = df_com.duplicated(subset=['nrPM_Avaliado_CLEAN'], keep=False)
+            if dup_c.any():
+                d_pms_c = list(df_com.loc[dup_c, 'nrPM_Avaliado_CLEAN'].unique())
+                d_str_c = ', '.join(d_pms_c[:15]) + (f' (e mais {len(d_pms_c)-15})' if len(d_pms_c)>15 else '')
+                st.warning(f'⚠️ Atenção! Foram detectados **{len(d_pms_c)}** PMs Avaliados DUPLICADOS na planilha de **COMISSÃO** (ex: {d_str_c}). O sistema validou apenas a comissão mais recente (última linha) de cada um.')
+            df_com = df_com.drop_duplicates(subset=['nrPM_Avaliado_CLEAN'], keep='last')
             df_merge = pd.merge(df_sigef, df_com, left_on='NUMERO_CLEAN', right_on='nrPM_Avaliado_CLEAN', how='left')
         else:
             df_merge = df_sigef.copy()
