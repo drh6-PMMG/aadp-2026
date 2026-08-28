@@ -10352,22 +10352,12 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
         df_sigef['NUMERO_CLEAN'] = df_sigef['NUMERO'].apply(_c_get_pm)
         df_sigef = df_sigef[df_sigef['NUMERO_CLEAN'] != ""]
         
-        dup_s = df_sigef.duplicated(subset=['NUMERO_CLEAN'], keep=False)
-        if dup_s.any():
-            d_pms = list(df_sigef.loc[dup_s, 'NUMERO_CLEAN'].unique())
-            d_str = ', '.join(d_pms[:15]) + (f' (e mais {len(d_pms)-15})' if len(d_pms)>15 else '')
-            st.error(f'⚠️ Atenção! Foram detectados **{len(d_pms)}** PMs DUPLICADOS na planilha do **SIGEF** (ex: {d_str}). Apenas a última ocorrência de cada militar foi validada.')
         df_sigef = df_sigef.drop_duplicates(subset=['NUMERO_CLEAN'], keep='last')
 
         if not df_com.empty:
             df_com['nrPM_Avaliado_CLEAN'] = df_com['nrPM (Avaliado)'].apply(_c_get_pm)
             df_com = df_com[df_com['nrPM_Avaliado_CLEAN'] != ""]
             
-            dup_c = df_com.duplicated(subset=['nrPM_Avaliado_CLEAN'], keep=False)
-            if dup_c.any():
-                d_pms_c = list(df_com.loc[dup_c, 'nrPM_Avaliado_CLEAN'].unique())
-                d_str_c = ', '.join(d_pms_c[:15]) + (f' (e mais {len(d_pms_c)-15})' if len(d_pms_c)>15 else '')
-                st.warning(f'⚠️ Atenção! Foram detectados **{len(d_pms_c)}** PMs Avaliados DUPLICADOS na planilha de **COMISSÃO** (ex: {d_str_c}). O sistema validou apenas a comissão mais recente (última linha) de cada um.')
             df_com = df_com.drop_duplicates(subset=['nrPM_Avaliado_CLEAN'], keep='last')
             df_merge = pd.merge(df_sigef, df_com, left_on='NUMERO_CLEAN', right_on='nrPM_Avaliado_CLEAN', how='left')
         else:
