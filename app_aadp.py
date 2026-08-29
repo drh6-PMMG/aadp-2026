@@ -2003,7 +2003,7 @@ def run_sheet_api(action, payload=None):
             body.update(payload)
 
 
-        r = requests.post(url, json=body, timeout=10)
+        r = requests.post(url, json=body, timeout=30)
 
 
         if r.status_code == 200:
