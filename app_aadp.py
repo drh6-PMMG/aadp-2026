@@ -10317,6 +10317,10 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
 
     if df_sigef.empty:
         st.error("Erro: SIGEF.csv não encontrado ou ilegível.")
+    elif df_com.empty or 'Posto/Graduação (Avaliador2)' not in df_com.columns:
+        st.error("Erro: Planilha de Comissões não pôde ser carregada ou possui formato inválido.")
+        st.warning("Se você estiver na nuvem, o Google Drive pode ter bloqueado temporariamente o link por excesso de downloads (Cota de Tráfego excedida). Aguarde alguns minutos ou verifique se o arquivo está como 'Qualquer pessoa com o link'.")
+        st.stop()
     else:
         def _c_get_pm(val):
             import re
