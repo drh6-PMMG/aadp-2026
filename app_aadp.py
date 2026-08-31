@@ -320,12 +320,16 @@ def build_audit_data_from_geral(csv_path):
     try:
         cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
         com_paths = [
+            os.path.join(cache_dir, "comissao.csv"),
             os.path.join(cache_dir, "COM_AADP_2026.xlsx"),
             os.path.join(os.path.dirname(os.path.abspath(__file__)), "COM_AADP_2026.xlsx")
         ]
         com_file = next((p for p in com_paths if os.path.exists(p)), None)
         if com_file:
-            df_com = pd.read_excel(com_file, dtype=str)
+            if com_file.endswith(".csv"):
+                df_com = pd.read_csv(com_file, sep=';', encoding='cp1252', dtype=str, on_bad_lines='skip', index_col=False)
+            else:
+                df_com = pd.read_excel(com_file, dtype=str)
             df_com.columns = [str(c).strip() for c in df_com.columns]
             for _, row in df_com.iterrows():
                 nrpm = str(row.get("MATRICULA", "")).strip().split('-')[0].lstrip("0") or "0"
@@ -808,7 +812,7 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
     if drive_com_id:
         try:
             os.makedirs(cache_dir, exist_ok=True)
-            com_path = os.path.join(cache_dir, "COM_AADP_2026.xlsx")
+            com_path = os.path.join(cache_dir, "comissao.csv")
             if not os.path.exists(com_path) or os.path.getsize(com_path) == 0:
                 _baixar_drive(drive_com_id, com_path)
         except Exception:
@@ -10271,15 +10275,17 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
     st.markdown("### ⚖️ Análise de Comissões")
     
     @st.cache_data(show_spinner=False)
-    def load_comissoes_tab_data(_db_path, _drive_av_id, _drive_si_id):
+    def load_comissoes_tab_data(_db_path, _drive_com_id, _drive_si_id):
         import pandas as pd
         import os
         import tempfile
         
         cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
-        if _drive_av_id and _drive_si_id:
+        if _drive_com_id and _drive_si_id:
             sigef_path = os.path.join(cache_dir, "SIGEF.csv")
-            comissao_path = os.path.join(cache_dir, "avaliacoes.csv")
+            comissao_path = os.path.join(cache_dir, "comissao.csv")
+            if not os.path.exists(comissao_path) or os.path.getsize(comissao_path) == 0:
+                _baixar_drive(_drive_com_id, comissao_path)
         else:
             sigef_path = os.path.join(_db_path, "SIGEF.csv")
             comissao_path = os.path.join(_db_path, "avaliacoes.csv")
@@ -10305,9 +10311,9 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
         # Resolve os argumentos usando cfg_to_use diretamente, para evitar falha caso a função não receba
         cfg_to_use = load_config()
         _d_path = cfg_to_use.get("db_path", "")
-        _d_av_id = cfg_to_use.get("drive_av_id", "")
+        _d_com_id = cfg_to_use.get("drive_com_id", "")
         _d_si_id = cfg_to_use.get("drive_si_id", "")
-        df_sigef, df_com = load_comissoes_tab_data(_d_path, _d_av_id, _d_si_id)
+        df_sigef, df_com = load_comissoes_tab_data(_d_path, _d_com_id, _d_si_id)
 
     if df_sigef.empty:
         st.error("Erro: SIGEF.csv não encontrado ou ilegível.")
