@@ -10357,7 +10357,18 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
             df_com['nrPM_Avaliado_CLEAN'] = df_com['nrPM (Avaliado)'].apply(_c_get_pm)
             df_com = df_com[df_com['nrPM_Avaliado_CLEAN'] != ""]
             
-            df_com = df_com.drop_duplicates(subset=['nrPM_Avaliado_CLEAN'], keep='first')
+            def _count_valid_evals(row):
+                c = 0
+                if str(row.get('nrPM (Avaliador1)', '')).strip() not in ('', 'nan', 'None'): c += 1
+                if str(row.get('nrPM (Avaliador2)', '')).strip() not in ('', 'nan', 'None'): c += 1
+                if str(row.get('nrPM (Homologador)', '')).strip() not in ('', 'nan', 'None'): c += 1
+                return c
+            
+            df_com['__qtd_membros'] = df_com.apply(_count_valid_evals, axis=1)
+            df_com['__original_order'] = range(len(df_com))
+            df_com = df_com.sort_values(by=['nrPM_Avaliado_CLEAN', '__qtd_membros', '__original_order'], ascending=[True, True, True])
+            df_com = df_com.drop_duplicates(subset=['nrPM_Avaliado_CLEAN'], keep='last')
+            df_com = df_com.drop(columns=['__qtd_membros', '__original_order'])
             df_merge = pd.merge(df_sigef, df_com, left_on='NUMERO_CLEAN', right_on='nrPM_Avaliado_CLEAN', how='left')
         else:
             df_merge = df_sigef.copy()
