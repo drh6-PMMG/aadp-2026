@@ -10290,7 +10290,7 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
             df_sigef = pd.DataFrame()
             
         try:
-            df_com = pd.read_csv(comissao_path, sep=';', encoding='cp1252', dtype=str, on_bad_lines='skip', index_col=False)
+            df_com = pd.read_csv(comissao_path, sep=';', encoding='cp1252', dtype=str, on_bad_lines='warn', index_col=False)
             df_com = df_com.rename(columns={
                 "Unidade RPM (Avaliado)": "Unidade RPM Atual (Avaliado)",
                 "Unidade Principal (Avaliado)": "Unidade Principal Atual (Avaliado)",
@@ -10313,10 +10313,14 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
         st.error("Erro: SIGEF.csv não encontrado ou ilegível.")
     else:
         def _c_get_pm(val):
+            import re
             if pd.isna(val): return ""
-            s = str(val).strip().lstrip('0')
+            s = str(val).strip()
+            if '-' in s: s = s.split('-')[0].strip()
+            s = s.lstrip('0')
             if s.endswith('.0'): s = s[:-2]
-            return s if s not in ("", "nan", "None", "-") else ""
+            s = re.sub(r'[^0-9]', '', s)
+            return s if s not in ("", "nan", "None") else ""
 
         def _c_classify_com(row):
             av1 = _c_get_pm(row.get('nrPM (Avaliador1)', ''))
