@@ -5001,7 +5001,7 @@ with st.sidebar:
             # Limpar arquivos baixados para forçar download novo
             import tempfile
             cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
-            for f in ["avaliacoes.csv", "SIGEF.csv", "geral.csv"]:
+            for f in ["avaliacoes.csv", "SIGEF.csv", "geral.csv", "comissao.csv", "COM_AADP_2026.xlsx"]:
                 p = os.path.join(cache_dir, f)
                 if os.path.exists(p):
                     try: os.remove(p)
