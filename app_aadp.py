@@ -319,17 +319,13 @@ def build_audit_data_from_geral(csv_path):
     com_map = {}
     try:
         cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
-        com_paths = [
-            os.path.join(cache_dir, "comissao.csv"),
+        sirh_paths = [
             os.path.join(cache_dir, "COM_AADP_2026.xlsx"),
             os.path.join(os.path.dirname(os.path.abspath(__file__)), "COM_AADP_2026.xlsx")
         ]
-        com_file = next((p for p in com_paths if os.path.exists(p)), None)
-        if com_file:
-            if com_file.endswith(".csv"):
-                df_com = pd.read_csv(com_file, sep=';', encoding='cp1252', dtype=str, on_bad_lines='skip', index_col=False)
-            else:
-                df_com = pd.read_excel(com_file, dtype=str)
+        sirh_file = next((p for p in sirh_paths if os.path.exists(p)), None)
+        if sirh_file:
+            df_com = pd.read_excel(sirh_file, dtype=str)
             df_com.columns = [str(c).strip() for c in df_com.columns]
             for _, row in df_com.iterrows():
                 nrpm = str(row.get("MATRICULA", "")).strip().split('-')[0].lstrip("0") or "0"
@@ -805,6 +801,7 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
     cfg_to_use = load_config()
     drive_geral_id = cfg_to_use.get("drive_geral_id", "")
     drive_com_id = cfg_to_use.get("drive_com_id", "")
+    drive_sirh_id = cfg_to_use.get("drive_sirh_id", "")
     cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
     drive_geral_path = os.path.join(cache_dir, "geral.csv")
     local_geral_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "geral.csv")
@@ -815,6 +812,15 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
             com_path = os.path.join(cache_dir, "comissao.csv")
             if not os.path.exists(com_path) or os.path.getsize(com_path) == 0:
                 _baixar_drive(drive_com_id, com_path)
+        except Exception:
+            pass
+
+    if drive_sirh_id:
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+            sirh_path = os.path.join(cache_dir, "COM_AADP_2026.xlsx")
+            if not os.path.exists(sirh_path) or os.path.getsize(sirh_path) == 0:
+                _baixar_drive(drive_sirh_id, sirh_path)
         except Exception:
             pass
     
@@ -1761,7 +1767,7 @@ def load_config():
     # Carrega do st.secrets do Streamlit para evitar perda de IDs/links após reinicializações
 
 
-    for key in ["drive_av_id", "drive_si_id", "drive_geral_id", "drive_com_id", "drive_master_xlsx_id", "sheet_api_url", "fonte_dados", "db_path", "smtp_host", "smtp_port", "smtp_user", "smtp_pass", "alert_receiver_email", "alert_webhook_url"]:
+    for key in ["drive_av_id", "drive_si_id", "drive_geral_id", "drive_com_id", "drive_sirh_id", "drive_master_xlsx_id", "sheet_api_url", "fonte_dados", "db_path", "smtp_host", "smtp_port", "smtp_user", "smtp_pass", "alert_receiver_email", "alert_webhook_url"]:
 
 
         try:
