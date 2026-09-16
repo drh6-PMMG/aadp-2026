@@ -3245,45 +3245,41 @@ def find_sigef_user(pm_number: str) -> dict:
             header = next(reader)
 
 
+            try:
+                idx_birth = header.index("DATA NASCIMENTO")
+            except ValueError:
+                idx_birth = 17
+            try:
+                idx_cpf = header.index("NUMERO CPF")
+            except ValueError:
+                idx_cpf = 25
+
             for row in reader:
-
-
-                if len(row) > 24:
-
-
+                if len(row) > max(idx_birth, idx_cpf):
                     curr_pm = row[0].strip().lstrip("0")
-
-
                     if curr_pm == pm_clean:
-
-
+                        
+                        idx_offset = 0
+                        if len(row) > 16 and row[15] in ["A", "I"]:
+                            idx_offset = -1
+                        elif len(row) > 17 and row[16] in ["A", "I"]:
+                            idx_offset = 0
+                        elif len(row) > 18 and row[17] in ["A", "I"]:
+                            idx_offset = 1
+                            
+                        # Ajustar indices reais para este row
+                        real_birth = idx_birth + idx_offset
+                        real_cpf = idx_cpf + idx_offset
+                        
                         return {
-
-
                             "pm": row[0].strip(),
-
-
                             "rank": row[2].strip().title(),
-
-
                             "name": row[3].strip().title(),
-
-
                             "rpm": row[5].strip(),      # UDI/UDG (NOME RPM)
-
-
                             "unit": row[7].strip(),     # Unidade Principal (NOME UNIDADE PRINCIPAL)
-
-
                             "sector": row[9].strip(),    # Setor (NOME UNIDADE)
-
-
-                            "birthdate": row[16].strip(), # DATA NASCIMENTO (Q)
-
-
-                            "cpf": row[24].strip()       # NUMERO CPF (Y)
-
-
+                            "birthdate": row[real_birth].strip() if len(row) > real_birth else "",
+                            "cpf": row[real_cpf].strip() if len(row) > real_cpf else ""
                         }
 
 
