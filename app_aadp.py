@@ -722,24 +722,58 @@ def append_sigef_to_audit(df):
             reader = csv.reader(f, delimiter=";")
             header = next(reader)
             
+            try:
+                idx_quinq = header.index("NUM. QUINQUENIOS")
+            except ValueError:
+                idx_quinq = 20
+            try:
+                idx_ade = header.index("DATA ADE")
+            except ValueError:
+                idx_ade = 24
+            try:
+                idx_ano_base = header.index("ANO BASE")
+            except ValueError:
+                idx_ano_base = 32
+            try:
+                idx_ord_alm = header.index("ORD. ALMANAQUE")
+            except ValueError:
+                idx_ord_alm = 33
+            try:
+                idx_conceito = header.index("CONCEITO")
+            except ValueError:
+                idx_conceito = 34
+            try:
+                idx_sinal = header.index("SINAL")
+            except ValueError:
+                idx_sinal = 35
+            try:
+                idx_pontuacao = header.index("PONTUACAO")
+            except ValueError:
+                idx_pontuacao = 36
+
             for row in reader:
-                if len(row) > 35:
+                if len(row) > 20:
                     pm_clean = row[0].strip().lstrip("0")
                     if not pm_clean: continue
                     
-                    # T = 19 (Número de Quinquênio)
-                    # X = 23 (Data ADE)
-                    # AF = 31 (Ano Base)
-                    # AG = 32 (Ord. Almanaque)
-                    # AH = 33, AI = 34, AJ = 35 (Conceito)
-                    
-                    num_quinquenio = row[19].strip()
-                    data_ade = row[23].strip()
-                    ano_base = row[31].strip()
-                    ord_almanaque = row[32].strip()
-                    ah = row[33].strip()
-                    ai = row[34].strip()
-                    aj = row[35].strip()
+                    idx_offset = 0
+                    if len(row) > 16 and row[15] in ["A", "I"]:
+                        idx_offset = -1
+                    elif len(row) > 17 and row[16] in ["A", "I"]:
+                        idx_offset = 0
+                    elif len(row) > 18 and row[17] in ["A", "I"]:
+                        idx_offset = 1
+                        
+                    try:
+                        num_quinquenio = row[idx_quinq + idx_offset].strip() if len(row) > idx_quinq + idx_offset else ""
+                        data_ade = row[idx_ade + idx_offset].strip() if len(row) > idx_ade + idx_offset else ""
+                        ano_base = row[idx_ano_base + idx_offset].strip() if len(row) > idx_ano_base + idx_offset else ""
+                        ord_almanaque = row[idx_ord_alm + idx_offset].strip() if len(row) > idx_ord_alm + idx_offset else ""
+                        ah = row[idx_conceito + idx_offset].strip() if len(row) > idx_conceito + idx_offset else ""
+                        ai = row[idx_sinal + idx_offset].strip() if len(row) > idx_sinal + idx_offset else ""
+                        aj = row[idx_pontuacao + idx_offset].strip() if len(row) > idx_pontuacao + idx_offset else ""
+                    except IndexError:
+                        continue
                     
                     # Reg Adicional: Se X (Data ADE) tem dado válido -> ADE. Se não, T -> QQ. Se ambos -> ADE.
                     reg_adicional = ""
