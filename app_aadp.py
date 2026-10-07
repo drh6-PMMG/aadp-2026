@@ -694,6 +694,83 @@ def build_audit_data_from_geral(csv_path):
 
         rows_audit.append(r_audit)
         
+    missing_pms = set(com_map.keys()) - set(pm_evals.keys())
+    if missing_pms:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
+        possible_paths = [
+            os.path.join(base_dir, "dados", "SIGEF.csv"),
+            os.path.join(base_dir, "SIGEF.csv"),
+            os.path.join(cache_dir, "SIGEF.csv")
+        ]
+        si_path = next((p for p in possible_paths if os.path.exists(p) and os.path.getsize(p) > 0), None)
+        
+        if si_path:
+            with open(si_path, encoding="cp1252", errors="replace") as f_si:
+                reader_si = csv.reader(f_si, delimiter=";")
+                header_si = next(reader_si)
+                for row_si in reader_si:
+                    if len(row_si) > 20:
+                        pm_si = str(row_si[0]).strip().lstrip("0")
+                        if pm_si in missing_pms:
+                            idx_offset = 0
+                            if len(row_si) > 16 and row_si[15] in ["A", "I"]:
+                                idx_offset = -1
+                            elif len(row_si) > 17 and row_si[16] in ["A", "I"]:
+                                idx_offset = 0
+                            elif len(row_si) > 18 and row_si[17] in ["A", "I"]:
+                                idx_offset = 1
+                                
+                            try:
+                                posto = row_si[2 + idx_offset].strip()
+                                nome = row_si[3 + idx_offset].strip()
+                                rpm = row_si[5 + idx_offset].strip()
+                                unid = row_si[7 + idx_offset].strip()
+                                quadro = row_si[14 + idx_offset].strip()
+                                sit_func = row_si[27 + idx_offset].strip()
+                            except IndexError:
+                                continue
+                                
+                            c_data = com_map.get(pm_si, {})
+                            nota_sirh = c_data.get("nota", "-")
+                            
+                            r_audit = {
+                                "NR PM": pm_si,
+                                "Posto/Graduação": posto,
+                                "Nome Completo": nome,
+                                "Nome RPM": rpm,
+                                "Nome Unidade Principal": unid,
+                                "Quadro": quadro,
+                                "Sit. Funcional": sit_func,
+                                "Qtd Avaliações": 0,
+                                "Todas Avaliações Foram Encerradas?": "NAO",
+                                "Nota Final - Média Aritmética": "-",
+                                "Nota SIRH": nota_sirh,
+                                "Auditoria": "DIVERGENTE" if (nota_sirh != "-" and nota_sirh != "") else "",
+                            }
+                            
+                            for i in range(1, 5):
+                                r_audit[f"Data Avaliação {i}"] = np.nan
+                                r_audit[f"Fase Avaliação {i}"] = np.nan
+                                r_audit[f"Nota Avaliação {i}"] = np.nan
+                                r_audit[f"Houve Recurso? {i}"] = np.nan
+                                r_audit[f"Fase Recurso {i}"] = np.nan
+                                r_audit[f"Nota Fase 2 ou 3 {i}"] = np.nan
+
+                            r_audit["Observação"] = c_data.get("obs", "")
+                            obs_lower = str(r_audit["Observação"]).lower()
+                            motivo = "-"
+                            if "artigo 17" in obs_lower or "art 17" in obs_lower or "art. 17" in obs_lower or "art.17" in obs_lower:
+                                motivo = "ARTIGO 17"
+                            elif "artigo 20" in obs_lower or "art 20" in obs_lower or "art. 20" in obs_lower or "art.20" in obs_lower or "revis" in obs_lower:
+                                motivo = "ARTIGO 20"
+                            r_audit["Motivo"] = motivo
+
+                            rows_audit.append(r_audit)
+                            missing_pms.remove(pm_si)
+                            if not missing_pms:
+                                break
+
     return pd.DataFrame(rows_audit)
 
 
