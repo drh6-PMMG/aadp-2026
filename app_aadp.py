@@ -739,7 +739,17 @@ def build_audit_data_from_geral(csv_path):
                                 sit_func = row_si[27 + idx_offset].strip()
                             except IndexError:
                                 continue
-                                
+
+                            ignore_sits = [
+                                "RESER.NAO REMUNERADA", "RES. TEMPO SERVICO", "EXCLUIDO",
+                                "RES.TEMPO EFET.SERV.", "REFORMA INCAP.FISICA", 
+                                "REFORMA P/ INVALIDEZ", "REF.LIM.IDAD.QOR/QPR"
+                            ]
+                            if str(sit_func).strip().upper() in ignore_sits:
+                                missing_pms.remove(pm_si)
+                                if not missing_pms:
+                                    break
+                                continue
                             c_data = com_map.get(pm_si, {})
                             nota_sirh = c_data.get("nota", "-")
                             
