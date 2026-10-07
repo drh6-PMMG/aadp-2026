@@ -1919,7 +1919,7 @@ def load_config():
     # Carrega do st.secrets do Streamlit para evitar perda de IDs/links após reinicializações
 
 
-    for key in ["drive_av_id", "drive_si_id", "drive_geral_id", "drive_com_id", "drive_sirh_id", "drive_master_xlsx_id", "sheet_api_url", "fonte_dados", "db_path", "smtp_host", "smtp_port", "smtp_user", "smtp_pass", "alert_receiver_email", "alert_webhook_url"]:
+    for key in ["drive_av_id", "drive_si_id", "drive_geral_id", "drive_com_id", "drive_sirh_id", "drive_master_xlsx_id", "drive_metas_id", "sheet_api_url", "fonte_dados", "db_path", "smtp_host", "smtp_port", "smtp_user", "smtp_pass", "alert_receiver_email", "alert_webhook_url"]:
 
 
         try:
@@ -5050,6 +5050,10 @@ with st.sidebar:
     if sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
         pages.append(("📊 Dados Consolidados", "Dados Consolidados"))
 
+    # Controle do CDP: visível exclusivamente para ADMINISTRADOR
+    if sidebar_active_role.upper() == "ADMINISTRADOR":
+        pages.append(("🎯 Controle do CDP", "Controle do CDP"))
+
     # O administrador real sempre vê o painel administrador
 
 
@@ -5085,6 +5089,9 @@ with st.sidebar:
 
         
 
+
+    if st.session_state.active_page == "Controle do CDP" and sidebar_active_role.upper() != "ADMINISTRADOR":
+        st.session_state.active_page = "Análise Gráfica"
 
     if st.session_state.active_page == "Painel Administrador" and st.session_state.user_role != "ADMINISTRADOR":
 
@@ -5155,7 +5162,7 @@ with st.sidebar:
             # Limpar arquivos baixados para forçar download novo
             import tempfile
             cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
-            for f in ["avaliacoes.csv", "SIGEF.csv", "geral.csv", "comissao.csv", "COM_AADP_2026.xlsx"]:
+            for f in ["avaliacoes.csv", "SIGEF.csv", "geral.csv", "comissao.csv", "COM_AADP_2026.xlsx", "Metas e acompanhamentos 2026 Completo.csv"]:
                 p = os.path.join(cache_dir, f)
                 if os.path.exists(p):
                     try: os.remove(p)
@@ -10823,6 +10830,679 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
                 st.plotly_chart(fig_bar, use_container_width=True)
             else:
                 st.info("Sem dados.")
+
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MÓDULO: CONTROLE DO CDP (Metas e Acompanhamentos)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@st.cache_data(show_spinner="⏳ Carregando dados do Controle do CDP...")
+def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive_geral_id: str = "", _drive_si_id: str = ""):
+    """Processa a planilha Metas e acompanhamentos 2026 Completo.csv cruzando com geral.csv e SIGEF.csv."""
+    import tempfile
+    from datetime import datetime, date
+    import math
+
+    cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
+    os.makedirs(cache_dir, exist_ok=True)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Localizar Metas e acompanhamentos 2026 Completo.csv
+    possible_metas = [
+        os.path.join(cache_dir, "Metas e acompanhamentos 2026 Completo.csv"),
+        os.path.join(_db_path or "", "Metas e acompanhamentos 2026 Completo.csv"),
+        os.path.join(base_dir, "dados", "Metas e acompanhamentos 2026 Completo.csv"),
+        os.path.join(base_dir, "Metas e acompanhamentos 2026 Completo.csv")
+    ]
+    metas_path = next((p for p in possible_metas if os.path.exists(p) and os.path.getsize(p) > 0), None)
+
+    if not metas_path and _drive_metas_id:
+        metas_dest = os.path.join(cache_dir, "Metas e acompanhamentos 2026 Completo.csv")
+        try:
+            _baixar_drive(_drive_metas_id, metas_dest)
+            if os.path.exists(metas_dest) and os.path.getsize(metas_dest) > 0:
+                metas_path = metas_dest
+        except Exception:
+            pass
+
+    if not metas_path:
+        return pd.DataFrame(), pd.DataFrame(), "Planilha 'Metas e acompanhamentos 2026 Completo.csv' não encontrada."
+
+    # Localizar SIGEF.csv
+    possible_sigef = [
+        os.path.join(cache_dir, "SIGEF.csv"),
+        os.path.join(_db_path or "", "SIGEF.csv"),
+        os.path.join(base_dir, "dados", "SIGEF.csv"),
+        os.path.join(base_dir, "SIGEF.csv")
+    ]
+    sigef_path = next((p for p in possible_sigef if os.path.exists(p) and os.path.getsize(p) > 0), None)
+    if not sigef_path and _drive_si_id:
+        sigef_dest = os.path.join(cache_dir, "SIGEF.csv")
+        try:
+            _baixar_drive(_drive_si_id, sigef_dest)
+            if os.path.exists(sigef_dest) and os.path.getsize(sigef_dest) > 0:
+                sigef_path = sigef_dest
+        except Exception:
+            pass
+
+    # Localizar geral.csv
+    possible_geral = [
+        os.path.join(cache_dir, "geral.csv"),
+        os.path.join(_db_path or "", "geral.csv"),
+        os.path.join(base_dir, "dados", "geral.csv"),
+        os.path.join(base_dir, "geral.csv")
+    ]
+    geral_path = next((p for p in possible_geral if os.path.exists(p) and os.path.getsize(p) > 0), None)
+    if not geral_path and _drive_geral_id:
+        geral_dest = os.path.join(cache_dir, "geral.csv")
+        try:
+            _baixar_drive(_drive_geral_id, geral_dest)
+            if os.path.exists(geral_dest) and os.path.getsize(geral_dest) > 0:
+                geral_path = geral_dest
+        except Exception:
+            pass
+
+    def _parse_d(d_str):
+        if not d_str or str(d_str).strip() in ("", "-", "nan", "none", "None", "<NA>"):
+            return None
+        d_str = str(d_str).strip()
+        for fmt in ("%d-%m-%Y", "%d/%m/%Y", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(d_str, fmt).date()
+            except Exception:
+                pass
+        return None
+
+    def _norm_pm(val):
+        if not val or str(val).strip() in ("", "-", "nan", "none", "None", "<NA>"):
+            return ""
+        try:
+            return str(int(float(str(val).strip())))
+        except Exception:
+            s = str(val).strip().lstrip("0")
+            return s if s else "0"
+
+    # 1. Carregar lotação do SIGEF
+    sigef_map = {}
+    if sigef_path:
+        with open(sigef_path, encoding="cp1252", errors="replace") as f_si:
+            for row in csv.reader(f_si, delimiter=";"):
+                if len(row) > 9:
+                    sigef_map[_norm_pm(row[0])] = row[9].strip()
+
+    # 2. Carregar Data do CDP do geral.csv
+    cdp_map = {}
+    pm_max_cdp = {}
+    if geral_path:
+        with open(geral_path, "r", encoding="cp1252", errors="replace") as f_ge:
+            r_ge = csv.reader(f_ge, delimiter=";")
+            header_ge = next(r_ge, [])
+            for row in r_ge:
+                if len(row) > 37:
+                    pm_g = _norm_pm(row[1])
+                    av1_g = _norm_pm(row[28])
+                    av2_g = _norm_pm(row[37])
+                    dt_g = _parse_d(row[5])
+                    if dt_g:
+                        cdp_map[(pm_g, av1_g, av2_g)] = dt_g
+                        cdp_map[(pm_g, av1_g)] = dt_g
+                        if pm_g not in pm_max_cdp or dt_g > pm_max_cdp[pm_g]:
+                            pm_max_cdp[pm_g] = dt_g
+
+    # 3. Contagem de ocorrências por PM
+    pm_counts = {}
+    with open(metas_path, "r", encoding="cp1252", errors="replace") as f_m:
+        r_m = csv.reader(f_m, delimiter=";")
+        next(r_m, [])
+        for row in r_m:
+            if row:
+                p = _norm_pm(row[0])
+                pm_counts[p] = pm_counts.get(p, 0) + 1
+
+    meta_offsets = [
+        (1, 24, 20), (2, 90, 20), (3, 156, 20), (4, 222, 20),
+        (5, 288, 20), (6, 354, 20), (7, 420, 20), (8, 486, 20),
+        (9, 552, 17), (10, 609, 9), (11, 642, 9), (12, 675, 9)
+    ]
+
+    instances_rows = []
+    metas_detail_rows = []
+    data_base_fim = date(2026, 6, 30)
+
+    with open(metas_path, "r", encoding="cp1252", errors="replace") as f_m:
+        r_m = csv.reader(f_m, delimiter=";")
+        next(r_m, [])
+        for row in r_m:
+            if not row or len(row) < 24:
+                continue
+
+            pm_aval = _norm_pm(row[0])
+            nome_aval = row[1].strip()
+            posto_aval = row[2].strip()
+            rpm_aval = row[3].strip()
+            unid_aval = row[4].strip()
+            local_aval = row[5].strip()
+            quadro_aval = row[6].strip()
+            sit_aval = row[7].strip()
+
+            pm_av1 = _norm_pm(row[8])
+            nome_av1 = row[9].strip()
+            posto_av1 = row[10].strip()
+            rpm_av1 = row[11].strip()
+            unid_av1 = row[12].strip()
+            local_av1 = row[13].strip()
+
+            pm_av2 = _norm_pm(row[16])
+            nome_av2 = row[17].strip()
+            posto_av2 = row[18].strip()
+            rpm_av2 = row[19].strip()
+            unid_av2 = row[20].strip()
+            local_av2 = row[21].strip()
+
+            # Situação da Comissão (Comissão Atual vs Nota Provisória)
+            is_same_location = (local_aval.upper().strip() == sigef_map.get(pm_aval, "").upper().strip())
+            has_multiple_evals = (pm_counts.get(pm_aval, 0) > 1)
+            key = (pm_aval, pm_av1, pm_av2)
+            dt_cdp = cdp_map.get(key) or cdp_map.get((pm_aval, pm_av1))
+
+            if dt_cdp is not None and pm_aval in pm_max_cdp:
+                sc = "Comissão Atual" if dt_cdp >= pm_max_cdp[pm_aval] else "Nota Provisória"
+            else:
+                sc = "Comissão Atual" if (is_same_location or not has_multiple_evals) else "Nota Provisória"
+
+            status_cdp = "CDP Cadastrado" if dt_cdp else "CDP NÃO Cadastrado"
+            dt_cdp_str = dt_cdp.strftime("%d/%m/%Y") if dt_cdp else "-"
+
+            # Processar Metas e Acompanhamentos
+            qtd_metas = 0
+            metas_dates = []
+            total_acomps_av1 = 0
+            total_outros_acomps = 0
+            all_inst_intervals = []
+            all_inst_dates = []
+            if dt_cdp:
+                all_inst_dates.append(dt_cdp)
+
+            for m_num, start_idx, max_acomps in meta_offsets:
+                if start_idx + 5 >= len(row):
+                    continue
+                d_meta_raw = row[start_idx + 2].strip()
+                d_meta = _parse_d(d_meta_raw)
+                if not d_meta:
+                    continue
+
+                qtd_metas += 1
+                metas_dates.append(f"M{m_num}: {d_meta.strftime('%d/%m/%Y')}")
+                all_inst_dates.append(d_meta)
+
+                desc_meta = row[start_idx + 1].strip()
+                prazo_ini = _parse_d(row[start_idx + 3].strip())
+                prazo_fim = _parse_d(row[start_idx + 4].strip())
+
+                acomps_av1 = []
+                outros_acomps = 0
+                for k in range(1, max_acomps + 1):
+                    idx_autor = start_idx + 6 + 3 * (k - 1)
+                    idx_desc = idx_autor + 1
+                    idx_data = idx_autor + 2
+                    if idx_data >= len(row):
+                        break
+                    autor_k = _norm_pm(row[idx_autor])
+                    data_k = _parse_d(row[idx_data])
+                    if not data_k:
+                        continue
+                    if autor_k == pm_av1:
+                        acomps_av1.append((data_k, row[idx_desc].strip()))
+                        all_inst_dates.append(data_k)
+                    else:
+                        outros_acomps += 1
+
+                total_acomps_av1 += len(acomps_av1)
+                total_outros_acomps += outros_acomps
+
+                # Ordenar acompanhamentos do AV1 por data
+                acomps_av1.sort(key=lambda x: x[0])
+
+                meta_intervals = []
+                prev_d = d_meta
+                acomps_eventos = []
+                for num_ac_idx, (d_acomp, desc_ac) in enumerate(acomps_av1, start=1):
+                    diff = (d_acomp - prev_d).days
+                    meta_intervals.append(diff)
+                    all_inst_intervals.append(diff)
+                    acomps_eventos.append({
+                        "num": num_ac_idx,
+                        "data_str": d_acomp.strftime("%d/%m/%Y"),
+                        "data_iso": d_acomp.strftime("%Y-%m-%d"),
+                        "dias": diff,
+                        "desc": desc_ac
+                    })
+                    prev_d = d_acomp
+
+                avg_meta_interval = round(sum(meta_intervals) / len(meta_intervals), 1) if meta_intervals else None
+
+                # Detalhamento por meta
+                interv_strs = [f"{diff}d" for diff in meta_intervals]
+                dias_meta_acomp1 = meta_intervals[0] if len(meta_intervals) > 0 else None
+
+                metas_detail_rows.append({
+                    "nrPM (Avaliado)": pm_aval,
+                    "Nome (Avaliado)": nome_aval,
+                    "Posto/Grad. (Avaliado)": posto_aval,
+                    "Unidade RPM": rpm_aval,
+                    "Unidade Principal": unid_aval,
+                    "Situação Comissão": sc,
+                    "nrPM (AV1)": pm_av1,
+                    "Nome (AV1)": nome_av1,
+                    "Meta": f"Meta {m_num}",
+                    "Descrição da Meta": desc_meta,
+                    "Data Cadastro Meta": d_meta.strftime("%d/%m/%Y"),
+                    "Prazo Inicial": prazo_ini.strftime("%d/%m/%Y") if prazo_ini else "-",
+                    "Prazo Final": prazo_fim.strftime("%d/%m/%Y") if prazo_fim else "-",
+                    "Qtd Acomps AV1": len(acomps_av1),
+                    "Qtd Outros Acomps": outros_acomps,
+                    "Dias (Meta -> 1º Acomp)": dias_meta_acomp1 if dias_meta_acomp1 is not None else "-",
+                    "Intervalos Acomps": " -> ".join(interv_strs) if interv_strs else "-",
+                    "Média Dias Lançamentos": avg_meta_interval if avg_meta_interval is not None else "-",
+                    "Data Último Acomp": acomps_av1[-1][0].strftime("%d/%m/%Y") if acomps_av1 else "-",
+                    "Data Cadastro Meta ISO": d_meta.strftime("%Y-%m-%d"),
+                    "Acomps Eventos": acomps_eventos
+                })
+
+            avg_inst_interval = round(sum(all_inst_intervals) / len(all_inst_intervals), 1) if all_inst_intervals else None
+            if all_inst_dates:
+                last_dt = max(all_inst_dates)
+                ref_final = max(data_base_fim, last_dt)
+                dias_desde_ultimo = (ref_final - last_dt).days
+                last_dt_str = last_dt.strftime("%d/%m/%Y")
+            else:
+                last_dt_str = "-"
+                dias_desde_ultimo = "-"
+
+            instances_rows.append({
+                "nrPM (Avaliado)": pm_aval,
+                "Nome (Avaliado)": nome_aval,
+                "Posto/Grad. (Avaliado)": posto_aval,
+                "Unidade RPM (Avaliado)": rpm_aval,
+                "Unidade Principal (Avaliado)": unid_aval,
+                "Situação Comissão": sc,
+                "Status CDP": status_cdp,
+                "Data do CDP": dt_cdp_str,
+                "Qtd Metas": qtd_metas,
+                "Datas das Metas": "; ".join(metas_dates) if metas_dates else "-",
+                "Qtd Acomps AV1": total_acomps_av1,
+                "Qtd Outros Acomps": total_outros_acomps,
+                "Média Dias entre Lançamentos": avg_inst_interval if avg_inst_interval is not None else "-",
+                "Último Lançamento": last_dt_str,
+                "Dias desde Último Lançamento": dias_desde_ultimo,
+                "nrPM (AV1)": pm_av1,
+                "Nome (AV1)": nome_av1,
+                "Posto (AV1)": posto_av1,
+                "Unidade Principal (AV1)": unid_av1,
+                "nrPM (AV2)": pm_av2,
+                "Nome (AV2)": nome_av2,
+                "Posto (AV2)": posto_av2,
+                "Unidade Principal (AV2)": unid_av2,
+            })
+
+    df_inst = pd.DataFrame(instances_rows)
+    df_metas = pd.DataFrame(metas_detail_rows)
+    return df_inst, df_metas, None
+
+
+if active_page == "Controle do CDP" and sidebar_active_role.upper() == "ADMINISTRADOR":
+    st.markdown("### 🎯 Controle do CDP — Acompanhamento de Metas e Prazos")
+    st.caption("Auditoria passo a passo das comissões: registro do CDP, pactuação de metas e acompanhamentos tempestivos realizados pelo Avaliador 1 (AV1).")
+
+    cfg_cdp = load_config()
+    db_p = db_path or cfg_cdp.get("db_path", str(DADOS_DIR))
+    d_metas_id = cfg_cdp.get("drive_metas_id", "")
+    d_geral_id = cfg_cdp.get("drive_geral_id", "")
+    d_si_id = cfg_cdp.get("drive_si_id", "")
+
+    df_inst, df_metas, err_cdp = load_controle_cdp_data(db_p, d_metas_id, d_geral_id, d_si_id)
+
+    if err_cdp:
+        st.error(f"❌ {err_cdp}")
+    elif df_inst.empty:
+        st.warning("Nenhum dado encontrado para análise de Controle do CDP.")
+    else:
+        # ── FILTROS ─────────────────────────────────────────────────────────────
+        with st.expander("🔍 Filtros de Consulta", expanded=True):
+            f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 1.5, 1, 1])
+            with f_col1:
+                busca_aval = st.text_input("Buscar por Nº PM ou Nome (Avaliado):", "", key="cdp_busca_aval").strip().lower()
+            with f_col2:
+                busca_av1 = st.text_input("Buscar por Nº PM ou Nome (AV1):", "", key="cdp_busca_av1").strip().lower()
+            with f_col3:
+                rpms_opts = ["Todas"] + sorted([str(x) for x in df_inst["Unidade RPM (Avaliado)"].unique() if x and str(x) != "-"])
+                sel_rpm = st.selectbox("Unidade RPM:", rpms_opts, key="cdp_rpm")
+            with f_col4:
+                sc_opts = ["Todas", "Comissão Atual", "Nota Provisória"]
+                sel_sc = st.selectbox("Situação da Comissão:", sc_opts, key="cdp_sc")
+
+            f_col5, f_col6, f_col7, f_col8 = st.columns(4)
+            with f_col5:
+                unids_opts = ["Todas"] + sorted([str(x) for x in df_inst["Unidade Principal (Avaliado)"].unique() if x and str(x) != "-"])
+                sel_unid = st.selectbox("Unidade Principal:", unids_opts, key="cdp_unid")
+            with f_col6:
+                status_cdp_opts = ["Todos", "CDP Cadastrado", "CDP NÃO Cadastrado"]
+                sel_cdp_status = st.selectbox("Status do CDP:", status_cdp_opts, key="cdp_st")
+            with f_col7:
+                metas_opts = ["Todas", "Sem Metas (0)", "1 Meta", "2 Metas", "3 ou mais Metas"]
+                sel_metas = st.selectbox("Qtd de Metas:", metas_opts, key="cdp_metas")
+            with f_col8:
+                acomp_opts = ["Todos", "Com Acompanhamento AV1", "Sem Acompanhamento AV1"]
+                sel_acomp = st.selectbox("Acompanhamentos AV1:", acomp_opts, key="cdp_acomp")
+
+        # Aplicar filtros no DataFrame de Instâncias
+        df_filtered_inst = df_inst.copy()
+
+        if busca_aval:
+            mask_aval = (
+                df_filtered_inst["nrPM (Avaliado)"].str.lower().str.contains(busca_aval, na=False) |
+                df_filtered_inst["Nome (Avaliado)"].str.lower().str.contains(busca_aval, na=False)
+            )
+            df_filtered_inst = df_filtered_inst[mask_aval]
+
+        if busca_av1:
+            mask_av1 = (
+                df_filtered_inst["nrPM (AV1)"].str.lower().str.contains(busca_av1, na=False) |
+                df_filtered_inst["Nome (AV1)"].str.lower().str.contains(busca_av1, na=False)
+            )
+            df_filtered_inst = df_filtered_inst[mask_av1]
+
+        if sel_rpm != "Todas":
+            df_filtered_inst = df_filtered_inst[df_filtered_inst["Unidade RPM (Avaliado)"] == sel_rpm]
+
+        if sel_unid != "Todas":
+            df_filtered_inst = df_filtered_inst[df_filtered_inst["Unidade Principal (Avaliado)"] == sel_unid]
+
+        if sel_sc != "Todas":
+            df_filtered_inst = df_filtered_inst[df_filtered_inst["Situação Comissão"] == sel_sc]
+
+        if sel_cdp_status != "Todos":
+            df_filtered_inst = df_filtered_inst[df_filtered_inst["Status CDP"] == sel_cdp_status]
+
+        if sel_metas == "Sem Metas (0)":
+            df_filtered_inst = df_filtered_inst[df_filtered_inst["Qtd Metas"] == 0]
+        elif sel_metas == "1 Meta":
+            df_filtered_inst = df_filtered_inst[df_filtered_inst["Qtd Metas"] == 1]
+        elif sel_metas == "2 Metas":
+            df_filtered_inst = df_filtered_inst[df_filtered_inst["Qtd Metas"] == 2]
+        elif sel_metas == "3 ou mais Metas":
+            df_filtered_inst = df_filtered_inst[df_filtered_inst["Qtd Metas"] >= 3]
+
+        if sel_acomp == "Com Acompanhamento AV1":
+            df_filtered_inst = df_filtered_inst[df_filtered_inst["Qtd Acomps AV1"] > 0]
+        elif sel_acomp == "Sem Acompanhamento AV1":
+            df_filtered_inst = df_filtered_inst[df_filtered_inst["Qtd Acomps AV1"] == 0]
+
+        # Filtrar o DataFrame de Metas de acordo com os PMs filtrados
+        valid_pms = set(df_filtered_inst["nrPM (Avaliado)"])
+        df_filtered_metas = df_metas[df_metas["nrPM (Avaliado)"].isin(valid_pms)].copy() if not df_metas.empty else pd.DataFrame()
+
+        # ── CARDS DE RESUMO EXECUTIVO ──────────────────────────────────────────
+        total_inst = len(df_filtered_inst)
+        cadastrados = (df_filtered_inst["Status CDP"] == "CDP Cadastrado").sum()
+        pct_cdp = (cadastrados / total_inst * 100) if total_inst > 0 else 0
+        total_metas_count = df_filtered_inst["Qtd Metas"].sum()
+        total_acomps_av1_count = df_filtered_inst["Qtd Acomps AV1"].sum()
+
+        valid_intervals = [float(x) for x in df_filtered_inst["Média Dias entre Lançamentos"] if x != "-" and str(x).replace(".", "").isdigit()]
+        media_geral_dias = round(sum(valid_intervals) / len(valid_intervals), 1) if valid_intervals else "-"
+
+        c_m1, c_m2, c_m3, c_m4, c_m5, c_m6 = st.columns(6)
+        c_m1.metric("📋 Instâncias", fmt_num(total_inst))
+        c_m2.metric("🟢 CDP Cadastrado", f"{pct_cdp:.1f}%", f"{fmt_num(cadastrados)} cadastrados")
+        c_m3.metric("🎯 Metas Pactuadas", fmt_num(total_metas_count))
+        c_m4.metric("👥 Acomps AV1", fmt_num(total_acomps_av1_count))
+        c_m5.metric("⏱️ Média Intervalo", f"{media_geral_dias} dias" if media_geral_dias != "-" else "-")
+        c_m6.metric("⚠️ Sem Acomp. AV1", fmt_num((df_filtered_inst["Qtd Acomps AV1"] == 0).sum()))
+
+        st.markdown("---")
+
+        # ── ABAS DE NAVEGAÇÃO ──────────────────────────────────────────────────
+        tab_inst, tab_metas_det, tab_timeline = st.tabs([
+            "📋 Visão por Instância (Avaliado / Comissão)",
+            "🎯 Detalhamento por Meta e Prazos",
+            "🔍 Linha do Tempo e Consulta Individual"
+        ])
+
+        with tab_inst:
+            st.markdown(f"#### Relação de Instâncias de Avaliação ({fmt_num(len(df_filtered_inst))})")
+
+            # Botão de Exportação Excel (baixa a base completa filtrada)
+            col_exp1, col_exp2 = st.columns([1.5, 3.5])
+            with col_exp1:
+                import io
+                buf_inst = io.BytesIO()
+                with pd.ExcelWriter(buf_inst, engine="openpyxl") as writer:
+                    df_filtered_inst.to_excel(writer, index=False, sheet_name="Controle CDP Instancias")
+                st.download_button(
+                    label=f"📥 Baixar Excel Completo ({fmt_num(len(df_filtered_inst))})",
+                    data=buf_inst.getvalue(),
+                    file_name="Controle_CDP_Instancias.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="dl_cdp_inst"
+                )
+
+            total_i = len(df_filtered_inst)
+            if total_i > 1000:
+                st.caption(f"ℹ️ Exibindo os primeiros **1.000** registros de **{fmt_num(total_i)}** para melhor performance no navegador. Use os filtros acima para refinar a consulta.")
+                st.dataframe(df_filtered_inst.head(1000), use_container_width=True, hide_index=True)
+            else:
+                st.dataframe(df_filtered_inst, use_container_width=True, hide_index=True)
+
+        with tab_metas_det:
+            st.markdown(f"#### Relação Analítica de Metas Pactuadas ({fmt_num(len(df_filtered_metas))})")
+            st.caption("Tempo decorrido entre o lançamento da meta e os acompanhamentos sucessivos realizados exclusivamente pelo Avaliador 1 (AV1).")
+
+            if not df_filtered_metas.empty:
+                # Remove colunas técnicas internas para exibição e exportação limpa
+                df_metas_export = df_filtered_metas.drop(columns=["Acomps Eventos", "Data Cadastro Meta ISO"], errors="ignore")
+
+                col_exp_m1, col_exp_m2 = st.columns([1.5, 3.5])
+                with col_exp_m1:
+                    import io
+                    buf_metas = io.BytesIO()
+                    with pd.ExcelWriter(buf_metas, engine="openpyxl") as writer:
+                        df_metas_export.to_excel(writer, index=False, sheet_name="Detalhamento Metas AV1")
+                    st.download_button(
+                        label=f"📥 Baixar Excel Completo ({fmt_num(len(df_metas_export))})",
+                        data=buf_metas.getvalue(),
+                        file_name="Controle_CDP_Metas_Detalhado.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="dl_cdp_metas"
+                    )
+
+                total_m = len(df_metas_export)
+                if total_m > 1000:
+                    st.caption(f"ℹ️ Exibindo os primeiros **1.000** registros de **{fmt_num(total_m)}** para melhor performance no navegador. Use os filtros acima para refinar a consulta.")
+                    st.dataframe(df_metas_export.head(1000), use_container_width=True, hide_index=True)
+                else:
+                    st.dataframe(df_metas_export, use_container_width=True, hide_index=True)
+            else:
+                st.info("Nenhuma meta encontrada para os filtros selecionados.")
+
+        with tab_timeline:
+            st.markdown("#### Consulta Individual e Linha do Tempo da Avaliação")
+            st.caption("Consulte a linha cronológica de qualquer militar para inspecionar todas as metas pactuadas e seus respectivos acompanhamentos.")
+
+            col_s1, col_s2 = st.columns([2, 2])
+            with col_s1:
+                busca_indiv = st.text_input("🔍 Digite o Nº PM ou Nome do Militar:", value=busca_aval if busca_aval else "", key="cdp_busca_indiv").strip().lower()
+
+            # Encontrar militares que combinam com a busca
+            if busca_indiv:
+                candidatos = df_inst[
+                    df_inst["nrPM (Avaliado)"].str.lower().str.contains(busca_indiv, na=False) |
+                    df_inst["Nome (Avaliado)"].str.lower().str.contains(busca_indiv, na=False)
+                ]
+            else:
+                candidatos = df_filtered_inst
+
+            pms_candidatos = sorted(list(candidatos["nrPM (Avaliado)"].unique()))
+
+            sel_pm_busca = None
+            if len(pms_candidatos) == 1:
+                sel_pm_busca = pms_candidatos[0]
+                with col_s2:
+                    st.success(f"Militar selecionado: **{sel_pm_busca} - {candidatos[candidatos['nrPM (Avaliado)'] == sel_pm_busca]['Nome (Avaliado)'].iloc[0]}**")
+            elif 1 < len(pms_candidatos) <= 100:
+                with col_s2:
+                    sel_pm_busca = st.selectbox(
+                        f"Selecione entre os {len(pms_candidatos)} militares encontrados:",
+                        pms_candidatos,
+                        format_func=lambda x: f"{x} - {candidatos[candidatos['nrPM (Avaliado)'] == x]['Nome (Avaliado)'].iloc[0]}",
+                        key="cdp_sel_pm"
+                    )
+            elif len(pms_candidatos) > 100:
+                with col_s2:
+                    st.info(f"Foram encontrados **{fmt_num(len(pms_candidatos))}** militares. Digite o número PM ou nome mais detalhado para selecionar.")
+
+            if sel_pm_busca:
+                # Obter instâncias do militar selecionado
+                mil_insts = df_inst[df_inst["nrPM (Avaliado)"] == sel_pm_busca]
+                metas_todas_mil = df_metas[df_metas["nrPM (Avaliado)"] == sel_pm_busca] if not df_metas.empty else pd.DataFrame()
+
+                # ── GRÁFICO DE TIMELINE COM TODAS AS METAS DO AVALIADO ─────────
+                if not metas_todas_mil.empty:
+                    st.markdown("##### 📈 Gráfico de Linha do Tempo (Metas e Acompanhamentos)")
+                    import plotly.graph_objects as go
+                    from datetime import datetime
+
+                    fig_timeline = go.Figure()
+
+                    # Obter lista de metas para o eixo Y
+                    y_metas = []
+                    for i_enum, (idx_m, m_row) in enumerate(metas_todas_mil.iterrows()):
+                        label_meta = f"{m_row['Meta']} ({m_row['Situação Comissão']}) - {m_row['Descrição da Meta'][:32]}"
+                        y_metas.append(label_meta)
+                        is_first = bool(i_enum == 0)
+
+                        # Evento da Meta (Pactuação)
+                        d_meta_iso = m_row.get("Data Cadastro Meta ISO", "")
+                        if not d_meta_iso:
+                            try:
+                                d_meta_iso = datetime.strptime(m_row["Data Cadastro Meta"], "%d/%m/%Y").strftime("%Y-%m-%d")
+                            except:
+                                d_meta_iso = None
+
+                        # Acompanhamentos
+                        acomps_evs = m_row.get("Acomps Eventos", [])
+
+                        # Lista de datas e rótulos para desenhar a linha conectora
+                        pontos_x = []
+                        pontos_y = []
+                        if d_meta_iso:
+                            pontos_x.append(d_meta_iso)
+                            pontos_y.append(label_meta)
+
+                        for ev in acomps_evs:
+                            pontos_x.append(ev["data_iso"])
+                            pontos_y.append(label_meta)
+
+                        # Linha conectora da meta
+                        if len(pontos_x) > 1:
+                            fig_timeline.add_trace(go.Scatter(
+                                x=pontos_x, y=pontos_y,
+                                mode='lines',
+                                line=dict(color='rgba(150, 160, 180, 0.45)', width=3),
+                                hoverinfo='skip',
+                                showlegend=False
+                            ))
+
+                        # Ponto do Cadastro da Meta
+                        if d_meta_iso:
+                            fig_timeline.add_trace(go.Scatter(
+                                x=[d_meta_iso],
+                                y=[label_meta],
+                                mode='markers+text',
+                                name='🎯 Cadastro da Meta' if is_first else '',
+                                marker=dict(size=14, color='#3b82f6', symbol='diamond', line=dict(color='white', width=1.5)),
+                                text=['Pactuação'],
+                                textposition='top center',
+                                hovertemplate=f"<b>{label_meta}</b><br>Evento: 🎯 Cadastro da Meta<br>Data: {m_row['Data Cadastro Meta']}<br>Prazos: {m_row['Prazo Inicial']} a {m_row['Prazo Final']}<extra></extra>",
+                                showlegend=is_first
+                            ))
+
+                        # Pontos dos Acompanhamentos do AV1
+                        if acomps_evs:
+                            x_ac = [ev["data_iso"] for ev in acomps_evs]
+                            y_ac = [label_meta for _ in acomps_evs]
+                            txt_ac = [f"{ev['num']}º Acomp ({ev['dias']}d)" for ev in acomps_evs]
+                            custom_ac = [[ev['num'], ev['data_str'], ev['dias'], ev['desc']] for ev in acomps_evs]
+
+                            fig_timeline.add_trace(go.Scatter(
+                                x=x_ac,
+                                y=y_ac,
+                                mode='markers+text',
+                                name='👥 Acompanhamento AV1' if is_first else '',
+                                marker=dict(size=13, color='#10b981', symbol='circle', line=dict(color='white', width=1.5)),
+                                text=txt_ac,
+                                textposition='bottom center',
+                                hovertemplate=f"<b>{label_meta}</b><br>Evento: 👥 %{{customdata[0]}}º Acompanhamento (AV1)<br>Data: %{{customdata[1]}}<br>Tempo desde passo anterior: %{{customdata[2]}} dias<br>Descrição: %{{customdata[3]}}<extra></extra>",
+                                customdata=custom_ac,
+                                showlegend=is_first
+                            ))
+
+                    # Linha de encerramento do ciclo (30/06/2026)
+                    fig_timeline.add_vline(
+                        x="2026-06-30",
+                        line_width=1.5,
+                        line_dash="dash",
+                        line_color="#f59e0b",
+                        annotation_text="Fim do Ciclo (30/06/2026)",
+                        annotation_position="top right"
+                    )
+
+                    altura_graf = max(380, len(y_metas) * 90)
+                    fig_timeline.update_layout(
+                        title=f"Linha Cronológica de Todas as Metas e Acompanhamentos do Militar {sel_pm_busca}",
+                        xaxis_title="Linha do Tempo (Datas)",
+                        yaxis_title="",
+                        height=altura_graf,
+                        hovermode="closest",
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                        margin=dict(l=40, r=40, t=80, b=50)
+                    )
+                    st.plotly_chart(fig_timeline, use_container_width=True)
+                    st.markdown("---")
+
+                # Detalhes das instâncias
+                for idx_inst, inst_row in mil_insts.iterrows():
+                    with st.container():
+                        st.markdown(f"##### 🎖️ Avaliado: {inst_row['Posto/Grad. (Avaliado)']} {inst_row['Nome (Avaliado)']} ({inst_row['nrPM (Avaliado)']})")
+                        col_i1, col_i2, col_i3, col_i4 = st.columns(4)
+                        col_i1.info(f"**Situação Comissão:** {inst_row['Situação Comissão']}")
+                        col_i2.info(f"**Status CDP:** {inst_row['Status CDP']} - **Data:** {inst_row['Data do CDP']}")
+                        col_i3.info(f"**Avaliador 1 (AV1):** {inst_row['Posto (AV1)']} {inst_row['Nome (AV1)']} ({inst_row['nrPM (AV1)']})")
+                        col_i4.info(f"**Último Lançamento:** {inst_row['Último Lançamento']} ({inst_row['Dias desde Último Lançamento']} dias)")
+
+                        # Metas dessa instância
+                        metas_mil = df_metas[
+                            (df_metas["nrPM (Avaliado)"] == sel_pm_busca) &
+                            (df_metas["nrPM (AV1)"] == inst_row["nrPM (AV1)"])
+                        ]
+
+                        if not metas_mil.empty:
+                            st.markdown("**Detalhamento de Prazos das Metas desta Instância:**")
+                            for _, m_row in metas_mil.iterrows():
+                                with st.expander(f"🎯 {m_row['Meta']} — {m_row['Descrição da Meta']} (Cadastrada em {m_row['Data Cadastro Meta']})", expanded=True):
+                                    st.write(f"**Prazos Pactuados:** {m_row['Prazo Inicial']} a {m_row['Prazo Final']}")
+                                    st.write(f"**Acompanhamentos AV1:** {m_row['Qtd Acomps AV1']} | **Outros Acompanhamentos:** {m_row['Qtd Outros Acomps']}")
+                                    if m_row["Qtd Acomps AV1"] > 0:
+                                        st.success(f"⏱️ **Tempo até 1º Acompanhamento:** {m_row['Dias (Meta -> 1º Acomp)']} dias | **Intervalos entre acompanhamentos:** {m_row['Intervalos Acomps']} | **Média da Meta:** {m_row['Média Dias Lançamentos']} dias")
+                                    else:
+                                        st.warning("⚠️ Nenhum acompanhamento realizado pelo AV1 até o momento.")
+                        else:
+                            st.warning("Nenhuma meta cadastrada para esta instância.")
+                        st.markdown("---")
+            else:
+                st.info("Nenhum militar localizado com os filtros atuais.")
 
 
 st.markdown("---")
