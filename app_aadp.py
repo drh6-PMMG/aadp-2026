@@ -631,6 +631,15 @@ def build_audit_data_from_geral(csv_path):
         
         todas_encerradas = "SIM" if (all(e["status"] == "ENCERRADA" for e in evals) or has_motivo) else "NAO"
 
+        ignore_sits = [
+            "RESER.NAO REMUNERADA", "RES. TEMPO SERVICO", "EXCLUIDO",
+            "RES.TEMPO EFET.SERV.", "REFORMA INCAP.FISICA", 
+            "REFORMA P/ INVALIDEZ", "REF.LIM.IDAD.QOR/QPR"
+        ]
+        if str(data.get("Sit. Funcional", "")).strip().upper() in ignore_sits:
+            if not has_motivo and all(e.get("status", "") == "ABERTA" for e in evals):
+                continue
+
         if todas_encerradas == "SIM":
             grades = [e["final_grade"] for e in evals if e["final_grade"] is not None]
             if len(grades) == qtd and qtd > 0:
@@ -740,19 +749,9 @@ def build_audit_data_from_geral(csv_path):
                             except IndexError:
                                 continue
 
-                            ignore_sits = [
-                                "RESER.NAO REMUNERADA", "RES. TEMPO SERVICO", "EXCLUIDO",
-                                "RES.TEMPO EFET.SERV.", "REFORMA INCAP.FISICA", 
-                                "REFORMA P/ INVALIDEZ", "REF.LIM.IDAD.QOR/QPR"
-                            ]
-                            if str(sit_func).strip().upper() in ignore_sits:
-                                missing_pms.remove(pm_si)
-                                if not missing_pms:
-                                    break
-                                continue
                             c_data = com_map.get(pm_si, {})
                             nota_sirh = c_data.get("nota", "-")
-                            
+
                             obs_str = str(c_data.get("obs", "")).strip()
                             obs_lower = obs_str.lower()
                             motivo_si = "-"
@@ -762,8 +761,21 @@ def build_audit_data_from_geral(csv_path):
                                 motivo_si = "ARTIGO 20"
                             elif obs_str not in ("", "-", "nan", "None"):
                                 motivo_si = obs_str
-                                
+
                             has_motivo_si = (motivo_si != "-")
+
+                            ignore_sits = [
+                                "RESER.NAO REMUNERADA", "RES. TEMPO SERVICO", "EXCLUIDO",
+                                "RES.TEMPO EFET.SERV.", "REFORMA INCAP.FISICA", 
+                                "REFORMA P/ INVALIDEZ", "REF.LIM.IDAD.QOR/QPR"
+                            ]
+                            if str(sit_func).strip().upper() in ignore_sits:
+                                if not has_motivo_si:
+                                    missing_pms.remove(pm_si)
+                                    if not missing_pms:
+                                        break
+                                    continue
+
                             
                             auditoria_val = "DIVERGENTE" if (nota_sirh != "-" and nota_sirh != "") else ""
                             if has_motivo_si and auditoria_val in ("DIVERGENTE", ""):
