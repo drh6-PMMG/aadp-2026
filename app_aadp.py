@@ -617,11 +617,23 @@ def build_audit_data_from_geral(csv_path):
     for pm, data in pm_evals.items():
         evals = data["evals"]
         qtd = len(evals)
-        todas_encerradas = "SIM" if all(e["status"] == "ENCERRADA" for e in evals) else "NAO"
+        obs_str = str(data.get("Observação", "")).strip()
+        obs_lower = obs_str.lower()
+        motivo = "-"
+        if "artigo 17" in obs_lower or "art 17" in obs_lower or "art. 17" in obs_lower or "art.17" in obs_lower:
+            motivo = "ARTIGO 17"
+        elif "artigo 20" in obs_lower or "art 20" in obs_lower or "art. 20" in obs_lower or "art.20" in obs_lower or "revis" in obs_lower:
+            motivo = "ARTIGO 20"
+        elif obs_str not in ("", "-", "nan", "None"):
+            motivo = obs_str
+            
+        has_motivo = (motivo != "-")
         
+        todas_encerradas = "SIM" if (all(e["status"] == "ENCERRADA" for e in evals) or has_motivo) else "NAO"
+
         if todas_encerradas == "SIM":
             grades = [e["final_grade"] for e in evals if e["final_grade"] is not None]
-            if len(grades) == qtd:
+            if len(grades) == qtd and qtd > 0:
                 final_avg = sum(grades) / float(qtd)
                 final_avg_rounded = math.floor(final_avg * 100 + 0.5) / 100.0
             else:
@@ -649,6 +661,9 @@ def build_audit_data_from_geral(csv_path):
             auditoria = ""
         else:
             auditoria = "DIVERGENTE"
+            
+        if has_motivo and auditoria in ("DIVERGENTE", ""):
+            auditoria = motivo
             
         r_audit = {
             "NR PM": data["NR PM"],
@@ -684,12 +699,6 @@ def build_audit_data_from_geral(csv_path):
         
         r_audit["Observação"] = data["Observação"]
         
-        obs_lower = str(data["Observação"]).lower()
-        motivo = "-"
-        if "artigo 17" in obs_lower or "art 17" in obs_lower or "art. 17" in obs_lower or "art.17" in obs_lower:
-            motivo = "ARTIGO 17"
-        elif "artigo 20" in obs_lower or "art 20" in obs_lower or "art. 20" in obs_lower or "art.20" in obs_lower or "revis" in obs_lower:
-            motivo = "ARTIGO 20"
         r_audit["Motivo"] = motivo
 
         rows_audit.append(r_audit)
@@ -734,6 +743,22 @@ def build_audit_data_from_geral(csv_path):
                             c_data = com_map.get(pm_si, {})
                             nota_sirh = c_data.get("nota", "-")
                             
+                            obs_str = str(c_data.get("obs", "")).strip()
+                            obs_lower = obs_str.lower()
+                            motivo_si = "-"
+                            if "artigo 17" in obs_lower or "art 17" in obs_lower or "art. 17" in obs_lower or "art.17" in obs_lower:
+                                motivo_si = "ARTIGO 17"
+                            elif "artigo 20" in obs_lower or "art 20" in obs_lower or "art. 20" in obs_lower or "art.20" in obs_lower or "revis" in obs_lower:
+                                motivo_si = "ARTIGO 20"
+                            elif obs_str not in ("", "-", "nan", "None"):
+                                motivo_si = obs_str
+                                
+                            has_motivo_si = (motivo_si != "-")
+                            
+                            auditoria_val = "DIVERGENTE" if (nota_sirh != "-" and nota_sirh != "") else ""
+                            if has_motivo_si and auditoria_val in ("DIVERGENTE", ""):
+                                auditoria_val = motivo_si
+                                
                             r_audit = {
                                 "NR PM": pm_si,
                                 "Posto/Graduação": posto,
@@ -743,10 +768,10 @@ def build_audit_data_from_geral(csv_path):
                                 "Quadro": quadro,
                                 "Sit. Funcional": sit_func,
                                 "Qtd Avaliações": 0,
-                                "Todas Avaliações Foram Encerradas?": "NAO",
+                                "Todas Avaliações Foram Encerradas?": "SIM" if has_motivo_si else "NAO",
                                 "Nota Final - Média Aritmética": "-",
                                 "Nota SIRH": nota_sirh,
-                                "Auditoria": "DIVERGENTE" if (nota_sirh != "-" and nota_sirh != "") else "",
+                                "Auditoria": auditoria_val,
                             }
                             
                             for i in range(1, 5):
@@ -758,13 +783,7 @@ def build_audit_data_from_geral(csv_path):
                                 r_audit[f"Nota Fase 2 ou 3 {i}"] = np.nan
 
                             r_audit["Observação"] = c_data.get("obs", "")
-                            obs_lower = str(r_audit["Observação"]).lower()
-                            motivo = "-"
-                            if "artigo 17" in obs_lower or "art 17" in obs_lower or "art. 17" in obs_lower or "art.17" in obs_lower:
-                                motivo = "ARTIGO 17"
-                            elif "artigo 20" in obs_lower or "art 20" in obs_lower or "art. 20" in obs_lower or "art.20" in obs_lower or "revis" in obs_lower:
-                                motivo = "ARTIGO 20"
-                            r_audit["Motivo"] = motivo
+                            r_audit["Motivo"] = motivo_si
 
                             rows_audit.append(r_audit)
                             missing_pms.remove(pm_si)
