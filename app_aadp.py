@@ -10563,119 +10563,224 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                 key="dl_logs_csv"
             )
 
-    # ── 4) Comissões ─────────────────────────────────────────────────────────
+@st.cache_data(show_spinner=False)
+def load_comissoes_tab_data(_db_path, _drive_com_id, _drive_si_id, _ano="2026"):
+    import pandas as pd
+    import os
+    import tempfile
+    
+    base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
+    cache_dir = os.path.join(tempfile.gettempdir(), f"aadp_drive_cache_{_ano}")
+    os.makedirs(cache_dir, exist_ok=True)
+    
+    possible_sigef = [
+        os.path.join(base_dir, f"DADOS AADP {_ano}", "SIGEF.csv"),
+        os.path.join(cache_dir, "SIGEF.csv"),
+        os.path.join(_db_path or "", "SIGEF.csv"),
+        os.path.join(base_dir, "dados", "SIGEF.csv"),
+        os.path.join(base_dir, "SIGEF.csv")
+    ]
+    sigef_path = next((p for p in possible_sigef if os.path.exists(p) and os.path.getsize(p) > 0), None)
+    if not sigef_path and _drive_si_id:
+        sigef_dest = os.path.join(cache_dir, "SIGEF.csv")
+        try:
+            _baixar_drive(_drive_si_id, sigef_dest)
+            if os.path.exists(sigef_dest) and os.path.getsize(sigef_dest) > 0:
+                sigef_path = sigef_dest
+        except Exception:
+            pass
+
+    possible_com = [
+        os.path.join(base_dir, f"DADOS AADP {_ano}", "comissao.csv"),
+        os.path.join(base_dir, f"DADOS AADP {_ano}", "avaliacoes.csv"),
+        os.path.join(cache_dir, "comissao.csv"),
+        os.path.join(cache_dir, "avaliacoes.csv"),
+        os.path.join(_db_path or "", "comissao.csv"),
+        os.path.join(_db_path or "", "avaliacoes.csv"),
+        os.path.join(base_dir, "dados", "avaliacoes.csv"),
+        os.path.join(base_dir, "avaliacoes.csv")
+    ]
+    comissao_path = next((p for p in possible_com if os.path.exists(p) and os.path.getsize(p) > 0), None)
+    if not comissao_path and _drive_com_id:
+        com_dest = os.path.join(cache_dir, "comissao.csv")
+        try:
+            _baixar_drive(_drive_com_id, com_dest)
+            if os.path.exists(com_dest) and os.path.getsize(com_dest) > 0:
+                comissao_path = com_dest
+        except Exception:
+            pass
+
+    try:
+        df_sigef = pd.read_csv(sigef_path, sep=';', encoding='cp1252', dtype=str, on_bad_lines='skip', index_col=False) if sigef_path else pd.DataFrame()
+    except Exception:
+        df_sigef = pd.DataFrame()
+        
+    try:
+        df_com = pd.read_csv(comissao_path, sep=';', encoding='cp1252', dtype=str, on_bad_lines='warn', index_col=False) if comissao_path else pd.DataFrame()
+        df_com = df_com.rename(columns={
+            "Unidade RPM (Avaliado)": "Unidade RPM Atual (Avaliado)",
+            "Unidade Principal (Avaliado)": "Unidade Principal Atual (Avaliado)",
+            "Local/Unidade (Avaliado)": "Local/Unidade Atual (Avaliado)"
+        })
+    except Exception:
+        df_com = pd.DataFrame()
+        
+    return df_sigef, df_com
+
+@st.cache_data(show_spinner=False)
+def load_cdp_status_set(_db_path, _drive_geral_id, _drive_metas_id, _ano="2026"):
+    import csv, os
+    base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
+    cache_dir = os.path.join(base_dir, ".cache_aadp", str(_ano))
+    os.makedirs(cache_dir, exist_ok=True)
+
+    def _c_pm_clean(val):
+        if not val or str(val).strip() in ("", "-", "nan", "none", "None", "<NA>"):
+            return ""
+        try:
+            return str(int(float(str(val).strip())))
+        except Exception:
+            s = str(val).strip().lstrip("0")
+            return s if s else "0"
+
+    possible_geral = [
+        os.path.join(base_dir, f"DADOS AADP {_ano}", "geral.csv"),
+        os.path.join(cache_dir, "geral.csv"),
+        os.path.join(_db_path or "", "geral.csv"),
+        os.path.join(base_dir, "dados", "geral.csv"),
+        os.path.join(base_dir, "geral.csv")
+    ]
+    geral_path = next((p for p in possible_geral if os.path.exists(p) and os.path.getsize(p) > 0), None)
+    if not geral_path and _drive_geral_id:
+        geral_dest = os.path.join(cache_dir, "geral.csv")
+        try:
+            _baixar_drive(_drive_geral_id, geral_dest)
+            if os.path.exists(geral_dest) and os.path.getsize(geral_dest) > 0:
+                geral_path = geral_dest
+        except Exception:
+            pass
+
+    possible_metas = [
+        os.path.join(base_dir, f"DADOS AADP {_ano}", f"Metas e acompanhamentos {_ano} Completo.csv"),
+        os.path.join(base_dir, f"DADOS AADP {_ano}", "metas.csv"),
+        os.path.join(cache_dir, f"Metas e acompanhamentos {_ano} Completo.csv"),
+        os.path.join(cache_dir, "metas.csv"),
+        os.path.join(_db_path or "", f"Metas e acompanhamentos {_ano} Completo.csv"),
+        os.path.join(_db_path or "", "metas.csv"),
+        os.path.join(base_dir, "dados", "metas.csv"),
+        os.path.join(base_dir, "metas.csv")
+    ]
+    metas_path = next((p for p in possible_metas if os.path.exists(p) and os.path.getsize(p) > 0), None)
+    if not metas_path and _drive_metas_id:
+        metas_dest = os.path.join(cache_dir, "metas.csv")
+        try:
+            _baixar_drive(_drive_metas_id, metas_dest)
+            if os.path.exists(metas_dest) and os.path.getsize(metas_dest) > 0:
+                metas_path = metas_dest
+        except Exception:
+            pass
+
+    cdp_pms = set()
+    if geral_path and os.path.exists(geral_path):
+        with open(geral_path, "r", encoding="cp1252", errors="replace") as f_ge:
+            r_ge = csv.reader(f_ge, delimiter=";")
+            next(r_ge, [])
+            for row in r_ge:
+                if len(row) > 5 and row[5].strip() not in ("", "-", "nan", "None", "<NA>"):
+                    p = _c_pm_clean(row[1])
+                    if p:
+                        cdp_pms.add(p)
+
+    if metas_path and os.path.exists(metas_path):
+        with open(metas_path, "r", encoding="cp1252", errors="replace") as f_m:
+            r_m = csv.reader(f_m, delimiter=";")
+            next(r_m, [])
+            for row in r_m:
+                if len(row) > 26 and row[26].strip() not in ("", "-", "nan", "None", "<NA>"):
+                    p = _c_pm_clean(row[0])
+                    if p:
+                        cdp_pms.add(p)
+
+    return cdp_pms
+
+@st.cache_data(show_spinner=False)
+def load_comissoes_completas_cdp_df(_db_path, _drive_com_id, _drive_si_id, _drive_geral_id, _drive_metas_id, _ano="2026"):
+    df_sigef, df_com = load_comissoes_tab_data(_db_path, _drive_com_id, _drive_si_id, _ano=_ano)
+    cdp_pms_set = load_cdp_status_set(_db_path, _drive_geral_id, _drive_metas_id, _ano=_ano)
+    if df_sigef.empty or df_com.empty:
+        return pd.DataFrame()
+
+    def _c_get_pm(val):
+        import re
+        if pd.isna(val): return ""
+        s = str(val).strip()
+        if '-' in s: s = s.split('-')[0].strip()
+        s = s.lstrip('0')
+        if s.endswith('.0'): s = s[:-2]
+        s = re.sub(r'[^0-9]', '', s)
+        return s if s not in ("", "nan", "None") else ""
+
+    def _c_classify_com(row):
+        av1 = _c_get_pm(row.get('nrPM (Avaliador1)', ''))
+        av2 = _c_get_pm(row.get('nrPM (Avaliador2)', ''))
+        hom = _c_get_pm(row.get('nrPM (Homologador)', ''))
+        missing = []
+        if not av1: missing.append("AV1")
+        if not av2: missing.append("AV2")
+        if not hom: missing.append("HOM")
+        if missing:
+            if len(missing) == 3: return "INCOMPLETA (FALTA TODOS)"
+            return f"INCOMPLETA (FALTA {', '.join(missing)})"
+        pms = {av1, av2, hom}
+        if len(pms) == 1: return "COMPLETA (COMISSÃO ÚNICA)"
+        elif len(pms) == 2: return "COMPLETA (2 MEMBROS)"
+        elif len(pms) == 3: return "COMPLETA (3 MEMBROS)"
+        return "COMPLETA (PADRÃO INCORRETO)"
+
+    def _c_aadp_category(sit):
+        sit = str(sit).strip().upper()
+        if sit in ["ATIV. DIRECAO GERAL", "ATIVIDADE MEIO", "ATIV. FIM NA SEDE", "ATIV. FIM DESTACADO", "QUADRO ESPECIALISTA", "DISP MED DEFINITIVA"]:
+            return "AADP Regular"
+        return "AADP SF. Restrito"
+
+    df_sigef_c = df_sigef.copy()
+    df_sigef_c['NUMERO_CLEAN'] = df_sigef_c['NUMERO'].apply(_c_get_pm)
+    df_sigef_c = df_sigef_c[df_sigef_c['NUMERO_CLEAN'] != ""]
+
+    df_com_c = df_com.copy()
+    df_com_c['nrPM_Avaliado_CLEAN'] = df_com_c['nrPM (Avaliado)'].apply(_c_get_pm)
+    df_com_c = df_com_c[df_com_c['nrPM_Avaliado_CLEAN'] != ""]
+
+    def _count_valid_evals(row):
+        c = 0
+        if str(row.get('nrPM (Avaliador1)', '')).strip() not in ('', 'nan', 'None'): c += 1
+        if str(row.get('nrPM (Avaliador2)', '')).strip() not in ('', 'nan', 'None'): c += 1
+        if str(row.get('nrPM (Homologador)', '')).strip() not in ('', 'nan', 'None'): c += 1
+        return c
+
+    df_com_c['__qtd_membros'] = df_com_c.apply(_count_valid_evals, axis=1)
+    df_com_c['__original_order'] = range(len(df_com_c))
+    df_com_c = df_com_c.sort_values(by=['nrPM_Avaliado_CLEAN', '__qtd_membros', '__original_order'], ascending=[True, True, True])
+    df_com_c = df_com_c.drop_duplicates(subset=['nrPM_Avaliado_CLEAN'], keep='last')
+    df_com_c = df_com_c.drop(columns=['__qtd_membros', '__original_order'])
+
+    df_m = pd.merge(df_sigef_c, df_com_c, left_on='NUMERO_CLEAN', right_on='nrPM_Avaliado_CLEAN', how='left')
+    df_m['Status da Comissão'] = df_m.apply(_c_classify_com, axis=1)
+    df_m['Tipo AADP'] = df_m['SIT. FUNCIONAL'].apply(_c_aadp_type)
+    df_m['Categoria AADP'] = df_m['SIT. FUNCIONAL'].apply(_c_aadp_category)
+    df_m['RPM Final'] = df_m['Unidade RPM Atual (Avaliado)'].fillna(df_m['NOME RPM']).str.strip()
+    df_m['RPM Final'] = df_m['RPM Final'].replace({'NÃO': 'DINT', 'AUDI SET': 'AUD SET'})
+    df_m['Unidade Principal Final'] = df_m['Unidade Principal Atual (Avaliado)'].fillna(df_m['NOME UNIDADE PRINCIPAL']).str.strip()
+    df_m['Posto/Graduação Final'] = df_m['Posto/Graduação (Avaliado)'].fillna(df_m['POSTO/GRADUACAO']).str.strip()
+    df_m = df_m[df_m['SIT. FUNCIONAL'] != 'JUIZ/TJM']
+    df_m['Situação AADP'] = df_m['Status da Comissão'].apply(lambda x: 'Completa' if str(x).upper().startswith('COMPLETA') else 'Incompleta')
+    df_m['Status CDP'] = df_m['NUMERO_CLEAN'].apply(lambda x: 'CDP Cadastrado' if x in cdp_pms_set else 'Sem CDP')
+    return df_m
+
+# ── 4) Comissões ─────────────────────────────────────────────────────────
 if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
     st.markdown("### ⚖️ Análise de Comissões")
     
-    @st.cache_data(show_spinner=False)
-    def load_comissoes_tab_data(_db_path, _drive_com_id, _drive_si_id, _ano="2026"):
-        import pandas as pd
-        import os
-        import tempfile
-        
-        cache_dir = os.path.join(tempfile.gettempdir(), f"aadp_drive_cache_{_ano}")
-        if _drive_com_id and _drive_si_id:
-            sigef_path = os.path.join(cache_dir, "SIGEF.csv")
-            comissao_path = os.path.join(cache_dir, "comissao.csv")
-            if not os.path.exists(comissao_path) or os.path.getsize(comissao_path) == 0:
-                _baixar_drive(_drive_com_id, comissao_path)
-        else:
-            sigef_path = os.path.join(_db_path, "SIGEF.csv")
-            comissao_path = os.path.join(_db_path, "avaliacoes.csv")
-            
-        try:
-            df_sigef = pd.read_csv(sigef_path, sep=';', encoding='cp1252', dtype=str, on_bad_lines='skip', index_col=False)
-        except Exception:
-            df_sigef = pd.DataFrame()
-            
-        try:
-            df_com = pd.read_csv(comissao_path, sep=';', encoding='cp1252', dtype=str, on_bad_lines='warn', index_col=False)
-            df_com = df_com.rename(columns={
-                "Unidade RPM (Avaliado)": "Unidade RPM Atual (Avaliado)",
-                "Unidade Principal (Avaliado)": "Unidade Principal Atual (Avaliado)",
-                "Local/Unidade (Avaliado)": "Local/Unidade Atual (Avaliado)"
-            })
-        except Exception:
-            df_com = pd.DataFrame()
-            
-        return df_sigef, df_com
-
-    @st.cache_data(show_spinner=False)
-    def load_cdp_status_set(_db_path, _drive_geral_id, _drive_metas_id, _ano="2026"):
-        import csv, os
-        base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
-        cache_dir = os.path.join(base_dir, ".cache_aadp", str(_ano))
-        os.makedirs(cache_dir, exist_ok=True)
-
-        def _c_pm_clean(val):
-            if not val or str(val).strip() in ("", "-", "nan", "none", "None", "<NA>"):
-                return ""
-            try:
-                return str(int(float(str(val).strip())))
-            except Exception:
-                s = str(val).strip().lstrip("0")
-                return s if s else "0"
-
-        possible_geral = [
-            os.path.join(base_dir, f"DADOS AADP {_ano}", "geral.csv"),
-            os.path.join(cache_dir, "geral.csv"),
-            os.path.join(_db_path or "", "geral.csv"),
-            os.path.join(base_dir, "dados", "geral.csv"),
-            os.path.join(base_dir, "geral.csv")
-        ]
-        geral_path = next((p for p in possible_geral if os.path.exists(p) and os.path.getsize(p) > 0), None)
-        if not geral_path and _drive_geral_id:
-            geral_dest = os.path.join(cache_dir, "geral.csv")
-            try:
-                _baixar_drive(_drive_geral_id, geral_dest)
-                if os.path.exists(geral_dest) and os.path.getsize(geral_dest) > 0:
-                    geral_path = geral_dest
-            except Exception:
-                pass
-
-        possible_metas = [
-            os.path.join(base_dir, f"DADOS AADP {_ano}", f"Metas e acompanhamentos {_ano} Completo.csv"),
-            os.path.join(base_dir, f"DADOS AADP {_ano}", "metas.csv"),
-            os.path.join(cache_dir, f"Metas e acompanhamentos {_ano} Completo.csv"),
-            os.path.join(cache_dir, "metas.csv"),
-            os.path.join(_db_path or "", f"Metas e acompanhamentos {_ano} Completo.csv"),
-            os.path.join(_db_path or "", "metas.csv"),
-            os.path.join(base_dir, "dados", "metas.csv"),
-            os.path.join(base_dir, "metas.csv")
-        ]
-        metas_path = next((p for p in possible_metas if os.path.exists(p) and os.path.getsize(p) > 0), None)
-        if not metas_path and _drive_metas_id:
-            metas_dest = os.path.join(cache_dir, "metas.csv")
-            try:
-                _baixar_drive(_drive_metas_id, metas_dest)
-                if os.path.exists(metas_dest) and os.path.getsize(metas_dest) > 0:
-                    metas_path = metas_dest
-            except Exception:
-                pass
-
-        cdp_pms = set()
-        if geral_path and os.path.exists(geral_path):
-            with open(geral_path, "r", encoding="cp1252", errors="replace") as f_ge:
-                r_ge = csv.reader(f_ge, delimiter=";")
-                next(r_ge, [])
-                for row in r_ge:
-                    if len(row) > 5 and row[5].strip() not in ("", "-", "nan", "None", "<NA>"):
-                        p = _c_pm_clean(row[1])
-                        if p:
-                            cdp_pms.add(p)
-
-        if metas_path and os.path.exists(metas_path):
-            with open(metas_path, "r", encoding="cp1252", errors="replace") as f_m:
-                r_m = csv.reader(f_m, delimiter=";")
-                next(r_m, [])
-                for row in r_m:
-                    if len(row) > 26 and row[26].strip() not in ("", "-", "nan", "None", "<NA>"):
-                        p = _c_pm_clean(row[0])
-                        if p:
-                            cdp_pms.add(p)
-
-        return cdp_pms
-
     with st.spinner("Carregando bases de dados (SIGEF e Comissões)..."):
         # Resolve os argumentos usando cfg_to_use diretamente, para evitar falha caso a função não receba
         cfg_to_use = load_config()
@@ -11572,21 +11677,49 @@ if active_page == "Controle do CDP" and sidebar_active_role.upper() in ("ADMINIS
 
         # ── CARDS DE RESUMO EXECUTIVO ──────────────────────────────────────────
         total_inst = len(df_filtered_inst)
-        cadastrados = (df_filtered_inst["Status CDP"] == "CDP Cadastrado").sum()
-        pct_cdp = (cadastrados / total_inst * 100) if total_inst > 0 else 0
         total_metas_count = df_filtered_inst["Qtd Metas"].sum()
         total_acomps_av1_count = df_filtered_inst["Qtd Acomps AV1"].sum()
 
         valid_intervals = [float(x) for x in df_filtered_inst["Média Dias entre Lançamentos"] if x != "-" and str(x).replace(".", "").isdigit()]
         media_geral_dias = round(sum(valid_intervals) / len(valid_intervals), 1) if valid_intervals else "-"
 
-        c_m1, c_m2, c_m3, c_m4, c_m5, c_m6 = st.columns(6)
+        # Obter estatísticas de Comissões Completas COM CDP e SEM CDP
+        df_com_full = load_comissoes_completas_cdp_df(
+            _y_cfg["db_path"], _y_cfg["drive_com_id"], _y_cfg["drive_si_id"],
+            _y_cfg["drive_geral_id"], _y_cfg["drive_metas_id"], _ano=_active_y
+        )
+        if not df_com_full.empty:
+            df_c_scope = df_com_full[df_com_full["Tipo AADP"] == "Ativa"].copy()
+            if _role_cdp == "P1" and active_rpm:
+                df_c_scope = df_c_scope[df_c_scope["RPM Final"].astype(str).str.upper() == str(active_rpm).upper()]
+            elif _role_cdp == "SADM" and active_unit:
+                df_c_scope = df_c_scope[df_c_scope["Unidade Principal Final"].astype(str).str.upper() == str(active_unit).upper()]
+            elif sel_rpm != "Todas":
+                df_c_scope = df_c_scope[df_c_scope["RPM Final"].astype(str).str.upper() == str(sel_rpm).upper()]
+            if sel_unid != "Todas" and _role_cdp != "SADM":
+                df_c_scope = df_c_scope[df_c_scope["Unidade Principal Final"].astype(str).str.upper() == str(sel_unid).upper()]
+
+            mask_c_compl = df_c_scope["Status da Comissão"].str.upper().str.startswith("COMPLETA")
+            total_c_compl = mask_c_compl.sum()
+            com_compl_com_cdp = (mask_c_compl & (df_c_scope["Status CDP"] == "CDP Cadastrado")).sum()
+            com_compl_sem_cdp = (mask_c_compl & (df_c_scope["Status CDP"] == "Sem CDP")).sum()
+            pct_compl_com_cdp = (com_compl_com_cdp / total_c_compl * 100) if total_c_compl > 0 else 0
+            pct_compl_sem_cdp = (com_compl_sem_cdp / total_c_compl * 100) if total_c_compl > 0 else 0
+        else:
+            total_c_compl = 0
+            com_compl_com_cdp = 0
+            com_compl_sem_cdp = 0
+            pct_compl_com_cdp = 0
+            pct_compl_sem_cdp = 0
+
+        c_m1, c_m2, c_m3, c_m4, c_m5, c_m6, c_m7 = st.columns(7)
         c_m1.metric("📋 Instâncias", fmt_num(total_inst))
-        c_m2.metric("🟢 CDP Cadastrado", f"{pct_cdp:.1f}%", f"{fmt_num(cadastrados)} cadastrados")
-        c_m3.metric("🎯 Metas Pactuadas", fmt_num(total_metas_count))
-        c_m4.metric("👥 Acomps AV1", fmt_num(total_acomps_av1_count))
-        c_m5.metric("⏱️ Média Intervalo", f"{media_geral_dias} dias" if media_geral_dias != "-" else "-")
-        c_m6.metric("⚠️ Sem Acomp. AV1", fmt_num((df_filtered_inst["Qtd Acomps AV1"] == 0).sum()))
+        c_m2.metric("🟢 Completas COM CDP", fmt_num(com_compl_com_cdp), f"{pct_compl_com_cdp:.1f}% das completas")
+        c_m3.metric("🔴 Completas SEM CDP", fmt_num(com_compl_sem_cdp), f"{pct_compl_sem_cdp:.1f}% das completas")
+        c_m4.metric("🎯 Metas Pactuadas", fmt_num(total_metas_count))
+        c_m5.metric("👥 Acomps AV1", fmt_num(total_acomps_av1_count))
+        c_m6.metric("⏱️ Média Intervalo", f"{media_geral_dias} dias" if media_geral_dias != "-" else "-")
+        c_m7.metric("⚠️ Sem Acomp. AV1", fmt_num((df_filtered_inst["Qtd Acomps AV1"] == 0).sum()))
 
         st.markdown("---")
 
