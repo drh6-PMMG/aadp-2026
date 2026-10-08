@@ -5143,7 +5143,8 @@ with st.sidebar:
     pages = []
     
     if sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
-        pages.append(("🚨 Análise de Comissões :red[(NOVO)]", "Comissões"))
+        pages.append(("🚨 Análise de Comissões", "Comissões"))
+        pages.append(("🎯 Controle do CDP", "Controle do CDP"))
 
     pages.extend([
         ("📊 Análise Gráfica", "Análise Gráfica"),
@@ -5164,10 +5165,6 @@ with st.sidebar:
 
     if sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
         pages.append(("📊 Dados Consolidados", "Dados Consolidados"))
-
-    # Controle do CDP: visível para ADMINISTRADOR, GESTOR, P1 e SADM conforme permissões de unidade
-    if sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
-        pages.append(("🎯 Controle do CDP", "Controle do CDP"))
 
     # O administrador real sempre vê o painel administrador
 
@@ -5734,7 +5731,8 @@ main_active_role = st.session_state.get("simulated_role", st.session_state.user_
 main_nav_pages = []
 
 if main_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
-    main_nav_pages.append(("🚨\nAnálise de Comissões :red[(NOVO)]", "Comissões"))
+    main_nav_pages.append(("🚨\nAnálise de Comissões", "Comissões"))
+    main_nav_pages.append(("🎯\nControle do CDP", "Controle do CDP"))
 
 main_nav_pages.extend([
     ("📊\nAnálise Gráfica", "Análise Gráfica"),
