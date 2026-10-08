@@ -1964,9 +1964,13 @@ def get_active_year_config(selected_year: str, cfg: dict):
 
     # Procura pasta local dedicada do ano
     possible_local_paths = [
+        os.path.join(base_dir, f"DADOS AADP {y}"),
+        os.path.join(base_dir, f"DADOS_AADP_{y}"),
+        os.path.join(base_dir, f"dados AADP {y}"),
         os.path.join(base_dir, "dados", y),
         os.path.join(base_dir, y),
         os.path.join(base_dir, f"dados_{y}"),
+        os.path.join(str(DADOS_DIR), f"DADOS AADP {y}"),
         os.path.join(str(DADOS_DIR), y)
     ]
     db_path_year = next((p for p in possible_local_paths if p and os.path.isdir(p)), None)
@@ -3701,11 +3705,18 @@ def _baixar_drive(file_id: str, destino: str):
     if not GDOWN_OK:
         raise ImportError("Biblioteca 'gdown' não instalada. Execute: pip install gdown")
     import inspect
-    url = f"https://drive.google.com/uc?id={file_id}&export=download"
+    url = f"https://drive.google.com/uc?id={file_id}"
     
-    # gdown >= 4.6 suporta fuzzy; versões mais antigas não suportam
     sig = inspect.signature(gdown.download)
-    if "fuzzy" in sig.parameters:
+    if "id" in sig.parameters:
+        try:
+            gdown.download(id=file_id, output=destino, quiet=True)
+        except Exception:
+            if "fuzzy" in sig.parameters:
+                gdown.download(url, destino, quiet=True, fuzzy=True)
+            else:
+                gdown.download(url, destino, quiet=True)
+    elif "fuzzy" in sig.parameters:
         gdown.download(url, destino, quiet=True, fuzzy=True)
     else:
         gdown.download(url, destino, quiet=True)
@@ -10949,6 +10960,8 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
 
     # Localizar Metas e acompanhamentos 2026 Completo.csv
     possible_metas = [
+        os.path.join(base_dir, f"DADOS AADP {_ano}", f"Metas e acompanhamentos {_ano} Completo.csv"),
+        os.path.join(base_dir, f"DADOS AADP {_ano}", "Metas e acompanhamentos 2026 Completo.csv"),
         os.path.join(cache_dir, f"Metas e acompanhamentos {_ano} Completo.csv"),
         os.path.join(cache_dir, "Metas e acompanhamentos 2026 Completo.csv"),
         os.path.join(_db_path or "", f"Metas e acompanhamentos {_ano} Completo.csv"),
@@ -10962,7 +10975,7 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
     metas_path = next((p for p in possible_metas if os.path.exists(p) and os.path.getsize(p) > 0), None)
 
     if not metas_path and _drive_metas_id:
-        metas_dest = os.path.join(cache_dir, "Metas e acompanhamentos 2026 Completo.csv")
+        metas_dest = os.path.join(cache_dir, f"Metas e acompanhamentos {_ano} Completo.csv")
         try:
             _baixar_drive(_drive_metas_id, metas_dest)
             if os.path.exists(metas_dest) and os.path.getsize(metas_dest) > 0:
@@ -10971,10 +10984,11 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
             pass
 
     if not metas_path:
-        return pd.DataFrame(), pd.DataFrame(), "Planilha 'Metas e acompanhamentos 2026 Completo.csv' não encontrada."
+        return pd.DataFrame(), pd.DataFrame(), f"Planilha 'Metas e acompanhamentos {_ano} Completo.csv' não encontrada."
 
     # Localizar SIGEF.csv
     possible_sigef = [
+        os.path.join(base_dir, f"DADOS AADP {_ano}", "SIGEF.csv"),
         os.path.join(cache_dir, "SIGEF.csv"),
         os.path.join(_db_path or "", "SIGEF.csv"),
         os.path.join(base_dir, "dados", "SIGEF.csv"),
@@ -10992,6 +11006,7 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
 
     # Localizar geral.csv
     possible_geral = [
+        os.path.join(base_dir, f"DADOS AADP {_ano}", "geral.csv"),
         os.path.join(cache_dir, "geral.csv"),
         os.path.join(_db_path or "", "geral.csv"),
         os.path.join(base_dir, "dados", "geral.csv"),
@@ -11051,6 +11066,7 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
                     if dt_g:
                         cdp_map[(pm_g, av1_g, av2_g)] = dt_g
                         cdp_map[(pm_g, av1_g)] = dt_g
+                        cdp_map[pm_g] = dt_g
                         if pm_g not in pm_max_cdp or dt_g > pm_max_cdp[pm_g]:
                             pm_max_cdp[pm_g] = dt_g
 
@@ -11108,19 +11124,17 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
             is_same_location = (local_aval.upper().strip() == sigef_map.get(pm_aval, "").upper().strip())
             has_multiple_evals = (pm_counts.get(pm_aval, 0) > 1)
             key = (pm_aval, pm_av1, pm_av2)
-            dt_cdp = cdp_map.get(key) or cdp_map.get((pm_aval, pm_av1))
+            dt_cdp = cdp_map.get(key) or cdp_map.get((pm_aval, pm_av1)) or cdp_map.get(pm_aval)
 
             if dt_cdp is not None and pm_aval in pm_max_cdp:
                 sc = "Comissão Atual" if dt_cdp >= pm_max_cdp[pm_aval] else "Nota Provisória"
             else:
                 sc = "Comissão Atual" if (is_same_location or not has_multiple_evals) else "Nota Provisória"
 
-            status_cdp = "CDP Cadastrado" if dt_cdp else "CDP NÃO Cadastrado"
-            dt_cdp_str = dt_cdp.strftime("%d/%m/%Y") if dt_cdp else "-"
-
             # Processar Metas e Acompanhamentos
             qtd_metas = 0
             metas_dates = []
+            first_meta_date = None
             total_acomps_av1 = 0
             total_outros_acomps = 0
             all_inst_intervals = []
@@ -11135,6 +11149,9 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
                 d_meta = _parse_d(d_meta_raw)
                 if not d_meta:
                     continue
+
+                if first_meta_date is None:
+                    first_meta_date = d_meta
 
                 qtd_metas += 1
                 metas_dates.append(f"M{m_num}: {d_meta.strftime('%d/%m/%Y')}")
@@ -11213,6 +11230,25 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
                     "Data Cadastro Meta ISO": d_meta.strftime("%Y-%m-%d"),
                     "Acomps Eventos": acomps_eventos
                 })
+
+            # Definição do Status e Data do CDP:
+            # 1. Se veio dt_cdp cruzado do geral.csv, usamos prioritariamente.
+            # 2. Se não veio dt_cdp do geral.csv, mas o militar possui metas pactuadas (qtd_metas > 0):
+            #    conforme a regra de negócio da AADP, a existência de metas cadastradas comprova
+            #    o cadastro do CDP! A data do CDP é a data de cadastro da 1ª meta pactuada.
+            # 3. Caso contrário (sem dt_cdp e sem metas), é considerado "CDP NÃO Cadastrado".
+            if dt_cdp:
+                status_cdp = "CDP Cadastrado"
+                dt_cdp_str = dt_cdp.strftime("%d/%m/%Y")
+            elif qtd_metas > 0 and first_meta_date:
+                status_cdp = "CDP Cadastrado"
+                dt_cdp = first_meta_date
+                dt_cdp_str = first_meta_date.strftime("%d/%m/%Y")
+                if dt_cdp not in all_inst_dates:
+                    all_inst_dates.insert(0, dt_cdp)
+            else:
+                status_cdp = "CDP NÃO Cadastrado"
+                dt_cdp_str = "-"
 
             avg_inst_interval = round(sum(all_inst_intervals) / len(all_inst_intervals), 1) if all_inst_intervals else None
             if all_inst_dates:
