@@ -5154,8 +5154,8 @@ with st.sidebar:
     if sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
         pages.append(("📊 Dados Consolidados", "Dados Consolidados"))
 
-    # Controle do CDP: visível exclusivamente para ADMINISTRADOR
-    if sidebar_active_role.upper() == "ADMINISTRADOR":
+    # Controle do CDP: visível para ADMINISTRADOR, GESTOR, P1 e SADM conforme permissões de unidade
+    if sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
         pages.append(("🎯 Controle do CDP", "Controle do CDP"))
 
     # O administrador real sempre vê o painel administrador
@@ -5194,7 +5194,7 @@ with st.sidebar:
         
 
 
-    if st.session_state.active_page == "Controle do CDP" and sidebar_active_role.upper() != "ADMINISTRADOR":
+    if st.session_state.active_page == "Controle do CDP" and sidebar_active_role.upper() not in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
         st.session_state.active_page = "Análise Gráfica"
 
     if st.session_state.active_page == "Painel Administrador" and st.session_state.user_role != "ADMINISTRADOR":
@@ -11255,9 +11255,13 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
     return df_inst, df_metas, None
 
 
-if active_page == "Controle do CDP" and sidebar_active_role.upper() == "ADMINISTRADOR":
+if active_page == "Controle do CDP" and sidebar_active_role.upper() in ("ADMINISTRADOR", "GESTOR", "P1", "SADM"):
     st.markdown("### 🎯 Controle do CDP — Acompanhamento de Metas e Prazos")
     st.caption("Auditoria passo a passo das comissões: registro do CDP, pactuação de metas e acompanhamentos tempestivos realizados pelo Avaliador 1 (AV1).")
+
+    _role_cdp = sidebar_active_role.upper()
+    active_rpm = st.session_state.get("simulated_rpm", st.session_state.get("user_rpm", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_rpm", "")
+    active_unit = st.session_state.get("simulated_unit", st.session_state.get("user_unit", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_unit", "")
 
     cfg_cdp = load_config()
     _active_y = str(st.session_state.get("selected_year", "2026"))
@@ -11274,6 +11278,34 @@ if active_page == "Controle do CDP" and sidebar_active_role.upper() == "ADMINIST
     elif df_inst.empty:
         st.warning("Nenhum dado encontrado para análise de Controle do CDP.")
     else:
+        # ── Restrição de Escopo por Perfil ─────────────────────────────────────
+        # ADMINISTRADOR / GESTOR → Acesso integral a todas as unidades da PMMG
+        # P1                     → Somente avaliados pertencentes à sua UDI/UDG (RPM)
+        # SADM                   → Somente avaliados pertencentes à sua Unidade Principal
+        if _role_cdp == "P1":
+            if active_rpm and "Unidade RPM (Avaliado)" in df_inst.columns:
+                df_inst = df_inst[df_inst["Unidade RPM (Avaliado)"].astype(str).str.upper() == str(active_rpm).upper()]
+                st.info(f"🔒 Exibindo apenas avaliados da sua UDI/UDG: **{active_rpm}**")
+            else:
+                st.warning("⚠️ RPM do usuário não identificado. Contate o administrador.")
+                st.stop()
+        elif _role_cdp == "SADM":
+            if active_unit and "Unidade Principal (Avaliado)" in df_inst.columns:
+                df_inst = df_inst[df_inst["Unidade Principal (Avaliado)"].astype(str).str.upper() == str(active_unit).upper()]
+                st.info(f"🔒 Exibindo apenas avaliados da sua Unidade Principal: **{active_unit}**")
+            else:
+                st.warning("⚠️ Unidade Principal do usuário não identificada. Contate o administrador.")
+                st.stop()
+
+        if df_inst.empty:
+            st.warning("Nenhum militar avaliado encontrado para a sua unidade.")
+            st.stop()
+
+        # Garantir que df_metas contenha apenas metas dos avaliados permitidos da unidade
+        if not df_metas.empty:
+            allowed_pms = set(df_inst["nrPM (Avaliado)"])
+            df_metas = df_metas[df_metas["nrPM (Avaliado)"].isin(allowed_pms)].copy()
+
         # ── FILTROS ─────────────────────────────────────────────────────────────
         with st.expander("🔍 Filtros de Consulta", expanded=True):
             f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 1.5, 1, 1])
@@ -11283,7 +11315,11 @@ if active_page == "Controle do CDP" and sidebar_active_role.upper() == "ADMINIST
                 busca_av1 = st.text_input("Buscar por Nº PM ou Nome (AV1):", "", key="cdp_busca_av1").strip().lower()
             with f_col3:
                 rpms_opts = ["Todas"] + sorted([str(x) for x in df_inst["Unidade RPM (Avaliado)"].unique() if x and str(x) != "-"])
-                sel_rpm = st.selectbox("Unidade RPM:", rpms_opts, key="cdp_rpm")
+                if _role_cdp in ("P1", "SADM"):
+                    sel_rpm = active_rpm if active_rpm in rpms_opts else (rpms_opts[1] if len(rpms_opts) > 1 else "Todas")
+                    st.selectbox("Unidade RPM:", [sel_rpm], key="cdp_rpm", disabled=True)
+                else:
+                    sel_rpm = st.selectbox("Unidade RPM:", rpms_opts, key="cdp_rpm")
             with f_col4:
                 sc_opts = ["Todas", "Comissão Atual", "Nota Provisória"]
                 sel_sc = st.selectbox("Situação da Comissão:", sc_opts, key="cdp_sc")
@@ -11291,7 +11327,11 @@ if active_page == "Controle do CDP" and sidebar_active_role.upper() == "ADMINIST
             f_col5, f_col6, f_col7, f_col8 = st.columns(4)
             with f_col5:
                 unids_opts = ["Todas"] + sorted([str(x) for x in df_inst["Unidade Principal (Avaliado)"].unique() if x and str(x) != "-"])
-                sel_unid = st.selectbox("Unidade Principal:", unids_opts, key="cdp_unid")
+                if _role_cdp == "SADM":
+                    sel_unid = active_unit if active_unit in unids_opts else (unids_opts[1] if len(unids_opts) > 1 else "Todas")
+                    st.selectbox("Unidade Principal:", [sel_unid], key="cdp_unid", disabled=True)
+                else:
+                    sel_unid = st.selectbox("Unidade Principal:", unids_opts, key="cdp_unid")
             with f_col6:
                 status_cdp_opts = ["Todos", "CDP Cadastrado", "CDP NÃO Cadastrado"]
                 sel_cdp_status = st.selectbox("Status do CDP:", status_cdp_opts, key="cdp_st")
