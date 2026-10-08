@@ -951,16 +951,67 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None, ano="2026"):
     from pathlib import Path
     
     cfg_to_use = load_config()
-    drive_geral_id = cfg_to_use.get("drive_geral_id", "")
-    drive_com_id = cfg_to_use.get("drive_com_id", "")
-    drive_sirh_id = cfg_to_use.get("drive_sirh_id", "")
+    y_cfg = get_active_year_config(ano, cfg_to_use)
+    drive_geral_id = y_cfg.get("drive_geral_id", "")
+    drive_com_id = y_cfg.get("drive_com_id", "")
+    drive_sirh_id = y_cfg.get("drive_sirh_id", "")
+    if not drive_master_xlsx_id:
+        drive_master_xlsx_id = y_cfg.get("drive_master_xlsx_id", "")
+        
     cache_dir = os.path.join(tempfile.gettempdir(), f"aadp_drive_cache_{ano}")
+    os.makedirs(cache_dir, exist_ok=True)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # 1. Procura se a planilha consolidada já existe localmente
+    possible_master = [
+        xlsx_path,
+        os.path.join(base_dir, f"DADOS AADP {ano}", "Analise avaliacoes completa.xlsx"),
+        os.path.join(y_cfg.get("db_path", ""), "Analise avaliacoes completa.xlsx"),
+        os.path.join(cache_dir, "Analise avaliacoes completa.xlsx"),
+        os.path.join(base_dir, "Analise avaliacoes completa.xlsx")
+    ]
+    resolved_xlsx = next((p for p in possible_master if p and os.path.exists(p) and os.path.getsize(p) > 0), None)
+
+    # 2. Se não encontrou localmente e possui ID no Drive, baixa a planilha consolidada
+    if not resolved_xlsx and drive_master_xlsx_id:
+        target_dest = os.path.join(cache_dir, "Analise avaliacoes completa.xlsx")
+        try:
+            _baixar_drive(drive_master_xlsx_id, target_dest)
+            if os.path.exists(target_dest) and os.path.getsize(target_dest) > 0:
+                resolved_xlsx = target_dest
+        except Exception as e:
+            pass
+
+    # 3. Se a planilha consolidada existe, carrega diretamente
+    if resolved_xlsx and os.path.exists(resolved_xlsx):
+        try:
+            df = pd.read_excel(resolved_xlsx)
+            col_media = next((c for c in df.columns if "Aritm" in str(c)), None)
+            if col_media:
+                import math
+                def round_half_up_2(x):
+                    try:
+                        if pd.isna(x) or x is None: return x
+                        val = float(str(x).replace(",", "."))
+                        return math.floor(val * 100 + 0.5) / 100.0
+                    except Exception:
+                        return x
+                df[col_media] = df[col_media].apply(round_half_up_2)
+            return df, None
+        except Exception:
+            pass
+
+    # 4. Fallback: se não houver planilha consolidada, tenta gerar a partir de geral.csv
     drive_geral_path = os.path.join(cache_dir, "geral.csv")
-    local_geral_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "geral.csv")
+    local_geral_paths = [
+        os.path.join(base_dir, f"DADOS AADP {ano}", "geral.csv"),
+        os.path.join(y_cfg.get("db_path", ""), "geral.csv"),
+        os.path.join(base_dir, "geral.csv")
+    ]
+    local_geral_path = next((p for p in local_geral_paths if os.path.exists(p) and os.path.getsize(p) > 0), None)
     
     if drive_com_id:
         try:
-            os.makedirs(cache_dir, exist_ok=True)
             com_path = os.path.join(cache_dir, "comissao.csv")
             if not os.path.exists(com_path) or os.path.getsize(com_path) == 0:
                 _baixar_drive(drive_com_id, com_path)
@@ -969,7 +1020,6 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None, ano="2026"):
 
     if drive_sirh_id:
         try:
-            os.makedirs(cache_dir, exist_ok=True)
             sirh_path = os.path.join(cache_dir, f"COM_AADP_{ano}.xlsx")
             if not os.path.exists(sirh_path) or os.path.getsize(sirh_path) == 0:
                 _baixar_drive(drive_sirh_id, sirh_path)
@@ -979,14 +1029,14 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None, ano="2026"):
     csv_to_use = None
     if drive_geral_id:
         try:
-            os.makedirs(cache_dir, exist_ok=True)
             if not os.path.exists(drive_geral_path) or os.path.getsize(drive_geral_path) == 0:
                 _baixar_drive(drive_geral_id, drive_geral_path)
-            csv_to_use = drive_geral_path
+            if os.path.exists(drive_geral_path) and os.path.getsize(drive_geral_path) > 0:
+                csv_to_use = drive_geral_path
         except Exception:
             pass
             
-    if not csv_to_use and os.path.exists(local_geral_path) and os.path.getsize(local_geral_path) > 0:
+    if not csv_to_use and local_geral_path:
         csv_to_use = local_geral_path
         
     if csv_to_use:
@@ -997,37 +1047,7 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None, ano="2026"):
         except Exception:
             pass
 
-    # Fallback to master excel
-    if drive_master_xlsx_id:
-        try:
-            if not os.path.exists(xlsx_path) or os.path.getsize(xlsx_path) == 0:
-                _baixar_drive(drive_master_xlsx_id, xlsx_path)
-        except Exception as e:
-            return None, f"Falha ao baixar master Excel do Google Drive (ID: {drive_master_xlsx_id}): {str(e)}"
-            
-    if not os.path.exists(xlsx_path):
-        return None, f"Arquivo Excel consolidado ou geral.csv não encontrado."
-        
-    try:
-        df = pd.read_excel(xlsx_path)
-        
-        col_media = next((c for c in df.columns if "Aritm" in str(c)), None)
-        if col_media:
-            import math
-            def round_half_up_2(x):
-                try:
-                    if pd.isna(x) or x is None:
-                        return x
-                    val = float(str(x).replace(",", "."))
-                    return math.floor(val * 100 + 0.5) / 100.0
-                except Exception:
-                    return x
-            df[col_media] = df[col_media].apply(round_half_up_2)
-            
-        df = append_sigef_to_audit(df)
-        return df, None
-    except Exception as e:
-        return None, f"Erro ao ler planilha consolidada: {str(e)}"
+    return None, f"Arquivo 'Analise avaliacoes completa.xlsx' ou 'geral.csv' não encontrado para AADP {ano}."
 
 # gdown: download do Google Drive (opcional — só necessário no modo Drive)
 
@@ -9426,26 +9446,33 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
     active_rpm   = st.session_state.get("simulated_rpm", st.session_state.get("user_rpm", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_rpm", "")
     _user_unit  = st.session_state.get("simulated_unit", st.session_state.get("user_unit", "")) if st.session_state.get("simulation_active", False) else st.session_state.get("user_unit", "")
 
-    # Obter caminhos dos arquivos locais e Drive
-    fonte = cfg.get("fonte_dados", "📁 Pasta local / Servidor")
-    drive_master_xlsx_id = cfg.get("drive_master_xlsx_id", "")
+    # Obter caminhos dos arquivos locais e Drive via configuração do ano ativo
+    _ano_audit = str(st.session_state.get("selected_year", "2026"))
+    _y_cfg = get_active_year_config(_ano_audit, cfg)
+    drive_master_xlsx_id = _y_cfg.get("drive_master_xlsx_id", "")
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    cache_dir = os.path.join(tempfile.gettempdir(), f"aadp_drive_cache_{_ano_audit}")
     
-    if fonte == "☁️ Google Drive":
-        master_xlsx_path = os.path.join(str(DADOS_DIR), "Analise avaliacoes completa.xlsx")
-        if not drive_master_xlsx_id:
-            st.error("❌ ID da Planilha Mestre no Google Drive não configurado!")
-            st.warning("⚠️ Configure a chave `drive_master_xlsx_id` nas configurações (st.secrets ou config_aadp.json) para habilitar o download automático da auditoria online.")
-            st.stop()
-    else:
-        # Modo pasta local
-        master_xlsx_path = os.path.join(str(Path(DADOS_DIR).parent), "Analise avaliacoes completa.xlsx")
-        if not os.path.exists(master_xlsx_path):
-            st.error("❌ Arquivo consolidado não encontrado localmente!")
-            st.warning(f"Certifique-se de que o arquivo `Analise avaliacoes completa.xlsx` está na pasta raiz do projeto: `{str(Path(DADOS_DIR).parent)}`")
-            st.stop()
+    possible_master_paths = [
+        os.path.join(base_dir, f"DADOS AADP {_ano_audit}", "Analise avaliacoes completa.xlsx"),
+        os.path.join(_y_cfg.get("db_path", ""), "Analise avaliacoes completa.xlsx"),
+        os.path.join(cache_dir, "Analise avaliacoes completa.xlsx"),
+        os.path.join(str(DADOS_DIR), "Analise avaliacoes completa.xlsx"),
+        os.path.join(base_dir, "Analise avaliacoes completa.xlsx")
+    ]
+    master_xlsx_path = next((p for p in possible_master_paths if os.path.exists(p) and os.path.getsize(p) > 0), None)
+    if not master_xlsx_path:
+        master_xlsx_path = os.path.join(cache_dir, "Analise avaliacoes completa.xlsx")
+
+    # Se o arquivo não existe localmente e não há ID do Google Drive configurado
+    if not os.path.exists(master_xlsx_path) and not drive_master_xlsx_id:
+        st.error(f"❌ ID da Planilha Mestre no Google Drive não configurado para o ano {_ano_audit}!")
+        st.warning(f"⚠️ Configure a chave `drive_master_xlsx_id_{_ano_audit}` (ou `drive_master_xlsx_id`) nas configurações (st.secrets ou config_aadp.json) para habilitar o download automático da auditoria online.")
+        st.stop()
             
     with st.spinner("Carregando dados da Planilha Mestre de Auditoria..."):
-        df_audit, err = load_audit_excel(master_xlsx_path, drive_master_xlsx_id, ano=st.session_state.get("selected_year", "2026"))
+        df_audit, err = load_audit_excel(master_xlsx_path, drive_master_xlsx_id, ano=_ano_audit)
         if not err and not df_audit.empty:
             df_audit['Tipo AADP'] = df_audit['Sit. Funcional'].apply(_c_aadp_type)
             df_audit = df_audit[df_audit['Tipo AADP'] == global_aadp]
@@ -11086,7 +11113,7 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
 
     instances_rows = []
     metas_detail_rows = []
-    data_base_fim = date(2026, 6, 30)
+    data_atual = now_br().date()
 
     with open(metas_path, "r", encoding="cp1252", errors="replace") as f_m:
         r_m = csv.reader(f_m, delimiter=";")
@@ -11251,8 +11278,7 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
             avg_inst_interval = round(sum(all_inst_intervals) / len(all_inst_intervals), 1) if all_inst_intervals else None
             if all_inst_dates:
                 last_dt = max(all_inst_dates)
-                ref_final = max(data_base_fim, last_dt)
-                dias_desde_ultimo = (ref_final - last_dt).days
+                dias_desde_ultimo = max(0, (data_atual - last_dt).days)
                 last_dt_str = last_dt.strftime("%d/%m/%Y")
             else:
                 last_dt_str = "-"
