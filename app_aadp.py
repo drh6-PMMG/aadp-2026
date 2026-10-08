@@ -944,7 +944,7 @@ def append_sigef_to_audit(df):
         
     return df
 
-def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
+def load_audit_excel(xlsx_path, drive_master_xlsx_id=None, ano="2026"):
     import pandas as pd
     import os
     import tempfile
@@ -954,7 +954,7 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
     drive_geral_id = cfg_to_use.get("drive_geral_id", "")
     drive_com_id = cfg_to_use.get("drive_com_id", "")
     drive_sirh_id = cfg_to_use.get("drive_sirh_id", "")
-    cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
+    cache_dir = os.path.join(tempfile.gettempdir(), f"aadp_drive_cache_{ano}")
     drive_geral_path = os.path.join(cache_dir, "geral.csv")
     local_geral_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "geral.csv")
     
@@ -970,7 +970,7 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None):
     if drive_sirh_id:
         try:
             os.makedirs(cache_dir, exist_ok=True)
-            sirh_path = os.path.join(cache_dir, "COM_AADP_2026.xlsx")
+            sirh_path = os.path.join(cache_dir, f"COM_AADP_{ano}.xlsx")
             if not os.path.exists(sirh_path) or os.path.getsize(sirh_path) == 0:
                 _baixar_drive(drive_sirh_id, sirh_path)
         except Exception:
@@ -1919,7 +1919,20 @@ def load_config():
     # Carrega do st.secrets do Streamlit para evitar perda de IDs/links após reinicializações
 
 
-    for key in ["drive_av_id", "drive_si_id", "drive_geral_id", "drive_com_id", "drive_sirh_id", "drive_master_xlsx_id", "drive_metas_id", "sheet_api_url", "fonte_dados", "db_path", "smtp_host", "smtp_port", "smtp_user", "smtp_pass", "alert_receiver_email", "alert_webhook_url"]:
+    base_drive_keys = [
+        "drive_av_id", "drive_si_id", "drive_geral_id", "drive_com_id",
+        "drive_sirh_id", "drive_master_xlsx_id", "drive_metas_id", "db_path"
+    ]
+    for b_key in base_drive_keys:
+        for suffix in ["", "_2026", "_2027"]:
+            k = f"{b_key}{suffix}"
+            try:
+                if k in st.secrets:
+                    cfg[k] = st.secrets[k]
+            except Exception:
+                pass
+
+    for key in ["sheet_api_url", "fonte_dados", "smtp_host", "smtp_port", "smtp_user", "smtp_pass", "alert_receiver_email", "alert_webhook_url"]:
 
 
         try:
@@ -1941,6 +1954,54 @@ def load_config():
 
 
 
+
+
+
+def get_active_year_config(selected_year: str, cfg: dict):
+    """Retorna os caminhos de banco local e IDs do Google Drive para o ano selecionado (2026 ou 2027)."""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    y = str(selected_year).strip()
+
+    # Procura pasta local dedicada do ano
+    possible_local_paths = [
+        os.path.join(base_dir, "dados", y),
+        os.path.join(base_dir, y),
+        os.path.join(base_dir, f"dados_{y}"),
+        os.path.join(str(DADOS_DIR), y)
+    ]
+    db_path_year = next((p for p in possible_local_paths if p and os.path.isdir(p)), None)
+    if not db_path_year:
+        db_path_year = cfg.get(f"db_path_{y}", cfg.get("db_path", str(DADOS_DIR)))
+
+    def _safe_secret(sec_key):
+        try:
+            if hasattr(st, "secrets") and sec_key in st.secrets:
+                return str(st.secrets[sec_key])
+        except Exception:
+            return ""
+        return ""
+
+    def _get_id(key):
+        val = cfg.get(f"{key}_{y}")
+        if not val:
+            val = _safe_secret(f"{key}_{y}")
+        if not val:
+            val = cfg.get(key)
+        if not val:
+            val = _safe_secret(key)
+        return str(val).strip() if val else ""
+
+    return {
+        "year": y,
+        "db_path": db_path_year,
+        "drive_av_id": _get_id("drive_av_id"),
+        "drive_si_id": _get_id("drive_si_id"),
+        "drive_geral_id": _get_id("drive_geral_id"),
+        "drive_com_id": _get_id("drive_com_id"),
+        "drive_sirh_id": _get_id("drive_sirh_id"),
+        "drive_master_xlsx_id": _get_id("drive_master_xlsx_id"),
+        "drive_metas_id": _get_id("drive_metas_id"),
+    }
 
 
 def save_config(cfg):
@@ -4033,11 +4094,11 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
 
 
 @st.cache_resource(show_spinner="⏳ Carregando e processando dados...")
-def load_data(db_path: str, drive_av_id: str = "", drive_si_id: str = "", drive_geral_id: str = ""):
+def load_data(db_path: str, drive_av_id: str = "", drive_si_id: str = "", drive_geral_id: str = "", ano: str = "2026"):
     """Carrega dados de pasta local ou Google Drive e gera o Geral.xlsx automaticamente."""
     if drive_av_id and drive_si_id:
         # ── Modo Google Drive ──────────────────────────────────────────────
-        cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
+        cache_dir = os.path.join(tempfile.gettempdir(), f"aadp_drive_cache_{ano}")
         os.makedirs(cache_dir, exist_ok=True)
         av_f = os.path.join(cache_dir, "avaliacoes.csv")
         si_f = os.path.join(cache_dir, "SIGEF.csv")
@@ -4539,6 +4600,7 @@ if not st.session_state.authenticated:
                             name, role, rpm, unit, status = res
                             if status == "Ativo":
                                 st.session_state.authenticated = True
+                                st.session_state.selected_year = None
                                 st.session_state.user_pm = spm
                                 st.session_state.user_name = name
                                 if role in ("P1/SADM", "P1"):
@@ -4906,6 +4968,44 @@ if not st.session_state.authenticated:
     st.stop()
 
 
+# ─────────────────────── TELA DE ESCOLHA DO ANO AVALIATIVO ────────────────────
+if not st.session_state.get("selected_year"):
+    c_y1, c_y2, c_y3 = st.columns([1, 2.2, 1])
+    with c_y2:
+        if os.path.exists("logo_drh.png"):
+            st.image("logo_drh.png", use_container_width=True)
+        else:
+            st.markdown("<div style='text-align: center; font-size: 4rem; margin-bottom: 20px;'>🏛️</div>", unsafe_allow_html=True)
+
+        st.markdown("<h2 style='text-align: center; color: #9b8a5c; margin-top: -10px;'>Painel de Controle AADP</h2>", unsafe_allow_html=True)
+        st.markdown("<h4 style='text-align: center; color: #a0a0a0; font-size: 0.95rem;'>Selecione o Ciclo Avaliativo para Prosseguir</h4>", unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align: center; color: #d4af37;'>Militar conectado: <b>{st.session_state.get('user_name', '')}</b> ({st.session_state.get('user_role', '')})</p>", unsafe_allow_html=True)
+        st.markdown("---")
+
+        st.markdown("#### 📅 Escolha o Ano de Avaliação:")
+        col_btn26, col_btn27 = st.columns(2)
+        with col_btn26:
+            if st.button("📅 AADP 2026\n\n(Ciclo 2025/2026)", use_container_width=True, type="primary", key="btn_ano_2026"):
+                st.session_state.selected_year = "2026"
+                st.cache_data.clear()
+                log_action(st.session_state.user_pm, "SELECAO_ANO", "Ano avaliativo 2026 selecionado")
+                st.rerun()
+        with col_btn27:
+            if st.button("📅 AADP 2027\n\n(Ciclo 2026/2027)", use_container_width=True, type="primary", key="btn_ano_2027"):
+                st.session_state.selected_year = "2027"
+                st.cache_data.clear()
+                log_action(st.session_state.user_pm, "SELECAO_ANO", "Ano avaliativo 2027 selecionado")
+                st.rerun()
+
+        st.markdown("---")
+        if st.button("🚪 Sair / Logoff", use_container_width=True, key="btn_logoff_year_select"):
+            log_action(st.session_state.user_pm, "LOGOFF", "Saída na tela de seleção de ano")
+            st.session_state.authenticated = False
+            st.session_state.selected_year = None
+            st.rerun()
+
+    st.stop()
+
 
 # ─────────────────────── SIDEBAR ──────────────────────────────────────────────
 
@@ -4916,10 +5016,14 @@ with st.sidebar:
     st.image("logo_drh.png", use_container_width=True)
 
 
-    st.markdown("### AADP 2026")
-
-
+    active_year = str(st.session_state.get("selected_year", "2026"))
+    st.markdown(f"### AADP {active_year}")
     st.markdown("**Sistema de Análise de Avaliações**")
+    st.info(f"📅 **Ciclo Ativo:** AADP {active_year}")
+    if st.button("🔄 Trocar Ano Avaliativo", use_container_width=True, key="btn_sidebar_trocar_ano", help="Clique para retornar à tela de escolha do ano"):
+        st.session_state.selected_year = None
+        st.cache_data.clear()
+        st.rerun()
 
 
     
@@ -5131,12 +5235,12 @@ with st.sidebar:
     # Inicializa variáveis para não dar NameError
 
 
-    drive_av_id = drive_si_id = drive_geral_id = ""
-
-
-    db_path = ""
-
-
+    active_year = str(st.session_state.get("selected_year", "2026"))
+    year_cfg = get_active_year_config(active_year, cfg)
+    drive_av_id = year_cfg["drive_av_id"]
+    drive_si_id = year_cfg["drive_si_id"]
+    drive_geral_id = year_cfg["drive_geral_id"]
+    db_path = year_cfg["db_path"]
     fonte = cfg.get("fonte_dados", "📁 Pasta local / Servidor")
 
 
@@ -5161,11 +5265,11 @@ with st.sidebar:
             
             # Limpar arquivos baixados para forçar download novo
             import tempfile
-            cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
-            for f in ["avaliacoes.csv", "SIGEF.csv", "geral.csv", "comissao.csv", "COM_AADP_2026.xlsx", "Metas e acompanhamentos 2026 Completo.csv"]:
-                p = os.path.join(cache_dir, f)
-                if os.path.exists(p):
-                    try: os.remove(p)
+            import shutil
+            for y_c in ["", "_2026", "_2027"]:
+                c_dir = os.path.join(tempfile.gettempdir(), f"aadp_drive_cache{y_c}")
+                if os.path.exists(c_dir):
+                    try: shutil.rmtree(c_dir)
                     except: pass
             
             # Limpar planilha mestre
@@ -5215,8 +5319,7 @@ with st.sidebar:
 
 
         st.session_state.authenticated = False
-
-
+        st.session_state.selected_year = None
         st.session_state.user_pm = ""
 
 
@@ -5313,18 +5416,11 @@ try:
 
 
     df_full = load_data(
-
-
-        db_path   = db_path or cfg.get("db_path", str(DADOS_DIR)),
-
-
-        drive_av_id = drive_av_id or cfg.get("drive_av_id", ""),
-
-
-        drive_si_id = drive_si_id or cfg.get("drive_si_id", ""),
-        drive_geral_id = drive_geral_id or cfg.get("drive_geral_id", ""),
-
-
+        db_path   = year_cfg["db_path"],
+        drive_av_id = year_cfg["drive_av_id"],
+        drive_si_id = year_cfg["drive_si_id"],
+        drive_geral_id = year_cfg["drive_geral_id"],
+        ano = active_year
     )
 
 
@@ -9340,7 +9436,7 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
             st.stop()
             
     with st.spinner("Carregando dados da Planilha Mestre de Auditoria..."):
-        df_audit, err = load_audit_excel(master_xlsx_path, drive_master_xlsx_id)
+        df_audit, err = load_audit_excel(master_xlsx_path, drive_master_xlsx_id, ano=st.session_state.get("selected_year", "2026"))
         if not err and not df_audit.empty:
             df_audit['Tipo AADP'] = df_audit['Sit. Funcional'].apply(_c_aadp_type)
             df_audit = df_audit[df_audit['Tipo AADP'] == global_aadp]
@@ -10436,12 +10532,12 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
     st.markdown("### ⚖️ Análise de Comissões")
     
     @st.cache_data(show_spinner=False)
-    def load_comissoes_tab_data(_db_path, _drive_com_id, _drive_si_id):
+    def load_comissoes_tab_data(_db_path, _drive_com_id, _drive_si_id, _ano="2026"):
         import pandas as pd
         import os
         import tempfile
         
-        cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
+        cache_dir = os.path.join(tempfile.gettempdir(), f"aadp_drive_cache_{_ano}")
         if _drive_com_id and _drive_si_id:
             sigef_path = os.path.join(cache_dir, "SIGEF.csv")
             comissao_path = os.path.join(cache_dir, "comissao.csv")
@@ -10474,7 +10570,9 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
         _d_path = cfg_to_use.get("db_path", "")
         _d_com_id = cfg_to_use.get("drive_com_id", "")
         _d_si_id = cfg_to_use.get("drive_si_id", "")
-        df_sigef, df_com = load_comissoes_tab_data(_d_path, _d_com_id, _d_si_id)
+        _act_y = str(st.session_state.get("selected_year", "2026"))
+        _y_cfg = get_active_year_config(_act_y, cfg_to_use)
+        df_sigef, df_com = load_comissoes_tab_data(_y_cfg["db_path"], _y_cfg["drive_com_id"], _y_cfg["drive_si_id"], _ano=_act_y)
 
     if df_sigef.empty:
         st.error("Erro: SIGEF.csv não encontrado ou ilegível.")
@@ -10839,20 +10937,25 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
 # ══════════════════════════════════════════════════════════════════════════════
 
 @st.cache_data(show_spinner="⏳ Carregando dados do Controle do CDP...")
-def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive_geral_id: str = "", _drive_si_id: str = ""):
-    """Processa a planilha Metas e acompanhamentos 2026 Completo.csv cruzando com geral.csv e SIGEF.csv."""
+def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive_geral_id: str = "", _drive_si_id: str = "", _ano="2026"):
+    """Processa a planilha de Metas e acompanhamentos do ano cruzando com geral.csv e SIGEF.csv."""
     import tempfile
     from datetime import datetime, date
     import math
 
-    cache_dir = os.path.join(tempfile.gettempdir(), "aadp_drive_cache")
+    cache_dir = os.path.join(tempfile.gettempdir(), f"aadp_drive_cache_{_ano}")
     os.makedirs(cache_dir, exist_ok=True)
     base_dir = os.path.dirname(os.path.abspath(__file__))
 
     # Localizar Metas e acompanhamentos 2026 Completo.csv
     possible_metas = [
+        os.path.join(cache_dir, f"Metas e acompanhamentos {_ano} Completo.csv"),
         os.path.join(cache_dir, "Metas e acompanhamentos 2026 Completo.csv"),
+        os.path.join(_db_path or "", f"Metas e acompanhamentos {_ano} Completo.csv"),
         os.path.join(_db_path or "", "Metas e acompanhamentos 2026 Completo.csv"),
+        os.path.join(base_dir, "dados", _ano, f"Metas e acompanhamentos {_ano} Completo.csv"),
+        os.path.join(base_dir, "dados", f"Metas e acompanhamentos {_ano} Completo.csv"),
+        os.path.join(base_dir, f"Metas e acompanhamentos {_ano} Completo.csv"),
         os.path.join(base_dir, "dados", "Metas e acompanhamentos 2026 Completo.csv"),
         os.path.join(base_dir, "Metas e acompanhamentos 2026 Completo.csv")
     ]
@@ -11157,12 +11260,14 @@ if active_page == "Controle do CDP" and sidebar_active_role.upper() == "ADMINIST
     st.caption("Auditoria passo a passo das comissões: registro do CDP, pactuação de metas e acompanhamentos tempestivos realizados pelo Avaliador 1 (AV1).")
 
     cfg_cdp = load_config()
-    db_p = db_path or cfg_cdp.get("db_path", str(DADOS_DIR))
-    d_metas_id = cfg_cdp.get("drive_metas_id", "")
-    d_geral_id = cfg_cdp.get("drive_geral_id", "")
-    d_si_id = cfg_cdp.get("drive_si_id", "")
+    _active_y = str(st.session_state.get("selected_year", "2026"))
+    _y_cfg = get_active_year_config(_active_y, cfg_cdp)
+    db_p = _y_cfg["db_path"]
+    d_metas_id = _y_cfg["drive_metas_id"]
+    d_geral_id = _y_cfg["drive_geral_id"]
+    d_si_id = _y_cfg["drive_si_id"]
 
-    df_inst, df_metas, err_cdp = load_controle_cdp_data(db_p, d_metas_id, d_geral_id, d_si_id)
+    df_inst, df_metas, err_cdp = load_controle_cdp_data(db_p, d_metas_id, d_geral_id, d_si_id, _ano=_active_y)
 
     if err_cdp:
         st.error(f"❌ {err_cdp}")
