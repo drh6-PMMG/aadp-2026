@@ -11281,15 +11281,17 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
     # 2. Carregar Data do CDP do geral.csv
     cdp_map = {}
     pm_max_cdp = {}
+    geral_completas = []
     if geral_path:
         with open(geral_path, "r", encoding="cp1252", errors="replace") as f_ge:
             r_ge = csv.reader(f_ge, delimiter=";")
             header_ge = next(r_ge, [])
             for row in r_ge:
-                if len(row) > 37:
+                if len(row) > 62:
                     pm_g = _norm_pm(row[1])
                     av1_g = _norm_pm(row[28])
                     av2_g = _norm_pm(row[37])
+                    hom_g = _norm_pm(row[62])
                     dt_g = _parse_d(row[5])
                     if dt_g:
                         cdp_map[(pm_g, av1_g, av2_g)] = dt_g
@@ -11297,6 +11299,23 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
                         cdp_map[pm_g] = dt_g
                         if pm_g not in pm_max_cdp or dt_g > pm_max_cdp[pm_g]:
                             pm_max_cdp[pm_g] = dt_g
+                    
+                    if pm_g and av1_g and av2_g and hom_g:
+                        geral_completas.append({
+                            "pm_aval": pm_g,
+                            "nome_aval": row[2].strip() if len(row) > 2 else "-",
+                            "posto_aval": row[6].strip() if len(row) > 6 else "-",
+                            "rpm_aval": row[7].strip() if len(row) > 7 else "-",
+                            "unid_aval": row[8].strip() if len(row) > 8 else "-",
+                            "pm_av1": av1_g,
+                            "nome_av1": row[29].strip() if len(row) > 29 else "-",
+                            "posto_av1": row[30].strip() if len(row) > 30 else "-",
+                            "unid_av1": row[32].strip() if len(row) > 32 else "-",
+                            "pm_av2": av2_g,
+                            "nome_av2": row[38].strip() if len(row) > 38 else "-",
+                            "posto_av2": row[39].strip() if len(row) > 39 else "-",
+                            "unid_av2": row[41].strip() if len(row) > 41 else "-",
+                        })
 
     meta_offsets = [
         (1, 24, 20), (2, 90, 20), (3, 156, 20), (4, 222, 20),
@@ -11512,6 +11531,48 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
             "inst_dict": inst_row,
             "metas_indices": inst_metas_indices
         })
+
+    # Injetar comissões completas que estão SEM CDP
+    for comp in geral_completas:
+        pm_aval = comp["pm_aval"]
+        pm_av1 = comp["pm_av1"]
+        pm_av2 = comp["pm_av2"]
+        inst_key = (pm_aval, pm_av1, pm_av2)
+        if inst_key not in raw_instances:
+            inst_row = {
+                "nrPM (Avaliado)": pm_aval,
+                "Nome (Avaliado)": comp["nome_aval"],
+                "Posto/Grad. (Avaliado)": comp["posto_aval"],
+                "Unidade RPM (Avaliado)": comp["rpm_aval"],
+                "Unidade Principal (Avaliado)": comp["unid_aval"],
+                "Situação Comissão": "Comissão Atual",
+                "Status CDP": "CDP NÃO Cadastrado",
+                "Data do CDP": "-",
+                "Qtd Metas": 0,
+                "Datas das Metas": "-",
+                "Qtd Acomps AV1": 0,
+                "Qtd Outros Acomps": 0,
+                "Média Dias entre Lançamentos": "-",
+                "Último Lançamento": "-",
+                "Dias desde Último Lançamento": "-",
+                "nrPM (AV1)": pm_av1,
+                "Nome (AV1)": comp["nome_av1"],
+                "Posto (AV1)": comp["posto_av1"],
+                "Unidade Principal (AV1)": comp["unid_av1"],
+                "nrPM (AV2)": pm_av2,
+                "Nome (AV2)": comp["nome_av2"],
+                "Posto (AV2)": comp["posto_av2"],
+                "Unidade Principal (AV2)": comp["unid_av2"],
+            }
+            if pm_aval not in pms_instances:
+                pms_instances[pm_aval] = []
+            
+            pms_instances[pm_aval].append({
+                "inst_key": inst_key,
+                "ref_date": date.min,
+                "inst_dict": inst_row,
+                "metas_indices": []
+            })
 
     # Atribuição da Situação da Comissão:
     # Para o mesmo avaliado, a instância mais recente é a "Comissão Atual", e as anteriores são "Nota Provisória"
