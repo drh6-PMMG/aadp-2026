@@ -6316,9 +6316,9 @@ if active_page == "Análise Gráfica":
             st.markdown("<br>", unsafe_allow_html=True)
             col_d1, col_d2 = st.columns(2)
             with col_d1:
-                dt_ini = st.date_input("📅 Data Início da Pesquisa", value=min_date, min_value=min_date, max_value=max_date, key="dt_ini_timechart")
+                dt_ini = st.date_input("📅 Data Início da Pesquisa", value=min_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="dt_ini_timechart")
             with col_d2:
-                dt_fim = st.date_input("📅 Data Fim da Pesquisa", value=max_date, min_value=min_date, max_value=max_date, key="dt_fim_timechart")
+                dt_fim = st.date_input("📅 Data Fim da Pesquisa", value=max_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="dt_fim_timechart")
             # Seletores de Filtros de Função (Cards)
             for k in ["sh_av1", "sh_av2", "sh_hom"]:
                 if k not in st.session_state: st.session_state[k] = True
