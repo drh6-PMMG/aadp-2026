@@ -3720,38 +3720,76 @@ def rpm_sort_key(name):
 
 def _baixar_drive(file_id: str, destino: str):
     """Baixa um arquivo do Google Drive para destino local.
-    Compatível com todas as versões do gdown (com e sem parâmetro fuzzy).
+    Tenta primeiro download direto rápido (drive.usercontent) e recorre ao gdown com fallback.
     """
-    if not GDOWN_OK:
-        raise ImportError("Biblioteca 'gdown' não instalada. Execute: pip install gdown")
-    import inspect
-    url = f"https://drive.google.com/uc?id={file_id}"
+    if not file_id or not str(file_id).strip():
+        raise ValueError("ID do arquivo Google Drive não fornecido ou vazio.")
     
-    sig = inspect.signature(gdown.download)
-    if "id" in sig.parameters:
+    file_id = str(file_id).strip()
+    
+    # 1. Tentativa via download direto de alta velocidade (drive.usercontent.google.com)
+    import urllib.request, ssl
+    try:
+        ctx = ssl.create_default_context()
+        direct_url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&authuser=0"
+        req = urllib.request.Request(direct_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+        with urllib.request.urlopen(req, context=ctx, timeout=60) as resp:
+            if resp.status == 200:
+                with open(destino, "wb") as f_out:
+                    while True:
+                        chunk = resp.read(1024 * 512)
+                        if not chunk:
+                            break
+                        f_out.write(chunk)
+                if os.path.exists(destino) and os.path.getsize(destino) > 500:
+                    with open(destino, "rb") as f_chk:
+                        h = f_chk.read(300)
+                    if b"<!DOCTYPE" not in h.upper() and b"<HTML" not in h.upper():
+                        return
+    except Exception:
+        pass
+
+    # 2. Tentativa via biblioteca gdown com fallback
+    if GDOWN_OK:
+        import inspect
+        url = f"https://drive.google.com/uc?id={file_id}"
+        sig = inspect.signature(gdown.download)
         try:
-            gdown.download(id=file_id, output=destino, quiet=True)
-        except Exception:
-            if "fuzzy" in sig.parameters:
+            if "id" in sig.parameters:
+                gdown.download(id=file_id, output=destino, quiet=True)
+            elif "fuzzy" in sig.parameters:
                 gdown.download(url, destino, quiet=True, fuzzy=True)
             else:
                 gdown.download(url, destino, quiet=True)
-    elif "fuzzy" in sig.parameters:
-        gdown.download(url, destino, quiet=True, fuzzy=True)
-    else:
-        gdown.download(url, destino, quiet=True)
+        except Exception:
+            try:
+                if "fuzzy" in sig.parameters:
+                    gdown.download(url, destino, quiet=True, fuzzy=True)
+                else:
+                    gdown.download(url, destino, quiet=True)
+            except Exception:
+                pass
         
     if not os.path.exists(destino) or os.path.getsize(destino) == 0:
-        raise FileNotFoundError(f"Falha ao baixar arquivo do Drive (ID: {file_id})")
+        raise FileNotFoundError(
+            f"Não foi possível baixar o arquivo do Google Drive (ID: `{file_id}`).\n\n"
+            f"⚠️ **Verifique no Google Drive:**\n"
+            f"1. O arquivo precisa estar com acesso definido como **'Qualquer pessoa com o link'** (Leitor).\n"
+            f"2. Verifique se o ID `{file_id}` está correto e é de um arquivo (não de uma pasta).\n"
+            f"3. Se houver muitos downloads recentes, o Google pode ter aplicado limite de cota temporário."
+        )
         
     try:
         with open(destino, "rb") as f:
-            head = f.read(200)
+            head = f.read(300)
         if b"<!DOCTYPE" in head.upper() or b"<HTML" in head.upper():
-            raise ValueError("O Google Drive retornou uma página HTML em vez do arquivo binário. Isso ocorre se o arquivo não estiver compartilhado como público ('Qualquer pessoa com o link pode ler'), se o ID estiver incorreto, ou se você estiver tentando baixar uma Planilha Google (Google Sheets) em vez de um arquivo Excel (.xlsx) carregado no Drive.")
+            if os.path.exists(destino):
+                os.remove(destino)
+            raise ValueError(
+                f"O Google Drive retornou uma página HTML em vez do arquivo (ID: `{file_id}`). "
+                f"Certifique-se de que o arquivo esteja compartilhado como público ('Qualquer pessoa com o link') no Drive."
+            )
     except ValueError as ve:
-        if os.path.exists(destino):
-            os.remove(destino)
         raise ve
     except Exception:
         pass
@@ -4205,9 +4243,7 @@ def load_data(db_path: str, drive_av_id: str = "", drive_si_id: str = "", drive_
 
 
         if build_needed:
-
-
-            xlsx_bytes = _build_workbook(df, "GERAL — AADP 2026", df)
+            xlsx_bytes = _build_workbook(df, f"GERAL — AADP {ano}", df)
 
 
             with open(geral_out, "wb") as f_out:
@@ -5890,9 +5926,10 @@ if active_page == "Análise Gráfica":
         align="center",
     )
 
+    curr_ano_graf = str(st.session_state.get("selected_year", "2026"))
     fig_status.update_layout(
         template="plotly_dark",
-        title=dict(text="<b>Status das Avaliações — AADP 2026</b>",
+        title=dict(text=f"<b>Status das Avaliações — AADP {curr_ano_graf}</b>",
                    font=dict(size=20, color="#9b8a5c"), x=0.5, y=0.96),
         height=500, showlegend=False,
         paper_bgcolor="rgba(0,0,0,0)",
@@ -9033,12 +9070,13 @@ def _build_workbook(df_unit: pd.DataFrame, titulo: str, df_global: pd.DataFrame 
 def _gerar_zip_bytes(df_full: pd.DataFrame, modo: str, units_sel: list) -> tuple:
     """Gera ZIP com planilhas Excel em memória e retorna (bytes, filename)."""
     zip_buf  = io.BytesIO()
-    zip_name = f"AADP_2026_{now_br().strftime('%Y%m%d_%H%M%S')}.zip"
+    _ano_rel = str(st.session_state.get("selected_year", "2026"))
+    zip_name = f"AADP_{_ano_rel}_{now_br().strftime('%Y%m%d_%H%M%S')}.zip"
 
     with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
         if modo in ("all", "geral"):
             zf.writestr("Analise_Avaliacoes_Geral.xlsx",
-                        _build_workbook(df_full, "GERAL — AADP 2026", df_full))
+                        _build_workbook(df_full, f"GERAL — AADP {_ano_rel}", df_full))
         if modo in ("all", "units"):
             targets = units_sel if units_sel else sorted(
                 df_full["Unidade RPM (Avaliado)"].dropna().unique(), key=rpm_sort_key)
@@ -12236,8 +12274,9 @@ if active_page == "Controle do CDP" and sidebar_active_role.upper() in ("ADMINIS
                 st.info("Nenhum militar localizado com os filtros atuais.")
 
 
+_ano_rodape = str(st.session_state.get("selected_year", "2026"))
 st.markdown("---")
-st.markdown(f"<center><small>AADP 2026 · Polícia Militar de Minas Gerais · "
+st.markdown(f"<center><small>AADP {_ano_rodape} · Polícia Militar de Minas Gerais · "
             f"Resolução 5458/2025 · {now_br().strftime('%d/%m/%Y')}<br>"
             f"DIRETORIA DE RECURSO HUMANOS - DRH6</small></center>",
             unsafe_allow_html=True)
