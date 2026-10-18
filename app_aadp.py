@@ -5972,9 +5972,6 @@ if st.session_state.user_role == "ADMINISTRADOR":
     else:
         main_nav_pages.append(("⚙️\nPainel Administrador", "Painel Administrador"))
 
-if st.session_state.user_role == "ADMINISTRADOR":
-    main_nav_pages.append(("🛡️\nAuditoria do Sistema", "Auditoria do Sistema"))
-
 # Render as horizontal buttons in columns
 num_tabs = len(main_nav_pages)
 tab_cols = st.columns(num_tabs)
@@ -10523,7 +10520,11 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
 
 
 
-if active_page == "Auditoria do Sistema" and st.session_state.user_role == "ADMINISTRADOR":
+def render_auditoria_sistema():
+    """Auditoria do Sistema — exibida apenas dentro do Painel Administrador, só para ADMINISTRADOR."""
+    if st.session_state.get("user_role") != "ADMINISTRADOR":
+        st.error("🔒 Acesso restrito ao perfil Administrador.")
+        return
     st.markdown("### 🛡️ Auditoria e Logs do Sistema")
     st.caption("Rastreamento completo de acessos a telas, extração de relatórios, login/logoff, "
                "cadastros, revogações e demais ações operacionais dos usuários.")
@@ -10595,11 +10596,15 @@ if active_page == "Auditoria do Sistema" and st.session_state.user_role == "ADMI
 if active_page == "Painel Administrador" and st.session_state.user_role == "ADMINISTRADOR":
     st.markdown("### ⚙️ Painel Administrador")
     
-    tab_pending, tab_active, tab_logs = st.tabs([
+    tab_pending, tab_active, tab_logs, tab_audit_sys = st.tabs([
         "⏳ Solicitações de Cadastro Pendentes",
         "👥 Gerenciar/Alterar Usuários Cadastrados",
-        "📜 Auditoria"
+        "📜 Auditoria",
+        "🛡️ Auditoria do Sistema"
     ])
+
+    with tab_audit_sys:
+        render_auditoria_sistema()
     
     # ── 1) Solicitações de Cadastro Pendentes ────────────────────────────────
     with tab_pending:
