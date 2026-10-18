@@ -942,7 +942,7 @@ def append_sigef_to_audit(df):
         
         df = df[cols]
         
-    return df
+    return _fmt_colunas_inteiras(df)
 
 def load_audit_excel(xlsx_path, drive_master_xlsx_id=None, ano="2026"):
     import pandas as pd
@@ -2156,6 +2156,9 @@ def log_action(pm: str, action: str, details: str = ""):
 
     timestamp = now_br().strftime("%Y-%m-%d %H:%M:%S")
 
+    if pm != "SYSTEM":
+        details = _audit_enrich(details)
+
 
     if check_use_cloud():
 
@@ -2194,6 +2197,129 @@ def log_action(pm: str, action: str, details: str = ""):
 
 
 
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MÓDULO DE AUDITORIA — trilha de ações dos usuários (login, telas, relatórios...)
+# Os registros ficam na tabela/aba `logs` (nunca apagar — ver AGENTS.md).
+# Metadados (tela e IP) são anexados ao campo `details` no formato
+# "texto | Tela: X | IP: Y", mantendo o esquema original da tabela.
+# ══════════════════════════════════════════════════════════════════════════════
+AUDIT_CATEGORIAS = {
+    "LOGIN": "Acesso", "LOGOFF": "Acesso", "LOGIN_FALHA": "Acesso",
+    "LOGIN_PENDENTE": "Acesso", "LOGIN_BLOQUEADO": "Acesso",
+    "ACESSO_TELA": "Navegação", "SELECAO_ANO": "Navegação",
+    "EXTRAIR_RELATORIO": "Relatório", "EXPORTAR_EXCEL": "Relatório", "EXPORTAR_WORD": "Relatório",
+    "CADASTRO_SOLICITADO": "Cadastro", "RE_CADASTRO_SOLICITADO": "Cadastro",
+    "AUTORIZAR_ACESSO": "Cadastro", "RECUSAR_CADASTRO": "Cadastro", "ALTERAR_CADASTRO": "Cadastro",
+    "REVOGAR_ACESSO": "Revogação", "REVOGAR_AUTOCADASTRO": "Revogação",
+    "ALTERAR_SENHA": "Segurança",
+    "INICIAR_SIMULACAO": "Administração", "ENCERRAR_SIMULACAO": "Administração",
+}
+
+
+def _audit_ip():
+    """IP de origem da requisição (via cabeçalhos do proxy), cacheado na sessão."""
+    try:
+        ip = st.session_state.get("_audit_ip")
+        if ip:
+            return ip
+        hdrs = st.context.headers
+        ip = (hdrs.get("X-Forwarded-For") or hdrs.get("X-Real-Ip") or "").split(",")[0].strip()
+        st.session_state["_audit_ip"] = ip or "-"
+        return st.session_state["_audit_ip"]
+    except Exception:
+        return "-"
+
+
+def _audit_enrich(details):
+    """Anexa Tela e IP ao texto de detalhes (uma única vez)."""
+    details = str(details or "")
+    if "| IP:" in details:
+        return details
+    try:
+        tela = st.session_state.get("active_page") or "Login"
+    except Exception:
+        tela = "Login"
+    return f"{details} | Tela: {tela} | IP: {_audit_ip()}"
+
+
+def audit(action, details="", pm=None):
+    """Registra uma ação auditável do usuário logado (ou do `pm` informado)."""
+    try:
+        pm = pm or st.session_state.get("user_pm") or "ANONIMO"
+        log_action(str(pm), action, details)
+        st.session_state.pop("db_logs", None)
+    except Exception:
+        pass
+
+
+def _audit_install_download_hook():
+    """Registra automaticamente toda extração feita por st.download_button."""
+    from streamlit.delta_generator import DeltaGenerator
+    orig = DeltaGenerator.download_button
+    if getattr(orig, "_aadp_audit", False):
+        return
+
+    def wrapper(self, *args, **kwargs):
+        label = args[0] if args else kwargs.get("label", "")
+        fname = args[2] if len(args) > 2 else kwargs.get("file_name")
+        prev = kwargs.get("on_click")
+
+        def _cb(*a, **k):
+            try:
+                audit("EXTRAIR_RELATORIO", f"Download '{fname or label}' (botão: {label})")
+            except Exception:
+                pass
+            if callable(prev):
+                return prev(*a, **k)
+
+        kwargs["on_click"] = _cb
+        return orig(self, *args, **kwargs)
+
+    wrapper._aadp_audit = True
+    DeltaGenerator.download_button = wrapper
+    st.download_button = lambda *a, **k: DeltaGenerator.download_button(st._main, *a, **k)
+
+
+_audit_install_download_hook()
+
+
+def audit_build_df():
+    """Converte os logs em DataFrame estruturado para a tela de auditoria."""
+    logs = get_cached_logs()
+    users = {}
+    try:
+        for u in get_cached_users():
+            users[str(u.get("pm", "")).strip()] = u
+    except Exception:
+        pass
+    rows = []
+    for l in logs:
+        det = str(l.get("details") or "")
+        tela = ip = ""
+        m = re.search(r"\s*\|\s*Tela:\s*([^|]*)", det)
+        if m:
+            tela = m.group(1).strip()
+        m = re.search(r"\s*\|\s*IP:\s*([^|]*)", det)
+        if m:
+            ip = m.group(1).strip()
+        det = re.sub(r"\s*\|\s*(Tela|IP):\s*[^|]*", "", det).strip()
+        pm = str(l.get("pm") or "").strip()
+        u = users.get(pm, {})
+        nome = u.get("name") or ("Sistema" if pm == "SYSTEM" else pm)
+        perfil = " / ".join([x for x in (str(u.get("role") or ""), str(u.get("unit") or "")) if x])
+        act = str(l.get("action") or "")
+        rows.append({
+            "Data/Hora": l.get("timestamp"),
+            "PM": pm, "Usuário": nome, "Perfil / Unidade": perfil,
+            "Categoria": AUDIT_CATEGORIAS.get(act, "Sistema"),
+            "Ação": act, "Tela": tela, "Detalhes": det, "IP": ip,
+        })
+    df = pd.DataFrame(rows, columns=["Data/Hora", "PM", "Usuário", "Perfil / Unidade",
+                                     "Categoria", "Ação", "Tela", "Detalhes", "IP"])
+    df["Data/Hora"] = pd.to_datetime(df["Data/Hora"], errors="coerce")
+    return df.sort_values("Data/Hora", ascending=False, na_position="last").reset_index(drop=True)
 
 
 init_db()
@@ -4336,6 +4462,34 @@ def clean_none_values(df):
     return df
 
 
+_COLS_INTEIRAS = ("Ano Base", "Ord. Almanaque")
+
+
+def _fmt_colunas_inteiras(df):
+    """Exibe colunas inteiras (Ano Base, Ord. Almanaque) sem casas decimais (ex.: 2023.000000 -> 2023)."""
+    if not isinstance(df, pd.DataFrame):
+        return df
+    cols = [c for c in _COLS_INTEIRAS if c in df.columns]
+    if not cols:
+        return df
+    df = df.copy()
+
+    def _to_int_str(v):
+        try:
+            if v is None or (isinstance(v, float) and v != v):
+                return v
+            txt = str(v).strip()
+            if txt in ("", "N/A", "-", "nan", "None"):
+                return v
+            return str(int(round(float(txt.replace(",", ".")))))
+        except Exception:
+            return v
+
+    for c in cols:
+        df[c] = df[c].map(_to_int_str)
+    return df
+
+
 def style_audit_dataframe(df):
     if df is None or not hasattr(df, "columns") or df.empty:
         return df
@@ -4427,7 +4581,7 @@ def safe_df(styled_or_df, height=520, key_prefix=None, show_download=False, down
             label_visibility="collapsed",
         )
 
-    df_filtered = raw_df.copy()
+    df_filtered = _fmt_colunas_inteiras(raw_df)
     if busca and busca.strip():
         termo = busca.strip().lower()
         mask = df_filtered.apply(
@@ -4678,14 +4832,18 @@ if not st.session_state.authenticated:
                                 st.session_state.user_rpm = rpm
                                 st.session_state.user_unit = unit
                                 refresh_db_cache()
+                                st.session_state["_audit_last_page"] = None
                                 log_action(spm, "LOGIN", "Acesso realizado com sucesso")
                                 st.success(f"Bem-vindo, {name}!")
                                 st.rerun()
                             elif status == "Pendente":
+                                log_action(spm, "LOGIN_PENDENTE", "Tentativa de acesso com cadastro pendente")
                                 st.warning("⚠️ Sua conta está aguardando liberação do Administrador.")
                             else:
+                                log_action(spm, "LOGIN_BLOQUEADO", "Tentativa de acesso com cadastro revogado/bloqueado")
                                 st.error("❌ Acesso revogado/bloqueado. Entre em contato com a DRH.")
                         else:
+                            log_action(spm, "LOGIN_FALHA", "Nº PM ou senha incorretos")
                             st.error("❌ Nº PM ou Senha incorretos.")
 
                 st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
@@ -5128,7 +5286,7 @@ with st.sidebar:
             st.session_state.simulated_rpm = ""
             st.session_state.simulated_unit = ""
             st.session_state.active_page = "Painel Administrador"
-            log_action("ADM", "ENCERRAR_SIMULACAO", "Simulacao desativada")
+            audit("ENCERRAR_SIMULACAO", "Simulacao desativada")
             st.rerun()
 
 
@@ -5814,6 +5972,9 @@ if st.session_state.user_role == "ADMINISTRADOR":
     else:
         main_nav_pages.append(("⚙️\nPainel Administrador", "Painel Administrador"))
 
+if st.session_state.user_role == "ADMINISTRADOR":
+    main_nav_pages.append(("🛡️\nAuditoria do Sistema", "Auditoria do Sistema"))
+
 # Render as horizontal buttons in columns
 num_tabs = len(main_nav_pages)
 tab_cols = st.columns(num_tabs)
@@ -5844,6 +6005,11 @@ if "active_page" not in st.session_state:
 
 
 active_page = st.session_state.active_page
+
+# Auditoria: registra cada tela acessada (uma vez por mudança de tela)
+if st.session_state.get("_audit_last_page") != active_page:
+    st.session_state["_audit_last_page"] = active_page
+    audit("ACESSO_TELA", f"Acessou a tela '{active_page}'")
 
 
 
@@ -10357,6 +10523,75 @@ if active_page == "Dados Consolidados" and sidebar_active_role.upper() in ("ADMI
 
 
 
+if active_page == "Auditoria do Sistema" and st.session_state.user_role == "ADMINISTRADOR":
+    st.markdown("### 🛡️ Auditoria e Logs do Sistema")
+    st.caption("Rastreamento completo de acessos a telas, extração de relatórios, login/logoff, "
+               "cadastros, revogações e demais ações operacionais dos usuários.")
+    _ca1, _ca2 = st.columns([5, 1])
+    with _ca2:
+        if st.button("🔄 Atualizar", use_container_width=True, key="aud_refresh"):
+            refresh_logs_cache()
+            st.rerun()
+
+    df_aud = audit_build_df()
+    if df_aud.empty:
+        st.info("Nenhum registro de auditoria encontrado.")
+    else:
+        _hoje = now_br().date()
+        _dh = df_aud[df_aud["Data/Hora"].dt.date == _hoje]
+        k1, k2, k3, k4, k5 = st.columns(5)
+        k1.metric("Total de Registros", f"{len(df_aud):,}".replace(",", "."))
+        k2.metric("Telas Acessadas Hoje", int((_dh["Ação"] == "ACESSO_TELA").sum()))
+        k3.metric("Relatórios Extraídos Hoje", int((_dh["Categoria"] == "Relatório").sum()))
+        k4.metric("Logins Hoje", int((_dh["Ação"] == "LOGIN").sum()))
+        k5.metric("Falhas de Login Hoje", int(_dh["Ação"].isin(["LOGIN_FALHA", "LOGIN_BLOQUEADO", "LOGIN_PENDENTE"]).sum()))
+
+        st.markdown("#### 🔎 Filtros de Pesquisa")
+        _dmin = df_aud["Data/Hora"].min().date()
+        _dmax = max(_hoje, df_aud["Data/Hora"].max().date())
+        f1, f2, f3, f4, f5 = st.columns([1, 1, 1.4, 1.2, 1.4])
+        with f1:
+            a_ini = st.date_input("Data Início", value=_dmin, min_value=_dmin, max_value=_dmax, format="DD/MM/YYYY", key="aud_ini")
+        with f2:
+            a_fim = st.date_input("Data Fim", value=_dmax, min_value=_dmin, max_value=_dmax, format="DD/MM/YYYY", key="aud_fim")
+        with f3:
+            a_user = st.text_input("Usuário (Nº PM ou Nome)", key="aud_user", placeholder="Ex: 123456 ou Silva")
+        with f4:
+            a_cat = st.selectbox("Categoria", ["Todas"] + sorted(df_aud["Categoria"].unique()), key="aud_cat")
+        with f5:
+            _acoes = sorted(df_aud[df_aud["Categoria"] == a_cat]["Ação"].unique()) if a_cat != "Todas" else sorted(df_aud["Ação"].unique())
+            a_acao = st.selectbox("Tipo de Ação", ["Todas"] + _acoes, key="aud_acao")
+        a_busca = st.text_input("Busca livre (detalhes, IP, tela)", key="aud_busca", placeholder="Termo a pesquisar...")
+
+        _f = df_aud[(df_aud["Data/Hora"].dt.date >= a_ini) & (df_aud["Data/Hora"].dt.date <= a_fim)]
+        if a_user.strip():
+            _u = a_user.strip().lower()
+            _f = _f[_f["PM"].str.lower().str.contains(_u, regex=False) | _f["Usuário"].astype(str).str.lower().str.contains(_u, regex=False)]
+        if a_cat != "Todas":
+            _f = _f[_f["Categoria"] == a_cat]
+        if a_acao != "Todas":
+            _f = _f[_f["Ação"] == a_acao]
+        if a_busca.strip():
+            _b = a_busca.strip().lower()
+            _f = _f[(_f["Detalhes"].str.lower().str.contains(_b, regex=False)
+                     | _f["Tela"].str.lower().str.contains(_b, regex=False)
+                     | _f["IP"].str.lower().str.contains(_b, regex=False))]
+
+        _view = _f.copy()
+        _view["Data/Hora"] = _view["Data/Hora"].dt.strftime("%d/%m/%Y %H:%M:%S")
+        st.markdown(f"#### 📋 Registros de Atividade ({len(_view)} encontrados)")
+        st.dataframe(_view, use_container_width=True, hide_index=True, height=520)
+
+        _stamp = now_br().strftime('%Y%m%d_%H%M')
+        d1, d2 = st.columns(2)
+        with d1:
+            st.download_button("📥 Exportar Auditoria (Excel)", df_to_xlsx(_view), f"auditoria_{_stamp}.xlsx",
+                               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                               use_container_width=True, key="aud_dl_xlsx")
+        with d2:
+            st.download_button("📥 Exportar Auditoria (CSV)", _view.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
+                               f"auditoria_{_stamp}.csv", "text/csv", use_container_width=True, key="aud_dl_csv")
+
 if active_page == "Painel Administrador" and st.session_state.user_role == "ADMINISTRADOR":
     st.markdown("### ⚙️ Painel Administrador")
     
@@ -10392,12 +10627,12 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                     if col_ap.button("✅ Autorizar Acesso", key=f"ap_{pm_str}", type="primary"):
                         target_rpm = "Gestor" if c_role in ("Gestor", "ADMINISTRADOR") else rpm
                         db_approve_user(pm_str, c_role, target_rpm)
-                        log_action("ADM", "AUTORIZAR_ACESSO", f"Usuario {pm_str} ({name}) aprovado como {c_role}")
+                        audit("AUTORIZAR_ACESSO", f"Usuario {pm_str} ({name}) aprovado como {c_role}")
                         st.success(f"Acesso de {name} autorizado com sucesso!")
                         st.rerun()
                     if col_rec.button("❌ Recusar", key=f"rec_{pm_str}", type="secondary"):
                         db_reject_user(pm_str)
-                        log_action("ADM", "RECUSAR_CADASTRO", f"Cadastro do usuario {pm_str} ({name}) recusado")
+                        audit("RECUSAR_CADASTRO", f"Cadastro do usuario {pm_str} ({name}) recusado")
                         st.warning(f"Cadastro de {name} recusado!")
                         st.rerun()
                     st.markdown("---")
@@ -10429,7 +10664,7 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                 st.session_state.simulated_rpm = ""
                 st.session_state.simulated_unit = ""
                 st.session_state.active_page = "Painel Administrador"
-                log_action("ADM", "ENCERRAR_SIMULACAO", "Simulacao desativada")
+                audit("ENCERRAR_SIMULACAO", "Simulacao desativada")
                 st.rerun()
         else:
             sim_options = []
@@ -10458,7 +10693,7 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                                 st.session_state.simulated_rpm = u[4]
                                 st.session_state.simulated_unit = u[5]
                                 st.session_state.active_page = "Análise Gráfica"
-                                log_action("ADM", "INICIAR_SIMULACAO", f"Simulando usuario {u[0]}")
+                                audit("INICIAR_SIMULACAO", f"Simulando usuario {u[0]}")
                                 st.success(f"Iniciando simulação de visão de: {u[2]} {u[1]}")
                                 st.rerun()
                                 
@@ -10524,13 +10759,13 @@ if active_page == "Painel Administrador" and st.session_state.user_role == "ADMI
                         with col_save:
                             if st.button("💾 Salvar Alterações", type="primary", use_container_width=True, key=f"save_edit_{m_pm}"):
                                 db_update_user_role_rpm(m_pm, new_role, new_rpm)
-                                log_action("ADM", "ALTERAR_CADASTRO", f"Usuario {m_pm} alterado para Perfil: {new_role}, RPM: {new_rpm}")
+                                audit("ALTERAR_CADASTRO", f"Usuario {m_pm} alterado para Perfil: {new_role}, RPM: {new_rpm}")
                                 st.success("✅ Alterações salvas com sucesso!")
                                 st.rerun()
                         with col_rev:
                             if st.button("🚫 Revogar Acesso", type="secondary", use_container_width=True, key=f"revoke_edit_{m_pm}"):
                                 db_revoke_user(m_pm)
-                                log_action("ADM", "REVOGAR_ACESSO", f"Acesso do usuario {m_pm} revogado")
+                                audit("REVOGAR_ACESSO", f"Acesso do usuario {m_pm} revogado")
                                 st.warning("🚫 Acesso revogado com sucesso!")
                                 st.rerun()
                     else:
