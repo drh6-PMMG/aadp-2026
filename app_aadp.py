@@ -11408,6 +11408,30 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
             counts = counts.sort_values('Total', ascending=False)
             
             st.dataframe(counts, use_container_width=True, hide_index=True)
+
+            # Extração do relatório do ranking (respeita os filtros aplicados)
+            _rk_df = counts.reset_index(drop=True).copy()
+            _rk_df.insert(0, 'Posição', range(1, len(_rk_df) + 1))
+            _rk_stamp = now_br().strftime('%Y%m%d_%H%M')
+            _rk_c1, _rk_c2 = st.columns(2)
+            with _rk_c1:
+                st.download_button(
+                    "📥 Extrair Ranking (Excel)",
+                    df_to_xlsx(_rk_df),
+                    f"ranking_membros_comissao_{_rk_stamp}.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True,
+                    key="dl_ranking_membros_xlsx"
+                )
+            with _rk_c2:
+                st.download_button(
+                    "📥 Extrair Ranking (CSV)",
+                    _rk_df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
+                    f"ranking_membros_comissao_{_rk_stamp}.csv",
+                    "text/csv",
+                    use_container_width=True,
+                    key="dl_ranking_membros_csv"
+                )
         else:
             st.info("Nenhum membro encontrado com os filtros atuais.")
             
