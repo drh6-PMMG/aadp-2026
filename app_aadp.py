@@ -3563,41 +3563,46 @@ def find_sigef_user(pm_number: str) -> dict:
         import os, csv
 
 
-        si_path = "SIGEF.csv"
+        # 1) Procura o SIGEF.csv já disponível (pasta do app, bases dos anos, cache do Drive)
+        import tempfile, time
+        base_dir_ = os.path.dirname(os.path.abspath(__file__))
+        cad_dir = os.path.join(tempfile.gettempdir(), "aadp_sigef_cadastro")
+        cad_file = os.path.join(cad_dir, "SIGEF.csv")
+        candidatos = ["SIGEF.csv", os.path.join("dados", "SIGEF.csv")]
+        for y_ in ("2027", "2026"):
+            candidatos.append(os.path.join(base_dir_, f"DADOS AADP {y_}", "SIGEF.csv"))
+            candidatos.append(os.path.join(tempfile.gettempdir(), f"aadp_drive_cache_{y_}", "SIGEF.csv"))
+        si_path = next((p for p in candidatos if os.path.exists(p) and os.path.getsize(p) > 0), None)
 
-
-        # Se não existe localmente, tenta baixar do Google Drive
-
-
-        if not os.path.exists(si_path):
-
-
-            sigef_drive_id = "10Ld_4XEz9b4kI_T6TC9W19tQdtBJCz5F"
-
-
-            try:
-
-
-                _baixar_drive(sigef_drive_id, si_path)
-
-
-            except Exception as e:
-
-
-                # Tenta olhar na subpasta dados/
-
-
-                si_path = os.path.join("dados", "SIGEF.csv")
-
-
-                if not os.path.exists(si_path):
-
-
-                    st.error(f"Erro ao baixar base SIGEF do Google Drive: {e}")
-
-
-                    return None
-
+        # 2) Sem arquivo local: baixa do Drive usando os mesmos IDs configurados no app
+        #    (drive_si_id_2027 / drive_si_id_2026 / drive_si_id), gravando em pasta temporária gravável.
+        if not si_path:
+            if os.path.exists(cad_file) and os.path.getsize(cad_file) > 0 and (time.time() - os.path.getmtime(cad_file)) < 6 * 3600:
+                si_path = cad_file
+            else:
+                ids_drive = []
+                for k_ in ("drive_si_id_2027", "drive_si_id_2026", "drive_si_id"):
+                    v_ = str(cfg.get(k_) or "").strip()
+                    if v_ and v_ not in ids_drive:
+                        ids_drive.append(v_)
+                v_fixo = "10Ld_4XEz9b4kI_T6TC9W19tQdtBJCz5F"
+                if v_fixo not in ids_drive:
+                    ids_drive.append(v_fixo)
+                os.makedirs(cad_dir, exist_ok=True)
+                ultimo_erro = None
+                for fid_ in ids_drive:
+                    try:
+                        _baixar_drive(fid_, cad_file)
+                        si_path = cad_file
+                        break
+                    except Exception as e:
+                        ultimo_erro = e
+                if not si_path:
+                    if os.path.exists(cad_file) and os.path.getsize(cad_file) > 0:
+                        si_path = cad_file
+                    else:
+                        st.error(f"Erro ao baixar base SIGEF do Google Drive: {ultimo_erro}")
+                        return None
 
         with open(si_path, encoding="cp1252", errors="replace") as f:
 
