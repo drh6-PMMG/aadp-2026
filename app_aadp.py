@@ -4288,6 +4288,92 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
 
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# GRUPO AADP — Militares da ATIVA x RECONDUZIDOS (quadros QOR / QPR)
+# O grupo é escolhido na tela inicial (st.session_state.selected_group) e filtra
+# todos os dados já carregados. Reconduzidos usam a mesma base "DADOS AADP 2026".
+# ══════════════════════════════════════════════════════════════════════════════
+QUADROS_RECOND = ("QOR", "QPR")
+
+
+def grupo_ativo():
+    """Retorna 'RECONDUZIDO' ou 'ATIVA' conforme a escolha do usuário."""
+    return "RECONDUZIDO" if st.session_state.get("selected_group") == "RECONDUZIDO" else "ATIVA"
+
+
+def ciclo_label():
+    """Rótulo do ciclo ativo, ex.: 'AADP 2027' ou 'AADP 2026 — Reconduzidos'."""
+    y = str(st.session_state.get("selected_year") or "2026")
+    return f"AADP {y} — Reconduzidos" if grupo_ativo() == "RECONDUZIDO" else f"AADP {y}"
+
+
+def _pm_key(v):
+    """Normaliza um nº PM para comparação (sem zeros à esquerda, sem sufixo/dígito verificador)."""
+    try:
+        if v is None or pd.isna(v):
+            return ""
+    except Exception:
+        pass
+    s_ = str(v).strip()
+    if "-" in s_:
+        s_ = s_.split("-")[0].strip()
+    if s_.endswith(".0"):
+        s_ = s_[:-2]
+    s_ = re.sub(r"[^0-9]", "", s_).lstrip("0")
+    return s_
+
+
+@st.cache_data(show_spinner=False)
+def _load_recond_pm_set(av_f: str, si_f: str, _sig=None):
+    """PMs de quadro QOR/QPR: avaliacoes.csv (coluna G) e SIGEF.csv (coluna O)."""
+    pms = set()
+    for path, col in ((av_f, 6), (si_f, 14)):
+        if not path or not os.path.exists(path):
+            continue
+        try:
+            with open(path, encoding="cp1252", errors="replace") as f:
+                rd = csv.reader(f, delimiter=";")
+                next(rd, None)
+                for row in rd:
+                    if len(row) > col and row[col].strip().upper() in QUADROS_RECOND:
+                        k = _pm_key(row[0])
+                        if k:
+                            pms.add(k)
+        except Exception:
+            continue
+    return frozenset(pms)
+
+
+def get_recond_pms():
+    """Conjunto de PMs reconduzidos (QOR/QPR) da base do ano selecionado (local ou Google Drive)."""
+    y = str(st.session_state.get("selected_year") or "2026")
+    ycfg = get_active_year_config(y, cfg)
+    if ycfg.get("drive_av_id") and ycfg.get("drive_si_id"):
+        base = os.path.join(tempfile.gettempdir(), f"aadp_drive_cache_{y}")
+    else:
+        base = ycfg.get("db_path") or str(DADOS_DIR)
+    av_f = os.path.join(base, "avaliacoes.csv")
+    si_f = os.path.join(base, "SIGEF.csv")
+    sig = tuple(os.path.getmtime(p) if os.path.exists(p) else 0 for p in (av_f, si_f))
+    return _load_recond_pm_set(av_f, si_f, sig)
+
+
+def filtrar_grupo(df, pm_col, tipo_col=None):
+    """Aplica o grupo escolhido ao DataFrame.
+    RECONDUZIDO → somente PMs de quadro QOR/QPR.
+    ATIVA       → exclui reconduzidos (e, se informado, mantém só Tipo AADP == 'Ativa')."""
+    if not isinstance(df, pd.DataFrame) or df.empty or pm_col not in df.columns:
+        return df
+    rec = get_recond_pms()
+    is_rec = df[pm_col].map(_pm_key).isin(rec)
+    if grupo_ativo() == "RECONDUZIDO":
+        return df[is_rec]
+    out = df[~is_rec]
+    if tipo_col and tipo_col in out.columns:
+        out = out[out[tipo_col] == "Ativa"]
+    return out
+
+
 @st.cache_resource(show_spinner="⏳ Carregando e processando dados...")
 def load_data(db_path: str, drive_av_id: str = "", drive_si_id: str = "", drive_geral_id: str = "", ano: str = "2026"):
     """Carrega dados de pasta local ou Google Drive e gera o Geral.xlsx automaticamente."""
@@ -5207,20 +5293,26 @@ if not st.session_state.get("selected_year"):
         st.markdown(f"<p style='text-align: center; color: #d4af37;'>Militar conectado: <b>{st.session_state.get('user_name', '')}</b> ({st.session_state.get('user_role', '')})</p>", unsafe_allow_html=True)
         st.markdown("---")
 
-        st.markdown("#### 📅 Escolha o Ano de Avaliação:")
-        col_btn26, col_btn27 = st.columns(2)
+        st.markdown("#### 📅 Escolha o Grupo e o Ano de Avaliação:")
+
+        def _escolher_ciclo(ano, grupo):
+            st.session_state.selected_year = ano
+            st.session_state.selected_group = grupo
+            st.cache_data.clear()
+            _gtxt = "Reconduzidos" if grupo == "RECONDUZIDO" else "Ativa"
+            log_action(st.session_state.user_pm, "SELECAO_ANO", f"Ano avaliativo {ano} selecionado — Militares {_gtxt}")
+            st.rerun()
+
+        col_btn26, col_btn27, col_btn_rec = st.columns(3)
         with col_btn26:
-            if st.button("📅 AADP 2026\n\n(Ciclo 2025/2026)", use_container_width=True, type="primary", key="btn_ano_2026"):
-                st.session_state.selected_year = "2026"
-                st.cache_data.clear()
-                log_action(st.session_state.user_pm, "SELECAO_ANO", "Ano avaliativo 2026 selecionado")
-                st.rerun()
+            if st.button("📅 Militares ATIVA\n\nAno avaliativo 2026\n\n(Ciclo 2025/2026)", use_container_width=True, type="primary", key="btn_ano_2026"):
+                _escolher_ciclo("2026", "ATIVA")
         with col_btn27:
-            if st.button("📅 AADP 2027\n\n(Ciclo 2026/2027)", use_container_width=True, type="primary", key="btn_ano_2027"):
-                st.session_state.selected_year = "2027"
-                st.cache_data.clear()
-                log_action(st.session_state.user_pm, "SELECAO_ANO", "Ano avaliativo 2027 selecionado")
-                st.rerun()
+            if st.button("📅 Militares ATIVA\n\nAno avaliativo 2027\n\n(Ciclo 2026/2027)", use_container_width=True, type="primary", key="btn_ano_2027"):
+                _escolher_ciclo("2027", "ATIVA")
+        with col_btn_rec:
+            if st.button("🎖️ Militares RECONDUZIDO\n\nAno avaliativo 2026\n\n(Quadros QOR / QPR)", use_container_width=True, type="primary", key="btn_ano_2026_recond"):
+                _escolher_ciclo("2026", "RECONDUZIDO")
 
         st.markdown("---")
         if st.button("🚪 Sair / Logoff", use_container_width=True, key="btn_logoff_year_select"):
@@ -5242,9 +5334,9 @@ with st.sidebar:
 
 
     active_year = str(st.session_state.get("selected_year", "2026"))
-    st.markdown(f"### AADP {active_year}")
+    st.markdown(f"### {ciclo_label()}")
     st.markdown("**Sistema de Análise de Avaliações**")
-    st.info(f"📅 **Ciclo Ativo:** AADP {active_year}")
+    st.info(f"📅 **Ciclo Ativo:** {ciclo_label()}")
     if st.button("🔄 Trocar Ano Avaliativo", use_container_width=True, key="btn_sidebar_trocar_ano", help="Clique para retornar à tela de escolha do ano"):
         st.session_state.selected_year = None
         st.cache_data.clear()
@@ -5302,7 +5394,7 @@ with st.sidebar:
     st.markdown("---")
     # Funcionalidade suspensa temporariamente:
     # global_aadp = st.radio("Grupo AADP", ["Ativa", "Reconduzido", "Discente"], index=0, key="global_aadp")
-    global_aadp = "Ativa"
+    global_aadp = "Reconduzido" if grupo_ativo() == "RECONDUZIDO" else "Ativa"
     st.markdown("---")
 
 
@@ -5644,6 +5736,12 @@ try:
         drive_geral_id = year_cfg["drive_geral_id"],
         ano = active_year
     )
+
+    # Grupo escolhido (ATIVA / RECONDUZIDO): filtra a base antes de qualquer escopo de perfil
+    df_full = filtrar_grupo(df_full, "nrPM (Avaliado)")
+    if grupo_ativo() == "RECONDUZIDO":
+        # Reconduzidos têm situações funcionais próprias (ex.: PRACA QPR RECONDUZID): não restringir
+        SITUACOES_ALVO = set(df_full["Sit. Funcional"].dropna().unique())
 
 
     if active_role == "P1":
@@ -6089,7 +6187,7 @@ if active_page == "Análise Gráfica":
         align="center",
     )
 
-    curr_ano_graf = str(st.session_state.get("selected_year", "2026"))
+    curr_ano_graf = str(st.session_state.get("selected_year", "2026")) + (" — Reconduzidos" if grupo_ativo() == "RECONDUZIDO" else "")
     fig_status.update_layout(
         template="plotly_dark",
         title=dict(text=f"<b>Status das Avaliações — AADP {curr_ano_graf}</b>",
@@ -9234,7 +9332,7 @@ def _gerar_zip_bytes(df_full: pd.DataFrame, modo: str, units_sel: list) -> tuple
     """Gera ZIP com planilhas Excel em memória e retorna (bytes, filename)."""
     zip_buf  = io.BytesIO()
     _ano_rel = str(st.session_state.get("selected_year", "2026"))
-    zip_name = f"AADP_{_ano_rel}_{now_br().strftime('%Y%m%d_%H%M%S')}.zip"
+    zip_name = f"AADP_{_ano_rel}{'_Reconduzidos' if grupo_ativo() == 'RECONDUZIDO' else ''}_{now_br().strftime('%Y%m%d_%H%M%S')}.zip"
 
     with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
         if modo in ("all", "geral"):
@@ -9676,7 +9774,10 @@ if active_page == "Auditoria de Notas" and sidebar_active_role.upper() in ("ADMI
         df_audit, err = load_audit_excel(master_xlsx_path, drive_master_xlsx_id, ano=_ano_audit)
         if not err and not df_audit.empty:
             df_audit['Tipo AADP'] = df_audit['Sit. Funcional'].apply(_c_aadp_type)
-            df_audit = df_audit[df_audit['Tipo AADP'] == global_aadp]
+            if grupo_ativo() == "RECONDUZIDO":
+                df_audit = filtrar_grupo(df_audit, 'NR PM')
+            else:
+                df_audit = filtrar_grupo(df_audit, 'NR PM', 'Tipo AADP')
             df_audit.drop(columns=['Tipo AADP'], inplace=True)
             
     if err:
@@ -11186,7 +11287,7 @@ if active_page == "Comissões" and sidebar_active_role.upper() in ("ADMINISTRADO
         df_merge.loc[df_merge['Alerta Praça AV2/HOM'], 'Alerta Geral'] = '🚨 ALERTA PRAÇA'
 
         # Configuração da UI de Filtros e Aplicação Simultânea (Cascata)
-        df_f = df_merge[df_merge['Tipo AADP'] == global_aadp].copy()
+        df_f = filtrar_grupo(df_merge, 'NUMERO_CLEAN', 'Tipo AADP').copy()
         
         with st.expander("🔍 Filtros de Comissões", expanded=True):
             with st.form("form_filtros_comissoes"):
@@ -11921,6 +12022,9 @@ if active_page == "Controle do CDP" and sidebar_active_role.upper() in ("ADMINIS
     d_si_id = _y_cfg["drive_si_id"]
 
     df_inst, df_metas, err_cdp = load_controle_cdp_data(db_p, d_metas_id, d_geral_id, d_si_id, _ano=_active_y)
+    if not err_cdp:
+        df_inst = filtrar_grupo(df_inst, "nrPM (Avaliado)")
+        df_metas = filtrar_grupo(df_metas, "nrPM (Avaliado)")
 
     if err_cdp:
         st.error(f"❌ {err_cdp}")
@@ -12052,7 +12156,7 @@ if active_page == "Controle do CDP" and sidebar_active_role.upper() in ("ADMINIS
             _y_cfg["drive_geral_id"], _y_cfg["drive_metas_id"], _ano=_active_y
         )
         if not df_com_full.empty:
-            df_c_scope = df_com_full[df_com_full["Tipo AADP"] == "Ativa"].copy()
+            df_c_scope = filtrar_grupo(df_com_full, "NUMERO_CLEAN", "Tipo AADP").copy()
             if _role_cdp == "P1" and active_rpm:
                 df_c_scope = df_c_scope[df_c_scope["RPM Final"].astype(str).str.upper() == str(active_rpm).upper()]
             elif _role_cdp == "SADM" and active_unit:
@@ -12538,7 +12642,7 @@ if active_page == "Controle do CDP" and sidebar_active_role.upper() in ("ADMINIS
                 st.info("Nenhum militar localizado com os filtros atuais.")
 
 
-_ano_rodape = str(st.session_state.get("selected_year", "2026"))
+_ano_rodape = str(st.session_state.get("selected_year", "2026")) + (" — Reconduzidos" if grupo_ativo() == "RECONDUZIDO" else "")
 st.markdown("---")
 st.markdown(f"<center><small>AADP {_ano_rodape} · Polícia Militar de Minas Gerais · "
             f"Resolução 5458/2025 · {now_br().strftime('%d/%m/%Y')}<br>"
