@@ -5303,15 +5303,14 @@ if not st.session_state.get("selected_year"):
             log_action(st.session_state.user_pm, "SELECAO_ANO", f"Ano avaliativo {ano} selecionado — Militares {_gtxt}")
             st.rerun()
 
-        col_btn26, col_btn27, col_btn_rec = st.columns(3)
-        with col_btn26:
-            if st.button("📅 Militares ATIVA\n\nAno avaliativo 2026\n\n(Ciclo 2025/2026)", use_container_width=True, type="primary", key="btn_ano_2026"):
+        # Opções empilhadas e centralizadas
+        _, col_opts, _ = st.columns([1, 1.6, 1])
+        with col_opts:
+            if st.button("📅 Militares ATIVA — Ano avaliativo 2026", use_container_width=True, type="primary", key="btn_ano_2026"):
                 _escolher_ciclo("2026", "ATIVA")
-        with col_btn27:
-            if st.button("📅 Militares ATIVA\n\nAno avaliativo 2027\n\n(Ciclo 2026/2027)", use_container_width=True, type="primary", key="btn_ano_2027"):
+            if st.button("📅 Militares ATIVA — Ano avaliativo 2027", use_container_width=True, type="primary", key="btn_ano_2027"):
                 _escolher_ciclo("2027", "ATIVA")
-        with col_btn_rec:
-            if st.button("🎖️ Militares RECONDUZIDO\n\nAno avaliativo 2026\n\n(Quadros QOR / QPR)", use_container_width=True, type="primary", key="btn_ano_2026_recond"):
+            if st.button("🎖️ Militares RECONDUZIDO — Ano avaliativo 2026", use_container_width=True, type="primary", key="btn_ano_2026_recond"):
                 _escolher_ciclo("2026", "RECONDUZIDO")
 
         st.markdown("---")
