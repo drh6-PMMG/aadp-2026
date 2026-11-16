@@ -447,16 +447,25 @@ def build_audit_data_from_geral(csv_path):
         
         c_n_f1 = find_col(header, "Nota (Fase 1)")
         c_n_f2 = find_col(header, "Nota (Fase 2)")
-        c_n_f3 = find_col(header, "Nota (Fase 3)")
-        c_n_f4 = find_col(header, "Nota (Fase 4)")
+        # Fases 3 e 4 são opcionais (o geral.csv de 2027 só possui as Fases 1 e 2)
+        def find_col_opt(header_, pattern_):
+            try:
+                return find_col(header_, pattern_)
+            except ValueError:
+                return -1
+        c_n_f3 = find_col_opt(header, "Nota (Fase 3)")
+        c_n_f4 = find_col_opt(header, "Nota (Fase 4)")
         c_r_f1 = find_col(header, "Recurso Fase 1")
         c_r_f2 = find_col(header, "Recurso Fase 2")
-        c_r_f3 = find_col(header, "Recurso Fase 3")
-        c_r_f4 = find_col(header, "Recurso Fase 4")
+        c_r_f3 = find_col_opt(header, "Recurso Fase 3")
+        c_r_f4 = find_col_opt(header, "Recurso Fase 4")
         c_dt_f1 = find_col(header, "Data Cadastro (Fase 1)")
         c_dt_f2 = find_col(header, "Data Cadastro (Fase 2)")
-        c_dt_f3 = find_col(header, "Data Cadastro (Fase 3)")
-        c_dt_f4 = find_col(header, "Data Cadastro (Fase 4)")
+        c_dt_f3 = find_col_opt(header, "Data Cadastro (Fase 3)")
+        c_dt_f4 = find_col_opt(header, "Data Cadastro (Fase 4)")
+
+        def _cell(row_, idx_):
+            return row_[idx_] if 0 <= idx_ < len(row_) else ""
         
         for row in reader:
             if len(row) > 38 and row[38] == "Disciplina":
@@ -475,18 +484,18 @@ def build_audit_data_from_geral(csv_path):
             status = calc_status(j, l, n)
             c = concordam(j, l)
             
-            n_f4 = parse_float(row[c_n_f4])
-            n_f3 = parse_float(row[c_n_f3])
+            n_f4 = parse_float(_cell(row, c_n_f4))
+            n_f3 = parse_float(_cell(row, c_n_f3))
             n_f2 = parse_float(row[c_n_f2])
             n_f1 = parse_float(row[c_n_f1])
             
-            r_f4 = row[c_r_f4].strip()
-            r_f3 = row[c_r_f3].strip()
+            r_f4 = str(_cell(row, c_r_f4)).strip()
+            r_f3 = str(_cell(row, c_r_f3)).strip()
             r_f2 = row[c_r_f2].strip()
             r_f1 = row[c_r_f1].strip()
             
-            dt_f4 = row[c_dt_f4].strip()
-            dt_f3 = row[c_dt_f3].strip()
+            dt_f4 = str(_cell(row, c_dt_f4)).strip()
+            dt_f3 = str(_cell(row, c_dt_f3)).strip()
             dt_f2 = row[c_dt_f2].strip()
             dt_f1 = row[c_dt_f1].strip()
             
@@ -3926,6 +3935,40 @@ def _baixar_drive(file_id: str, destino: str):
         pass
 
 
+def _dt_br(txt):
+    """Converte datas dd-mm-aaaa / aaaa-mm-dd / dd/mm/aaaa em date (ou None)."""
+    if txt is None or str(txt).strip() in ("", "-", "nan", "none", "None", "<NA>"):
+        return None
+    for fmt in ("%d-%m-%Y", "%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(str(txt).strip(), fmt).date()
+        except Exception:
+            continue
+    return None
+
+
+def _somar_dias_uteis(inicio, n):
+    atual, somados = inicio, 0
+    while somados < n:
+        atual += timedelta(days=1)
+        if atual.weekday() < 5:
+            somados += 1
+    return atual
+
+
+def _status_com_prazo_recurso(j, l, n, dt_av2, dt_hom):
+    """Status de uma avaliação SEM registro no geral.csv (sem dados de recurso).
+    Se a nota é definitiva (AV1 e AV2 concordam, ou homologada), conta 5 dias úteis para recurso:
+    dentro do prazo → 'EM PRAZO DE RECURSO'; vencido → 'Encerrada'."""
+    status = calc_status(j, l, n)
+    if status != "Encerrada":
+        return status
+    base = _dt_br(dt_hom) if (concordam(j, l) is False and not is_empty(n)) else _dt_br(dt_av2)
+    if base is not None and now_br().date() <= _somar_dias_uteis(base, 5):
+        return "EM PRAZO DE RECURSO"
+    return status
+
+
 def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
     """Processa os dois CSVs e retorna o DataFrame final."""
     sigef = {}
@@ -3987,16 +4030,25 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                 
                 c_n_f1_g = find_col_index(header, "Nota (Fase 1)")
                 c_n_f2_g = find_col_index(header, "Nota (Fase 2)")
-                c_n_f3_g = find_col_index(header, "Nota (Fase 3)")
-                c_n_f4_g = find_col_index(header, "Nota (Fase 4)")
+                # Fases 1 e 2 são obrigatórias; Fases 3 e 4 são opcionais (o geral.csv de 2027 só possui 2 fases)
+                def _opt_idx(name_pattern):
+                    try:
+                        return find_col_index(header, name_pattern)
+                    except ValueError:
+                        return -1
+                c_n_f3_g = _opt_idx("Nota (Fase 3)")
+                c_n_f4_g = _opt_idx("Nota (Fase 4)")
                 c_r_f1_g = find_col_index(header, "Recurso Fase 1")
                 c_r_f2_g = find_col_index(header, "Recurso Fase 2")
-                c_r_f3_g = find_col_index(header, "Recurso Fase 3")
-                c_r_f4_g = find_col_index(header, "Recurso Fase 4")
+                c_r_f3_g = _opt_idx("Recurso Fase 3")
+                c_r_f4_g = _opt_idx("Recurso Fase 4")
                 c_dt_f1_g = find_col_index(header, "Data Cadastro (Fase 1)")
                 c_dt_f2_g = find_col_index(header, "Data Cadastro (Fase 2)")
-                c_dt_f3_g = find_col_index(header, "Data Cadastro (Fase 3)")
-                c_dt_f4_g = find_col_index(header, "Data Cadastro (Fase 4)")
+                c_dt_f3_g = _opt_idx("Data Cadastro (Fase 3)")
+                c_dt_f4_g = _opt_idx("Data Cadastro (Fase 4)")
+
+                def _gv(row_, idx_):
+                    return row_[idx_] if 0 <= idx_ < len(row_) else ""
                 c_av1_g = find_col_index(header, "nrPM (Avaliador 1)")
                 c_av2_g = find_col_index(header, "nrPM (Avaliador 2)")
                 
@@ -4037,18 +4089,18 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                     grade_g = row_g[c_grade_g].strip()
                     n_hom_g = row_g[c_n_hom_g].strip()
                     
-                    n_f4_val = parse_float_val(row_g[c_n_f4_g])
-                    n_f3_val = parse_float_val(row_g[c_n_f3_g])
+                    n_f4_val = parse_float_val(_gv(row_g, c_n_f4_g))
+                    n_f3_val = parse_float_val(_gv(row_g, c_n_f3_g))
                     n_f2_val = parse_float_val(row_g[c_n_f2_g])
                     n_f1_val = parse_float_val(row_g[c_n_f1_g])
                     
-                    r_f4_val = row_g[c_r_f4_g].strip()
-                    r_f3_val = row_g[c_r_f3_g].strip()
+                    r_f4_val = str(_gv(row_g, c_r_f4_g)).strip()
+                    r_f3_val = str(_gv(row_g, c_r_f3_g)).strip()
                     r_f2_val = row_g[c_r_f2_g].strip()
                     r_f1_val = row_g[c_r_f1_g].strip()
                     
-                    dt_f4_val = row_g[c_dt_f4_g].strip()
-                    dt_f3_val = row_g[c_dt_f3_g].strip()
+                    dt_f4_val = str(_gv(row_g, c_dt_f4_g)).strip()
+                    dt_f3_val = str(_gv(row_g, c_dt_f3_g)).strip()
                     dt_f2_val = row_g[c_dt_f2_g].strip()
                     dt_f1_val = row_g[c_dt_f1_g].strip()
                     
@@ -4101,8 +4153,9 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                             else:
                                 final_status_g = "AUTORIDADE RECURSAL"
                         else:
-                            # Só Fase 1 registrada = comissão analisando (Reconsideração)
-                            final_status_g = "RECONSIDERAÇÃO COMISSÃO"
+                            # Só Fase 1 registrada: com nova nota = comissão deferiu (Encerrada);
+                            # sem nota = comissão ainda analisando (Reconsideração)
+                            final_status_g = "Encerrada" if n_f1_val is not None else "RECONSIDERAÇÃO COMISSÃO"
                     key = (pm_g, av1_g, av2_g)
                     recourse_map[key] = final_status_g
         except Exception:
@@ -4158,7 +4211,8 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
             key = (pm_norm, av1_norm, av2_norm)
             status_av = recourse_map.get(key)
             if status_av is None:
-                status_av = calc_status(j, l, n)
+                # Sem registro no geral.csv: aplica ao menos a regra de prazo de recurso (5 dias úteis)
+                status_av = _status_com_prazo_recurso(j, l, n, row[10].strip(), row[12].strip())
 
 
             rows.append({
@@ -4380,7 +4434,7 @@ def filtrar_grupo(df, pm_col, tipo_col=None):
 
 
 @st.cache_resource(show_spinner="⏳ Carregando e processando dados...")
-def load_data(db_path: str, drive_av_id: str = "", drive_si_id: str = "", drive_geral_id: str = "", ano: str = "2026"):
+def load_data(db_path: str, drive_av_id: str = "", drive_si_id: str = "", drive_geral_id: str = "", ano: str = "2026", dia: str = ""):
     """Carrega dados de pasta local ou Google Drive e gera o Geral.xlsx automaticamente."""
     if drive_av_id and drive_si_id:
         # ── Modo Google Drive ──────────────────────────────────────────────
@@ -5738,7 +5792,8 @@ try:
         drive_av_id = year_cfg["drive_av_id"],
         drive_si_id = year_cfg["drive_si_id"],
         drive_geral_id = year_cfg["drive_geral_id"],
-        ano = active_year
+        ano = active_year,
+        dia = now_br().strftime("%Y-%m-%d")  # prazo de recurso depende da data: recalcula a cada dia
     )
 
     # Grupo escolhido (ATIVA / RECONDUZIDO): filtra a base antes de qualquer escopo de perfil
