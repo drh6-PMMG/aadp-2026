@@ -581,18 +581,12 @@ def build_audit_data_from_geral(csv_path):
                         status = "AUTORIDADE RECURSAL"
 
                 else:
-                    # Só Fase 1 registrada = comissão analisando (Reconsideração)
+                    # Só Fase 1 registrada = militar interpôs recurso (Nota Fase 1 é a nota almejada/sugerida)
+                    # Aguardando análise/decisão da Comissão na Fase 2 (Reconsideração)
                     fase_recurso = "FASE 1"
-                    if n_f1 is not None:
-                        # Comissão deferiu com nova nota
-                        final_grade = n_f1
-                        nota_recurso = str(n_f1)
-                        status = "Encerrada"
-                    else:
-                        # Comissão ainda analisando
-                        final_grade = None
-                        nota_recurso = "-"
-                        status = "RECONSIDERAÇÃO COMISSÃO"
+                    final_grade = None
+                    nota_recurso = "-"
+                    status = "RECONSIDERAÇÃO COMISSÃO"
                 
             dt_av = row[c_dt_hom].strip() if not is_empty(n) and row[c_dt_hom].strip() else (row[c_dt_av2].strip() or row[c_dt_av1].strip() or "-")
             
@@ -4179,9 +4173,9 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                             else:
                                 final_status_g = "AUTORIDADE RECURSAL"
                         else:
-                            # Só Fase 1 registrada: com nova nota = comissão deferiu (Encerrada);
-                            # sem nota = comissão ainda analisando (Reconsideração)
-                            final_status_g = "Encerrada" if n_f1_val is not None else "RECONSIDERAÇÃO COMISSÃO"
+                            # Só Fase 1 registrada = militar interpôs recurso (Nota Fase 1 é a nota almejada/sugerida)
+                            # Aguardando análise/decisão da Comissão na Fase 2 (Reconsideração)
+                            final_status_g = "RECONSIDERAÇÃO COMISSÃO"
                     key = (pm_g, av1_g, av2_g)
                     recourse_map[key] = final_status_g
         except Exception:
