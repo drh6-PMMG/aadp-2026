@@ -6042,6 +6042,72 @@ n_np     = (df["Situação Comissão"]=="Nota Provisória").sum()
 
 
 if st.session_state.get("active_page", "Análise Gráfica") == "Análise Gráfica":
+    if n_total > 0 and n_enc == n_total:
+        _cel_sig = (
+            str(st.session_state.get("selected_year", "2026")),
+            grupo_ativo(),
+            str(active_role),
+            str(active_rpm),
+            str(active_unit),
+            int(n_total),
+        )
+        if st.session_state.get("_cel_100_shown") != _cel_sig:
+            st.balloons()
+            st.session_state["_cel_100_shown"] = _cel_sig
+        st.markdown("""
+        <style>
+        @keyframes aadp-cel-pulse {
+            0%, 100% { box-shadow: 0 0 18px rgba(46, 204, 113, 0.35), 0 0 36px rgba(212, 175, 55, 0.20); transform: scale(1); }
+            50% { box-shadow: 0 0 28px rgba(46, 204, 113, 0.65), 0 0 54px rgba(212, 175, 55, 0.40); transform: scale(1.005); }
+        }
+        @keyframes aadp-cel-float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-4px) rotate(6deg); }
+        }
+        .aadp-celebration-banner {
+            background: linear-gradient(135deg, rgba(22, 78, 45, 0.92), rgba(30, 60, 42, 0.95), rgba(82, 68, 22, 0.90));
+            border: 1.5px solid rgba(212, 175, 55, 0.85);
+            border-radius: 14px;
+            padding: 18px 24px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            animation: aadp-cel-pulse 2.4s ease-in-out infinite;
+            text-align: center;
+        }
+        .aadp-celebration-icon {
+            font-size: 2.2rem;
+            display: inline-block;
+            animation: aadp-cel-float 1.8s ease-in-out infinite;
+        }
+        .aadp-celebration-text {
+            color: #ffffff;
+            font-size: 1.12rem;
+            font-weight: 800;
+            letter-spacing: 0.4px;
+            text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+        }
+        .aadp-celebration-sub {
+            color: #f4d03f;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 3px;
+        }
+        </style>
+        <div class="aadp-celebration-banner">
+            <span class="aadp-celebration-icon">🏆</span>
+            <div>
+                <div class="aadp-celebration-text">PARABÉNS! SUA UNIDADE ATINGIU A META DE 100% DAS AVALIAÇÕES ENCERRADAS.</div>
+                <div class="aadp-celebration-sub">Ciclo concluído com 100% de encerramento (""" + fmt_num(n_enc) + """ de """ + fmt_num(n_total) + """ avaliações).</div>
+            </div>
+            <span class="aadp-celebration-icon">🎉</span>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.session_state.pop("_cel_100_shown", None)
+
     col_block1, col_block2 = st.columns([1, 1.25], gap="large")
 
     with col_block1:
@@ -6101,6 +6167,8 @@ if st.session_state.get("active_page", "Análise Gráfica") == "Análise Gráfic
                         f'<div class="value">{fmt_num(n_recurso)}</div>'
                         '<div class="sub">Recurso pendente</div>'
                         '</div>', unsafe_allow_html=True)
+else:
+    st.session_state.pop("_cel_100_shown", None)
 
 
 
