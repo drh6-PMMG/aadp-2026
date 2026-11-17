@@ -1392,6 +1392,15 @@ button[data-testid="stSidebarCollapseButton"],
 [data-testid="stSidebar"] h3 {{
   color: var(--aadp-accent) !important;
 }}
+/* Quadro informativo (Ciclo Ativo) na sidebar sempre com letra clara e nítida */
+[data-testid="stSidebar"] div[data-testid="stAlert"] {{
+  background: linear-gradient(135deg, rgba(22, 36, 58, 0.92), rgba(30, 48, 76, 0.88)) !important;
+  border: 1px solid rgba(155, 138, 92, 0.50) !important;
+  color: #ffffff !important;
+}}
+[data-testid="stSidebar"] div[data-testid="stAlert"] * {{
+  color: #f8fafc !important;
+}}
 
 /* ── CABEÇALHO PRINCIPAL CRYSTAL LIQUID ──────────────────────────────────── */
 .main-title {{
@@ -5200,7 +5209,7 @@ if not st.session_state.get("selected_year"):
         st.markdown(f"<p style='text-align: center; color: #d4af37;'>Militar conectado: <b>{st.session_state.get('user_name', '')}</b> ({st.session_state.get('user_role', '')})</p>", unsafe_allow_html=True)
         st.markdown("---")
 
-        st.markdown("#### 📅 Escolha o Grupo e o Ano de Avaliação:")
+        st.markdown("<h4 style='text-align: center; margin-bottom: 14px;'>Escolha o Grupo e o Ano de Avaliação:</h4>", unsafe_allow_html=True)
 
         def _escolher_ciclo(ano, grupo):
             st.session_state.selected_year = ano
@@ -5210,14 +5219,39 @@ if not st.session_state.get("selected_year"):
             log_action(st.session_state.user_pm, "SELECAO_ANO", f"Ano avaliativo {ano} selecionado — Militares {_gtxt}")
             st.rerun()
 
-        # Opções empilhadas e centralizadas
-        _, col_opts, _ = st.columns([1, 1.6, 1])
+        # Opções sem ícones, mesmo tamanho, centralizadas e sem corte de texto em qualquer zoom
+        st.markdown("""
+        <style>
+        div.element-container:has(.aadp-cycle-marker) + div[data-testid="stHorizontalBlock"] .stButton button {
+            width: 100% !important;
+            min-height: 52px !important;
+            height: auto !important;
+            padding: 12px 22px !important;
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
+            line-height: 1.3 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        div.element-container:has(.aadp-cycle-marker) + div[data-testid="stHorizontalBlock"] .stButton button p {
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
+            text-align: center !important;
+            margin: 0 !important;
+        }
+        </style>
+        <div class="aadp-cycle-marker"></div>
+        """, unsafe_allow_html=True)
+        _, col_opts, _ = st.columns([0.35, 3.3, 0.35])
         with col_opts:
-            if st.button("📅 Militares ATIVA — Ano avaliativo 2026", use_container_width=True, type="primary", key="btn_ano_2026"):
+            if st.button("Militares ATIVA — Ano avaliativo 2026", use_container_width=True, type="primary", key="btn_ano_2026"):
                 _escolher_ciclo("2026", "ATIVA")
-            if st.button("📅 Militares ATIVA — Ano avaliativo 2027", use_container_width=True, type="primary", key="btn_ano_2027"):
+            if st.button("Militares ATIVA — Ano avaliativo 2027", use_container_width=True, type="primary", key="btn_ano_2027"):
                 _escolher_ciclo("2027", "ATIVA")
-            if st.button("🎖️ Militares RECONDUZIDO — Ano avaliativo 2026", use_container_width=True, type="primary", key="btn_ano_2026_recond"):
+            if st.button("Militares RECONDUZIDO — Ano avaliativo 2026", use_container_width=True, type="primary", key="btn_ano_2026_recond"):
                 _escolher_ciclo("2026", "RECONDUZIDO")
 
         st.markdown("---")
@@ -5314,11 +5348,10 @@ with st.sidebar:
             set_user_theme(st.session_state.get("user_pm", ""), "light")
             st.rerun()
 
-    st.markdown("---")
     # Funcionalidade suspensa temporariamente:
     # global_aadp = st.radio("Grupo AADP", ["Ativa", "Reconduzido", "Discente"], index=0, key="global_aadp")
     global_aadp = "Reconduzido" if grupo_ativo() == "RECONDUZIDO" else "Ativa"
-    st.markdown("---")
+    st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
 
 
 
