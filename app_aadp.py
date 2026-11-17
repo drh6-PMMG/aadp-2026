@@ -1210,6 +1210,77 @@ def get_active_theme() -> str:
     return "light" if t == "light" else "dark"
 
 
+def _apply_plotly_theme(fig):
+    """Ajusta automaticamente cores de textos, eixos e grades dos gráficos Plotly para o tema ativo."""
+    try:
+        if get_active_theme() != "light" or fig is None:
+            return fig
+        dark_ink = "#18202c"
+        grid_col = "rgba(24, 32, 44, 0.15)"
+        line_col = "rgba(24, 32, 44, 0.28)"
+        fig.update_layout(
+            template="plotly_white",
+            font=dict(color=dark_ink),
+            legend=dict(font=dict(color=dark_ink)),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+        )
+        fig.update_xaxes(
+            tickfont=dict(color=dark_ink),
+            title_font=dict(color=dark_ink),
+            gridcolor=grid_col,
+            linecolor=line_col,
+        )
+        fig.update_yaxes(
+            tickfont=dict(color=dark_ink),
+            title_font=dict(color=dark_ink),
+            gridcolor=grid_col,
+            linecolor=line_col,
+        )
+        for tr in getattr(fig, "data", ()):
+            ttype = getattr(tr, "type", "")
+            if ttype == "pie":
+                tr.outsidetextfont = dict(color=dark_ink)
+                if getattr(tr, "textposition", None) == "outside":
+                    tr.textfont = dict(color=dark_ink)
+            elif ttype == "bar":
+                if getattr(tr, "textposition", None) in ("outside", "auto", None):
+                    tr.textfont = dict(color=dark_ink)
+            elif ttype in ("scatter", "scattergl"):
+                if getattr(tr, "textfont", None) is not None:
+                    tr.textfont = dict(color=dark_ink)
+        if getattr(fig.layout, "annotations", None):
+            for ann in fig.layout.annotations:
+                fc = getattr(getattr(ann, "font", None), "color", "") or ""
+                if str(fc).lower() in ("", "#fff", "#ffffff", "#e5dccb", "#a0a0a0", "white", "#ccc"):
+                    ann.font.color = dark_ink
+                elif str(fc).lower() in ("#9b8a5c", "#d4af37"):
+                    ann.font.color = "#7a652e"
+    except Exception:
+        pass
+    return fig
+
+
+def _install_plotly_theme_hook():
+    from streamlit.delta_generator import DeltaGenerator
+    orig = DeltaGenerator.plotly_chart
+    if getattr(orig, "_aadp_theme_hook", False):
+        return
+
+    def wrapper(self, figure_or_data, *args, **kwargs):
+        _apply_plotly_theme(figure_or_data)
+        if get_active_theme() == "light":
+            kwargs["theme"] = None
+        return orig(self, figure_or_data, *args, **kwargs)
+
+    wrapper._aadp_theme_hook = True
+    DeltaGenerator.plotly_chart = wrapper
+    st.plotly_chart = lambda *a, **k: DeltaGenerator.plotly_chart(st._main, *a, **k)
+
+
+_install_plotly_theme_hook()
+
+
 _active_theme = get_active_theme()
 _is_light = (_active_theme == "light")
 
@@ -1511,12 +1582,24 @@ div[data-testid="metric-container"]:hover, div[data-testid="stMetric"]:hover {{
 /* Inputs / Selects / Multiselects com leve transparência Crystal */
 div[data-baseweb="input"] > div,
 div[data-baseweb="select"] > div,
+div[data-baseweb="select"] [data-baseweb="tag"],
 textarea {{
   background: {_PAL["input_bg"]} !important;
   border: 1px solid var(--aadp-card-border) !important;
   border-radius: 12px !important;
   color: var(--aadp-text) !important;
   backdrop-filter: blur(10px) !important;
+}}
+div[data-baseweb="select"] *,
+div[data-baseweb="input"] input {{
+  color: var(--aadp-text) !important;
+}}
+ul[data-baseweb="menu"] {{
+  background: {_PAL["input_bg"]} !important;
+  color: var(--aadp-text) !important;
+}}
+ul[data-baseweb="menu"] li, ul[data-baseweb="menu"] li * {{
+  color: var(--aadp-text) !important;
 }}
 
 /* ── ABAS CRYSTAL LIQUID ─────────────────────────────────────────────────── */
@@ -5276,11 +5359,31 @@ with st.sidebar:
     active_year = str(st.session_state.get("selected_year", "2026"))
     st.markdown(f"### {ciclo_label()}")
     st.markdown("**Sistema de Análise de Avaliações**")
-    st.info(f"📅 **Ciclo Ativo:** {ciclo_label()}")
     if st.button("🔄 Trocar Ano Avaliativo", use_container_width=True, key="btn_sidebar_trocar_ano", help="Clique para retornar à tela de escolha do ano"):
         st.session_state.selected_year = None
         st.cache_data.clear()
         st.rerun()
+
+    # Botões de escolha de tema (Dark / Light), gravados por usuário, logo abaixo de Trocar Ano Avaliativo
+    _col_thm_d, _col_thm_l = st.columns(2)
+    with _col_thm_d:
+        if st.button(
+            "🌙 Dark",
+            use_container_width=True,
+            type="primary" if get_active_theme() == "dark" else "secondary",
+            key="btn_theme_dark",
+        ):
+            set_user_theme(st.session_state.get("user_pm", ""), "dark")
+            st.rerun()
+    with _col_thm_l:
+        if st.button(
+            "☀️ Light",
+            use_container_width=True,
+            type="primary" if get_active_theme() == "light" else "secondary",
+            key="btn_theme_light",
+        ):
+            set_user_theme(st.session_state.get("user_pm", ""), "light")
+            st.rerun()
 
 
     
@@ -5327,69 +5430,9 @@ with st.sidebar:
 
         st.markdown(f"<small>🔑 <b>Perfil:</b> <span style='color:#9b8a5c;'>{sidebar_active_role}</span></small>", unsafe_allow_html=True)
 
-    # Botões de escolha de tema (Dark / Light), gravados por usuário
-    _col_thm_d, _col_thm_l = st.columns(2)
-    with _col_thm_d:
-        if st.button(
-            "🌙 Dark",
-            use_container_width=True,
-            type="primary" if get_active_theme() == "dark" else "secondary",
-            key="btn_theme_dark",
-        ):
-            set_user_theme(st.session_state.get("user_pm", ""), "dark")
-            st.rerun()
-    with _col_thm_l:
-        if st.button(
-            "☀️ Light",
-            use_container_width=True,
-            type="primary" if get_active_theme() == "light" else "secondary",
-            key="btn_theme_light",
-        ):
-            set_user_theme(st.session_state.get("user_pm", ""), "light")
-            st.rerun()
-
     # Funcionalidade suspensa temporariamente:
     # global_aadp = st.radio("Grupo AADP", ["Ativa", "Reconduzido", "Discente"], index=0, key="global_aadp")
     global_aadp = "Reconduzido" if grupo_ativo() == "RECONDUZIDO" else "Ativa"
-    st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
-
-
-
-
-
-    # 1. Mostrar Filtros (Primeiro)
-
-
-    if "show_filtros" not in st.session_state:
-
-
-        st.session_state.show_filtros = False
-
-
-        
-
-
-    btn_filtros_label = "🔍 Ocultar Filtros" if st.session_state.show_filtros else "🔍 Mostrar Filtros"
-
-
-    btn_filtros_type = "primary" if st.session_state.show_filtros else "secondary"
-
-
-    if st.button(btn_filtros_label, use_container_width=True, key="btn_toggle_filtros", type=btn_filtros_type):
-
-
-        st.session_state.show_filtros = not st.session_state.show_filtros
-
-
-        st.rerun()
-
-
-
-
-
-    container_filtros = st.container()
-
-
     st.markdown("---")
 
 
@@ -5748,73 +5791,6 @@ if data_ok:
 
 
     all_cert  = ["SIM","NÃO","-"]
-
-
-    with container_filtros:
-
-
-        if st.session_state.show_filtros:
-
-
-            st.markdown("#### 🔍 Filtros de Visualização")
-
-
-            if active_role not in ("P1", "SADM"):
-
-
-                rpm_filter = st.multiselect("🏢 Unidade RPM", all_rpm, placeholder="Todas")
-
-
-            else:
-
-
-                rpm_filter = []
-
-
-            df_tmp = df_full[df_full["Unidade RPM (Avaliado)"].isin(rpm_filter)] if rpm_filter else df_full
-
-
-            all_unid = sorted(df_tmp["Unidade Principal (Avaliado)"].dropna().unique())
-
-
-            
-
-
-            if active_role != "SADM":
-
-
-                unid_filter = st.multiselect("🏛️ Subunidade", all_unid, placeholder="Todas")
-
-
-            else:
-
-
-                unid_filter = []
-
-
-                
-
-
-            st.markdown("")
-
-
-            sit_com_filter = st.multiselect("🔵 Situação Comissão", all_sit, placeholder="Todas")
-
-
-            status_filter  = st.multiselect("📊 Status",            all_status, placeholder="Todos")
-
-
-            cert_filter    = st.multiselect("✅ Cert. Homologador",  all_cert,   placeholder="Todos")
-
-
-            st.markdown("---")
-
-
-            st.markdown(f"<small>🕐 Carregado: {ts}</small>", unsafe_allow_html=True)
-
-
-            st.markdown(f"<small>📊 {fmt_num(len(df_full))} registros</small>", unsafe_allow_html=True)
-
 
     df = apply_filters(df_full, rpm_filter, unid_filter, sit_com_filter, status_filter, cert_filter)
     
