@@ -3969,6 +3969,30 @@ def _status_com_prazo_recurso(j, l, n, dt_av2, dt_hom):
     return status
 
 
+def _classificar_situacao_comissao(pm_norm, local_inst, av1_norm, av2_norm, dt_inst, sigef_locais, geral_insts):
+    """Classifica uma instância como 'Nota Provisória' ou 'Comissão Atual'.
+    Só é 'Nota Provisória' se TODAS as 3 condições forem confirmadas:
+    1. O militar foi transferido de Local/Unidade (local da instância != local atual no SIGEF);
+    2. A planilha geral.csv confirma que foi aberto novo CDP após esta instância (dt_cdp > dt_inst);
+    3. Houve mudança em pelo menos um dos avaliadores (AV1 e/ou AV2) nessa instância posterior.
+    Sem novo CDP aberto após esta instância (ou sem transferência/mudança de avaliador), permanece 'Comissão Atual'.
+    """
+    loc_atual_sigef = " ".join(str(sigef_locais.get(pm_norm) or "").split()).upper()
+    loc_inst_norm = " ".join(str(local_inst or "").split()).upper()
+
+    if not loc_atual_sigef or loc_inst_norm == loc_atual_sigef:
+        return "Comissão Atual"
+
+    if dt_inst is None:
+        return "Comissão Atual"
+
+    for dt_outro, av1_outro, av2_outro in geral_insts.get(pm_norm, ()):
+        if dt_outro > dt_inst and (av1_outro != av1_norm or av2_outro != av2_norm):
+            return "Nota Provisória"
+
+    return "Comissão Atual"
+
+
 def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
     """Processa os dois CSVs e retorna o DataFrame final."""
     sigef = {}
@@ -3982,6 +4006,7 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
     recourse_map = {}
     cdp_map = {}
     pm_max_cdp = {}
+    geral_insts = {}
     
     def find_col_index(header_list, name_pattern):
         def norm(s):
@@ -4083,6 +4108,7 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
                         dt_cdp_val = parse_date_internal(row_g[c_dt_cdp_g])
                         if dt_cdp_val:
                             cdp_map[(pm_g, av1_g, av2_g)] = dt_cdp_val
+                            geral_insts.setdefault(pm_g, []).append((dt_cdp_val, av1_g, av2_g))
                             if pm_g not in pm_max_cdp or dt_cdp_val > pm_max_cdp[pm_g]:
                                 pm_max_cdp[pm_g] = dt_cdp_val
 
@@ -4186,21 +4212,15 @@ def _parse_csv(av_f: str, si_f: str) -> pd.DataFrame:
             nrpm = row[0].strip(); local = row[5].strip()
             j = row[9].strip(); l = row[11].strip(); n = row[13].strip()
             
-            is_same_location = (local.upper().strip() == sigef.get(nrpm.lstrip("0") or "0", "").upper().strip())
-            has_multiple_evals = (pm_counts.get(nrpm, 0) > 1)
-            
             pm_norm = normalize_pm_str(nrpm)
             av1_val = row[26].strip()
             av2_val = row[34].strip()
             av1_norm = normalize_pm_str(av1_val)
             av2_norm = normalize_pm_str(av2_val)
             key = (pm_norm, av1_norm, av2_norm)
-            
+
             dt_cdp = cdp_map.get(key)
-            if dt_cdp is not None and pm_norm in pm_max_cdp:
-                sc = "Comissão Atual" if dt_cdp >= pm_max_cdp[pm_norm] else "Nota Provisória"
-            else:
-                sc = "Comissão Atual" if (is_same_location or not has_multiple_evals) else "Nota Provisória"
+            sc = _classificar_situacao_comissao(pm_norm, local, av1_norm, av2_norm, dt_cdp, sigef, geral_insts)
             
             # Verificar se temos o status do recurso no recourse_map
             pm_norm = normalize_pm_str(nrpm)
@@ -11740,25 +11760,39 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
                 if len(row) > 9:
                     sigef_map[_norm_pm(row[0])] = row[9].strip()
 
-    # 2. Carregar Data do CDP do geral.csv
+    # 2. Carregar Data do CDP e instâncias do geral.csv
     cdp_map = {}
     pm_max_cdp = {}
+    geral_insts_cdp = {}
     geral_completas = []
     if geral_path:
         with open(geral_path, "r", encoding="cp1252", errors="replace") as f_ge:
             r_ge = csv.reader(f_ge, delimiter=";")
             header_ge = next(r_ge, [])
+            def _ge_idx(pat, default_idx):
+                p_low = pat.lower()
+                for idx_c, col_n in enumerate(header_ge):
+                    if p_low in str(col_n).lower():
+                        return idx_c
+                return default_idx
+            ix_pm = _ge_idx("nrPM (Avaliado)", 1)
+            ix_dt_cdp = _ge_idx("Data do CDP", 5)
+            ix_loc = _ge_idx("Local/Unidade (Avaliado)", 9)
+            ix_av1 = _ge_idx("nrPM (Avaliador 1)", 28)
+            ix_av2 = _ge_idx("nrPM (Avaliador 2)", 37)
+            ix_hom = _ge_idx("nrPM (Homologador)", 62)
             for row in r_ge:
-                if len(row) > 62:
-                    pm_g = _norm_pm(row[1])
-                    av1_g = _norm_pm(row[28])
-                    av2_g = _norm_pm(row[37])
-                    hom_g = _norm_pm(row[62])
-                    dt_g = _parse_d(row[5])
+                if len(row) > max(ix_pm, ix_av1, ix_av2, ix_hom):
+                    pm_g = _norm_pm(row[ix_pm])
+                    av1_g = _norm_pm(row[ix_av1])
+                    av2_g = _norm_pm(row[ix_av2])
+                    hom_g = _norm_pm(row[ix_hom])
+                    dt_g = _parse_d(row[ix_dt_cdp]) if ix_dt_cdp < len(row) else None
                     if dt_g:
                         cdp_map[(pm_g, av1_g, av2_g)] = dt_g
                         cdp_map[(pm_g, av1_g)] = dt_g
                         cdp_map[pm_g] = dt_g
+                        geral_insts_cdp.setdefault(pm_g, []).append((dt_g, av1_g, av2_g))
                         if pm_g not in pm_max_cdp or dt_g > pm_max_cdp[pm_g]:
                             pm_max_cdp[pm_g] = dt_g
                     
@@ -11769,10 +11803,11 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
                             "posto_aval": row[6].strip() if len(row) > 6 else "-",
                             "rpm_aval": row[7].strip() if len(row) > 7 else "-",
                             "unid_aval": row[8].strip() if len(row) > 8 else "-",
+                            "local_aval": row[ix_loc].strip() if ix_loc < len(row) else "",
                             "pm_av1": av1_g,
-                            "nome_av1": row[29].strip() if len(row) > 29 else "-",
-                            "posto_av1": row[30].strip() if len(row) > 30 else "-",
-                            "unid_av1": row[32].strip() if len(row) > 32 else "-",
+                            "nome_av1": row[ix_av1 + 1].strip() if ix_av1 + 1 < len(row) else "-",
+                            "posto_av1": row[ix_av1 + 2].strip() if ix_av1 + 2 < len(row) else "-",
+                            "unid_av1": row[ix_av1 + 4].strip() if ix_av1 + 4 < len(row) else "-",
                             "pm_av2": av2_g,
                             "nome_av2": row[38].strip() if len(row) > 38 else "-",
                             "posto_av2": row[39].strip() if len(row) > 39 else "-",
@@ -11989,6 +12024,8 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
             pms_instances[pm_aval] = []
         pms_instances[pm_aval].append({
             "inst_key": (pm_aval, pm_av1, pm_av2),
+            "local_aval": local_aval,
+            "dt_cdp": dt_cdp,
             "ref_date": ref_date,
             "inst_dict": inst_row,
             "metas_indices": inst_metas_indices
@@ -12031,33 +12068,34 @@ def load_controle_cdp_data(_db_path: str = "", _drive_metas_id: str = "", _drive
             
             pms_instances[pm_aval].append({
                 "inst_key": inst_key,
-                "ref_date": date.min,
+                "local_aval": comp.get("local_aval", ""),
+                "dt_cdp": cdp_map.get(inst_key),
+                "ref_date": cdp_map.get(inst_key) or date.min,
                 "inst_dict": inst_row,
                 "metas_indices": []
             })
 
-    # Atribuição da Situação da Comissão:
-    # Para o mesmo avaliado, a instância mais recente é a "Comissão Atual", e as anteriores são "Nota Provisória"
+    # Atribuição da Situação da Comissão usando a regra unificada:
+    # Só é "Nota Provisória" se: (1) houve transferência de local no SIGEF,
+    # (2) o geral.csv confirma novo CDP aberto após esta instância e (3) houve mudança de AV1 e/ou AV2.
     instances_rows = []
     for pm_aval, inst_list in pms_instances.items():
-        if len(inst_list) == 1:
-            sc = "Comissão Atual"
-            inst_list[0]["inst_dict"]["Situação Comissão"] = sc
-            for m_idx in inst_list[0]["metas_indices"]:
+        inst_list.sort(key=lambda x: x["ref_date"], reverse=True)
+        for item in inst_list:
+            _, av1_i, av2_i = item["inst_key"]
+            sc = _classificar_situacao_comissao(
+                pm_aval,
+                item.get("local_aval", ""),
+                av1_i,
+                av2_i,
+                item.get("dt_cdp"),
+                sigef_map,
+                geral_insts_cdp,
+            )
+            item["inst_dict"]["Situação Comissão"] = sc
+            for m_idx in item["metas_indices"]:
                 metas_detail_rows[m_idx]["Situação Comissão"] = sc
-            instances_rows.append(inst_list[0]["inst_dict"])
-        else:
-            inst_list.sort(key=lambda x: x["ref_date"], reverse=True)
-            inst_list[0]["inst_dict"]["Situação Comissão"] = "Comissão Atual"
-            for m_idx in inst_list[0]["metas_indices"]:
-                metas_detail_rows[m_idx]["Situação Comissão"] = "Comissão Atual"
-            instances_rows.append(inst_list[0]["inst_dict"])
-
-            for older_item in inst_list[1:]:
-                older_item["inst_dict"]["Situação Comissão"] = "Nota Provisória"
-                for m_idx in older_item["metas_indices"]:
-                    metas_detail_rows[m_idx]["Situação Comissão"] = "Nota Provisória"
-                instances_rows.append(older_item["inst_dict"])
+            instances_rows.append(item["inst_dict"])
 
     df_inst = pd.DataFrame(instances_rows)
     df_metas = pd.DataFrame(metas_detail_rows)
