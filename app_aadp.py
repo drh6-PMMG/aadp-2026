@@ -1091,7 +1091,7 @@ st.set_page_config(
     layout="wide",
 
 
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 
 
 )
@@ -1100,742 +1100,575 @@ st.set_page_config(
 
 
 
-# ─────────────────────── CSS ──────────────────────────────────────────────────
+# ─────────────────────── TEMA POR USUÁRIO (DARK / LIGHT) + CRYSTAL LIQUID ─────
+_THEME_DB_PATH = str(Path(__file__).parent / "aadp_secure.db")
+_THEME_JSON_PATH = str(Path(__file__).parent / "user_themes.json")
 
 
-st.markdown("""
-<script>
-(function() {
-    let changed = false;
-    const key = "streamlit:themeConfiguration";
-    const expected = '{"themePreset":"dark"}';
-    const lightTheme = '{"themePreset":"light"}';
-    
-    const forceDark = (win) => {
-        try {
-            const current = win.localStorage.getItem(key);
-            if (current !== lightTheme) {
-                if (current !== expected) {
-                    win.localStorage.setItem(key, expected);
-                    changed = true;
-                }
-                const legacyKeys = ["stActiveTheme-light", "stActiveTheme-dark", "stActiveTheme", "stActiveThemeType", "stTheme", "theme"];
-                legacyKeys.forEach(k => {
-                    if (win.localStorage.getItem(k)) {
-                        win.localStorage.removeItem(k);
-                        changed = true;
-                    }
-                });
-            }
-        } catch(e) {}
-    };
+def _read_theme_json():
+    try:
+        if os.path.exists(_THEME_JSON_PATH):
+            with open(_THEME_JSON_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data if isinstance(data, dict) else {}
+    except Exception:
+        pass
+    return {}
 
-    forceDark(window);
-    if (window.parent) {
-        forceDark(window.parent);
+
+def _write_theme_json(pm_key: str, theme: str):
+    try:
+        data = _read_theme_json()
+        data[pm_key] = theme
+        with open(_THEME_JSON_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+def load_user_theme(pm: str) -> str:
+    """Carrega a última preferência de tema ('dark' ou 'light') gravada para o usuário."""
+    pm_key = str(pm or "").strip()
+    if not pm_key:
+        return "dark"
+    # 1. Tenta ler da tabela user_preferences no SQLite (sem tocar em users ou logs)
+    try:
+        conn = sqlite3.connect(_THEME_DB_PATH)
+        c = conn.cursor()
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS user_preferences (
+                pm TEXT PRIMARY KEY,
+                theme TEXT DEFAULT 'dark',
+                updated_at TEXT
+            )
+        """)
+        c.execute("SELECT theme FROM user_preferences WHERE pm = ?", (pm_key,))
+        row = c.fetchone()
+        conn.commit()
+        conn.close()
+        if row and row[0] in ("dark", "light"):
+            return row[0]
+    except Exception:
+        pass
+    # 2. Fallback em JSON local
+    jdata = _read_theme_json()
+    if jdata.get(pm_key) in ("dark", "light"):
+        return jdata[pm_key]
+    # 3. Fallback em logs da nuvem (última ocorrência de PREFERENCIA_TEMA do usuário)
+    try:
+        if "db_logs" in st.session_state:
+            for lg in st.session_state.db_logs:
+                if str(lg.get("pm", "")).strip() == pm_key and str(lg.get("action", "")).strip() == "PREFERENCIA_TEMA":
+                    det = str(lg.get("details", "")).lower()
+                    if "light" in det:
+                        return "light"
+                    if "dark" in det:
+                        return "dark"
+    except Exception:
+        pass
+    return "dark"
+
+
+def set_user_theme(pm: str, theme: str):
+    """Grava a escolha de tema ('dark' ou 'light') para o usuário atual."""
+    theme = "light" if str(theme).lower() == "light" else "dark"
+    st.session_state["user_theme"] = theme
+    pm_key = str(pm or "").strip()
+    if not pm_key:
+        return
+    try:
+        conn = sqlite3.connect(_THEME_DB_PATH)
+        c = conn.cursor()
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS user_preferences (
+                pm TEXT PRIMARY KEY,
+                theme TEXT DEFAULT 'dark',
+                updated_at TEXT
+            )
+        """)
+        c.execute(
+            "INSERT OR REPLACE INTO user_preferences (pm, theme, updated_at) VALUES (?, ?, ?)",
+            (pm_key, theme, now_br().strftime("%Y-%m-%d %H:%M:%S"))
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+    _write_theme_json(pm_key, theme)
+    try:
+        if "log_action" in globals():
+            log_action(pm_key, "PREFERENCIA_TEMA", theme)
+    except Exception:
+        pass
+
+
+def get_active_theme() -> str:
+    """Retorna o tema ativo da sessão ('dark' ou 'light')."""
+    if "user_theme" not in st.session_state and st.session_state.get("authenticated") and st.session_state.get("user_pm"):
+        st.session_state["user_theme"] = load_user_theme(st.session_state["user_pm"])
+    t = st.session_state.get("user_theme", "dark")
+    return "light" if t == "light" else "dark"
+
+
+_active_theme = get_active_theme()
+_is_light = (_active_theme == "light")
+
+# Paleta Crystal Liquid dinâmica (Light x Dark)
+if _is_light:
+    _PAL = {
+        "bg": "linear-gradient(135deg, #f2f5fa 0%, #e7edf6 52%, #f5f1e6 100%)",
+        "text": "#18202c",
+        "text_muted": "#4b5563",
+        "accent": "#8a743b",
+        "accent_soft": "rgba(155, 138, 92, 0.22)",
+        "card_bg": "linear-gradient(135deg, rgba(255, 255, 255, 0.80) 0%, rgba(245, 248, 253, 0.65) 100%)",
+        "card_border": "rgba(155, 138, 92, 0.30)",
+        "card_shine": "rgba(255, 255, 255, 0.95)",
+        "card_shadow": "0 8px 28px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95)",
+        "btn_bg": "linear-gradient(135deg, rgba(255, 255, 255, 0.84) 0%, rgba(236, 241, 249, 0.66) 100%)",
+        "btn_hover": "linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(228, 235, 246, 0.85) 100%)",
+        "btn_border": "rgba(155, 138, 92, 0.38)",
+        "btn_primary_bg": "linear-gradient(135deg, rgba(196, 174, 114, 0.45) 0%, rgba(155, 138, 92, 0.28) 100%)",
+        "sidebar_bg": "linear-gradient(180deg, rgba(250, 251, 255, 0.90) 0%, rgba(236, 241, 249, 0.86) 100%)",
+        "title_bg": "linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(242, 238, 226, 0.78) 100%)",
+        "tab_bg": "rgba(255, 255, 255, 0.68)",
+        "info_bg": "rgba(255, 255, 255, 0.78)",
+        "warn_bg": "rgba(255, 248, 225, 0.85)",
+        "warn_text": "#7a5c00",
+        "kpi_active_bg": "rgba(255, 255, 255, 0.92)",
+        "kpi_val_main": "#1f2937",
+        "kpi_val_np": "#8a6d3b",
+        "kpi_val_aberta": "#c0392b",
+        "kpi_val_parc": "#d35400",
+        "kpi_val_hom": "#b7791f",
+        "kpi_val_enc": "#2f855a",
+        "kpi_val_rec": "#6b46c1",
+        "input_bg": "rgba(255, 255, 255, 0.86)",
+        "hdr_bg": "rgba(242, 245, 250, 0.75)",
     }
-    if (changed) {
-        window.location.reload();
+else:
+    _PAL = {
+        "bg": "linear-gradient(135deg, #0b0c10 0%, #12141b 55%, #17140e 100%)",
+        "text": "#ece6d8",
+        "text_muted": "#a8a29e",
+        "accent": "#c5b078",
+        "accent_soft": "rgba(155, 138, 92, 0.24)",
+        "card_bg": "linear-gradient(135deg, rgba(30, 32, 40, 0.72) 0%, rgba(18, 20, 26, 0.58) 100%)",
+        "card_border": "rgba(255, 255, 255, 0.13)",
+        "card_shine": "rgba(255, 255, 255, 0.16)",
+        "card_shadow": "0 8px 30px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.14)",
+        "btn_bg": "linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)",
+        "btn_hover": "linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0%, rgba(155, 138, 92, 0.14) 100%)",
+        "btn_border": "rgba(255, 255, 255, 0.18)",
+        "btn_primary_bg": "linear-gradient(135deg, rgba(155, 138, 92, 0.34) 0%, rgba(45, 38, 22, 0.65) 100%)",
+        "sidebar_bg": "linear-gradient(180deg, rgba(14, 15, 20, 0.90) 0%, rgba(24, 24, 28, 0.86) 100%)",
+        "title_bg": "linear-gradient(135deg, rgba(18, 17, 14, 0.85) 0%, rgba(38, 36, 30, 0.72) 100%)",
+        "tab_bg": "rgba(24, 26, 33, 0.70)",
+        "info_bg": "rgba(24, 26, 33, 0.72)",
+        "warn_bg": "rgba(42, 27, 0, 0.72)",
+        "warn_text": "#ffd257",
+        "kpi_active_bg": "rgba(40, 42, 52, 0.88)",
+        "kpi_val_main": "#e5dccb",
+        "kpi_val_np": "#c5b078",
+        "kpi_val_aberta": "#ff6b6b",
+        "kpi_val_parc": "#ff9f43",
+        "kpi_val_hom": "#ffd257",
+        "kpi_val_enc": "#7bed9f",
+        "kpi_val_rec": "#d6a2e8",
+        "input_bg": "rgba(28, 30, 38, 0.76)",
+        "hdr_bg": "rgba(12, 13, 18, 0.65)",
     }
-})();
-</script>
 
+st.markdown(f"""
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
+:root {{
+  --aadp-text: {_PAL["text"]};
+  --aadp-muted: {_PAL["text_muted"]};
+  --aadp-accent: {_PAL["accent"]};
+  --aadp-card-bg: {_PAL["card_bg"]};
+  --aadp-card-border: {_PAL["card_border"]};
+  --aadp-card-shine: {_PAL["card_shine"]};
+  --aadp-card-shadow: {_PAL["card_shadow"]};
+  --aadp-btn-bg: {_PAL["btn_bg"]};
+  --aadp-btn-hover: {_PAL["btn_hover"]};
+  --aadp-btn-border: {_PAL["btn_border"]};
+  --aadp-btn-primary: {_PAL["btn_primary_bg"]};
+}}
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&display=swap');
+html, body, [class*="css"] {{
+  font-family: 'Inter', sans-serif;
+  color: var(--aadp-text);
+}}
 
+/* Fundo principal dinâmico (Dark / Light) */
+.stApp, [data-testid="stAppViewContainer"], .main {{
+  background: {_PAL["bg"]} !important;
+  background-attachment: fixed !important;
+  color: var(--aadp-text) !important;
+}}
 
-html,body,[class*="css"]{font-family:'Inter',sans-serif;}
+[data-testid="stHeader"] {{
+  background: {_PAL["hdr_bg"]} !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}}
 
+.stApp p, .stApp span, .stApp label, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp small, .stCaption, [data-testid="stMarkdownContainer"] {{
+  color: var(--aadp-text);
+}}
 
+/* ── BARRA LATERAL: SEMPRE RECOLHIDA, ABRE AO PASSAR O MOUSE NA LATERAL ESQUERDA ── */
+[data-testid="collapsedControl"],
+button[data-testid="stSidebarCollapseButton"],
+[data-testid="stSidebarCollapseButton"] {{
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}}
 
-
-
-[data-testid="stSidebar"]{
-
-
-  background:linear-gradient(180deg,#0c0b07 0%,#1c1c1c 100%);
-
-
-  border-right:1px solid #9b8a5c;
-
-
-}
-
-
-[data-testid="stSidebar"] *{color:#e5dccb!important;}
-
-
-[data-testid="stSidebar"] h1,[data-testid="stSidebar"] h2,
-
-
-[data-testid="stSidebar"] h3{color:#9b8a5c!important;}
-
-
-.main{background:#121212;}
-
-
-
-
-
-/* Garante que a seta de recolhimento e expansão da barra lateral esteja sempre visível */
-
-
-[data-testid="collapsedControl"], button[data-testid="stSidebarCollapseButton"] {
-
-
-  color: #9b8a5c !important;
-
-
-  display: flex !important;
-
-
+[data-testid="stSidebar"] {{
+  position: fixed !important;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  height: 100vh !important;
+  width: 21rem !important;
+  min-width: 21rem !important;
+  max-width: 21rem !important;
+  margin-left: 0 !important;
+  z-index: 999990 !important;
   visibility: visible !important;
-
-
+  display: flex !important;
   opacity: 1 !important;
+  background: {_PAL["sidebar_bg"]} !important;
+  backdrop-filter: blur(22px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(170%) !important;
+  border-right: 2px solid rgba(155, 138, 92, 0.55) !important;
+  box-shadow: 6px 0 32px rgba(0, 0, 0, 0.28), inset -1px 0 0 rgba(255, 255, 255, 0.12) !important;
+  transform: translateX(calc(-100% + 14px)) !important;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease !important;
+}}
 
+/* Indicador discreto na borda esquerda para mostrar onde passar o mouse */
+[data-testid="stSidebar"]::after {{
+  content: "›";
+  position: fixed;
+  right: 1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(155, 138, 92, 0.85), rgba(197, 176, 120, 0.95), rgba(155, 138, 92, 0.85));
+  color: #111 !important;
+  font-weight: 900;
+  font-size: 13px;
+  border-radius: 6px 0 0 6px;
+  box-shadow: 0 0 12px rgba(155, 138, 92, 0.45);
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}}
 
-}
+[data-testid="stSidebar"]:hover,
+[data-testid="stSidebar"]:focus-within {{
+  transform: translateX(0) !important;
+  box-shadow: 14px 0 44px rgba(0, 0, 0, 0.38) !important;
+}}
 
+[data-testid="stSidebar"]:hover::after,
+[data-testid="stSidebar"]:focus-within::after {{
+  opacity: 0;
+}}
 
+[data-testid="stSidebar"] * {{
+  color: var(--aadp-text) !important;
+}}
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {{
+  color: var(--aadp-accent) !important;
+}}
 
+/* ── CABEÇALHO PRINCIPAL CRYSTAL LIQUID ──────────────────────────────────── */
+.main-title {{
+  background: {_PAL["title_bg"]} !important;
+  backdrop-filter: blur(20px) saturate(165%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(165%) !important;
+  color: var(--aadp-accent) !important;
+  padding: 24px 28px;
+  border-radius: 18px !important;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  border: 1px solid var(--aadp-card-border) !important;
+  border-top: 1px solid var(--aadp-card-shine) !important;
+  border-bottom: 3px solid #9b8a5c !important;
+  box-shadow: var(--aadp-card-shadow) !important;
+}}
+.main-title h1 {{ margin: 0; font-size: 2.1rem; font-weight: 800; color: var(--aadp-accent) !important; letter-spacing: 0.02em; }}
+.main-title p  {{ margin: 0; font-size: .9rem; opacity: .9; color: var(--aadp-text) !important; margin-top: 6px; }}
 
+/* ── CARDS CRYSTAL LIQUID (KPI, MÉTRICAS, ALERTAS, EXPANDERS, FORMULÁRIOS) ── */
+.kpi-card {{
+  background: var(--aadp-card-bg) !important;
+  backdrop-filter: blur(18px) saturate(165%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(165%) !important;
+  border: 1px solid var(--aadp-card-border) !important;
+  border-top: 1px solid var(--aadp-card-shine) !important;
+  border-left: 5px solid !important;
+  border-radius: 16px !important;
+  padding: 16px 20px;
+  box-shadow: var(--aadp-card-shadow) !important;
+  transition: transform .25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow .25s ease !important;
+  text-align: center;
+}}
+.kpi-card:hover {{
+  transform: translateY(-3px) !important;
+  box-shadow: 0 12px 34px rgba(155, 138, 92, 0.22), inset 0 1px 0 var(--aadp-card-shine) !important;
+}}
+.kpi-card .label {{ font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--aadp-muted) !important; margin-bottom: 6px; }}
+.kpi-card .value {{ font-size: 1.9rem; font-weight: 800; line-height: 1; }}
+.kpi-card .sub   {{ font-size: .72rem; color: var(--aadp-muted) !important; margin-top: 4px; }}
 
-.main-title{
+.kpi-total    {{ border-left-color: #9b8a5c !important; }} .kpi-total .value    {{ color: {_PAL["kpi_val_main"]} !important; }}
+.kpi-ca       {{ border-left-color: #9b8a5c !important; }} .kpi-ca .value       {{ color: {_PAL["kpi_val_main"]} !important; }}
+.kpi-np       {{ border-left-color: #8c6e42 !important; }} .kpi-np .value       {{ color: {_PAL["kpi_val_np"]} !important; }}
+.kpi-aberta   {{ border-left-color: #FF4444 !important; }} .kpi-aberta .value   {{ color: {_PAL["kpi_val_aberta"]} !important; }}
+.kpi-parc     {{ border-left-color: #FF8C00 !important; }} .kpi-parc .value     {{ color: {_PAL["kpi_val_parc"]} !important; }}
+.kpi-hom      {{ border-left-color: #FFD966 !important; }} .kpi-hom .value      {{ color: {_PAL["kpi_val_hom"]} !important; }}
+.kpi-enc      {{ border-left-color: #70AD47 !important; }} .kpi-enc .value      {{ color: {_PAL["kpi_val_enc"]} !important; }}
+.kpi-recurso  {{ border-left-color: #9B59B6 !important; }} .kpi-recurso .value  {{ color: {_PAL["kpi_val_rec"]} !important; }}
 
+.kpi-active-total, .kpi-active-ca, .kpi-active-np, .kpi-active-enc,
+.kpi-active-aberta, .kpi-active-parc, .kpi-active-hom, .kpi-active-recurso {{
+  background: {_PAL["kpi_active_bg"]} !important;
+  box-shadow: 0 0 22px rgba(155, 138, 92, 0.38), inset 0 1px 0 var(--aadp-card-shine) !important;
+}}
 
-  background:linear-gradient(135deg,#0c0b07 0%,#282828 100%);
+div[data-testid="metric-container"],
+div[data-testid="stMetric"],
+div[data-testid="stExpander"] > details,
+div[data-testid="stForm"],
+div[data-testid="stAlert"] {{
+  background: var(--aadp-card-bg) !important;
+  backdrop-filter: blur(18px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
+  border: 1px solid var(--aadp-card-border) !important;
+  border-top: 1px solid var(--aadp-card-shine) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--aadp-card-shadow) !important;
+}}
+div[data-testid="metric-container"], div[data-testid="stMetric"] {{
+  padding: 14px 16px !important;
+  transition: transform .22s ease, box-shadow .22s ease !important;
+}}
+div[data-testid="metric-container"]:hover, div[data-testid="stMetric"]:hover {{
+  transform: translateY(-2px) !important;
+}}
 
+.info-box {{
+  background: {_PAL["info_bg"]} !important;
+  backdrop-filter: blur(16px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(150%) !important;
+  border: 1px solid rgba(155, 138, 92, 0.45) !important;
+  border-top: 1px solid var(--aadp-card-shine) !important;
+  border-radius: 14px !important;
+  padding: 12px 16px;
+  font-size: .85rem;
+  color: var(--aadp-text) !important;
+  margin-bottom: 12px;
+  box-shadow: var(--aadp-card-shadow) !important;
+}}
+.warn-box {{
+  background: {_PAL["warn_bg"]} !important;
+  backdrop-filter: blur(16px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(150%) !important;
+  border: 1px solid #ffd257 !important;
+  border-radius: 14px !important;
+  padding: 12px 16px;
+  font-size: .85rem;
+  color: {_PAL["warn_text"]} !important;
+  margin-bottom: 12px;
+  box-shadow: var(--aadp-card-shadow) !important;
+}}
 
-  color:#9b8a5c;padding:24px 28px;border-radius:12px;margin-bottom:20px;
+/* Inputs / Selects / Multiselects com leve transparência Crystal */
+div[data-baseweb="input"] > div,
+div[data-baseweb="select"] > div,
+textarea {{
+  background: {_PAL["input_bg"]} !important;
+  border: 1px solid var(--aadp-card-border) !important;
+  border-radius: 12px !important;
+  color: var(--aadp-text) !important;
+  backdrop-filter: blur(10px) !important;
+}}
 
+/* ── ABAS CRYSTAL LIQUID ─────────────────────────────────────────────────── */
+.stTabs [data-baseweb="tab-list"] {{
+  background: {_PAL["tab_bg"]} !important;
+  backdrop-filter: blur(16px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+  border: 1px solid var(--aadp-card-border) !important;
+  border-radius: 14px !important;
+  padding: 6px;
+  box-shadow: var(--aadp-card-shadow) !important;
+  gap: 6px;
+}}
+.stTabs [data-baseweb="tab"] {{
+  border-radius: 10px !important;
+  font-weight: 600;
+  padding: 8px 20px;
+  font-size: .85rem;
+  color: var(--aadp-text) !important;
+  transition: all 0.22s ease !important;
+}}
+.stTabs [aria-selected="true"] {{
+  background: linear-gradient(135deg, #b8a46e 0%, #9b8a5c 100%) !important;
+  color: #111 !important;
+  box-shadow: 0 4px 14px rgba(155, 138, 92, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
+}}
 
-  display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;
+.section-hdr {{
+  background: linear-gradient(135deg, rgba(184, 164, 110, 0.92), rgba(155, 138, 92, 0.88)) !important;
+  color: #111 !important;
+  padding: 10px 16px;
+  border-radius: 12px !important;
+  font-weight: 700;
+  font-size: .9rem;
+  margin: 16px 0 8px 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 4px 14px rgba(0, 0, 0, 0.12);
+}}
+.section-hdr-hom {{
+  background: linear-gradient(135deg, rgba(140, 110, 66, 0.92), rgba(110, 86, 50, 0.90)) !important;
+  color: #fff !important;
+  padding: 10px 16px;
+  border-radius: 12px !important;
+  font-weight: 700;
+  font-size: .9rem;
+  margin: 24px 0 8px 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 14px rgba(0, 0, 0, 0.16);
+}}
 
+/* ── TODOS OS BOTÕES EM ESTILO CRYSTAL LIQUID ──────────────────────────────── */
+.stButton button,
+.stDownloadButton button,
+.stFormSubmitButton button,
+button[data-testid="baseButton-secondary"],
+button[data-testid="baseButton-primary"],
+button[data-testid="stBaseButton-secondary"],
+button[data-testid="stBaseButton-primary"] {{
+  background: var(--aadp-btn-bg) !important;
+  color: var(--aadp-text) !important;
+  border: 1px solid var(--aadp-btn-border) !important;
+  border-top: 1px solid var(--aadp-card-shine) !important;
+  border-radius: 22px !important;
+  padding: 8px 20px !important;
+  font-weight: 600 !important;
+  font-size: 0.9rem !important;
+  box-shadow: inset 0 1px 1px var(--aadp-card-shine), 0 6px 18px rgba(0, 0, 0, 0.14) !important;
+  backdrop-filter: blur(16px) saturate(165%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(165%) !important;
+  transition: all 0.26s cubic-bezier(0.22, 1, 0.36, 1) !important;
+  letter-spacing: 0.02em !important;
+}}
+.stButton button *,
+.stDownloadButton button *,
+.stFormSubmitButton button * {{
+  color: var(--aadp-text) !important;
+}}
+.stButton button:hover,
+.stDownloadButton button:hover,
+.stFormSubmitButton button:hover {{
+  background: var(--aadp-btn-hover) !important;
+  border-color: rgba(155, 138, 92, 0.65) !important;
+  box-shadow: inset 0 1px 2px var(--aadp-card-shine), 0 8px 24px rgba(155, 138, 92, 0.28) !important;
+  transform: translateY(-2px) !important;
+}}
+.stButton button:active,
+.stDownloadButton button:active,
+.stFormSubmitButton button:active {{
+  transform: translateY(1px) !important;
+}}
 
-  box-shadow:0 4px 20px rgba(0,0,0,.15);
+/* Botões Primários Crystal Gold */
+.stButton button[kind="primary"],
+.stButton button[data-testid="baseButton-primary"],
+.stButton button[data-testid="stBaseButton-primary"],
+.stDownloadButton button[kind="primary"],
+.stFormSubmitButton button[kind="primary"] {{
+  background: var(--aadp-btn-primary) !important;
+  border: 1px solid rgba(155, 138, 92, 0.65) !important;
+  border-top: 1px solid var(--aadp-card-shine) !important;
+  box-shadow: inset 0 1px 2px var(--aadp-card-shine), 0 6px 20px rgba(155, 138, 92, 0.26) !important;
+}}
 
-
-  border-bottom:3px solid #9b8a5c;
-
-
-}
-
-
-.main-title h1{margin:0;font-size:2.1rem;font-weight:800;color:#9b8a5c;letter-spacing:0.02em;}
-
-
-.main-title p{margin:0;font-size:.9rem;opacity:.9;color:#e5dccb;margin-top:6px;}
-
-
-
-
-
-.kpi-card{background:#1c1c1c;border-radius:12px;padding:16px 20px;
-
-
-  box-shadow:0 4px 15px rgba(0,0,0,0.3);border-left:5px solid;
-
-
-  transition:transform .2s,box-shadow .2s;text-align:center;}
-
-
-.kpi-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.4);}
-
-
-.kpi-card .label{font-size:.7rem;font-weight:700;text-transform:uppercase;
-
-
-  letter-spacing:.06em;color:#a0a0a0!important;margin-bottom:6px;}
-
-
-.kpi-card .value{font-size:1.9rem;font-weight:800;line-height:1;}
-
-
-.kpi-card .sub{font-size:.72rem;color:#777777!important;margin-top:4px;}
-
-
-.kpi-total    {border-color:#9b8a5c;} .kpi-total    .value{color:#e5dccb!important;}
-
-
-.kpi-ca       {border-color:#9b8a5c;} .kpi-ca       .value{color:#e5dccb!important;}
-
-
-.kpi-np       {border-color:#8c6e42;} .kpi-np       .value{color:#9b8a5c!important;}
-
-
-.kpi-aberta   {border-color:#FF4444;} .kpi-aberta   .value{color:#ff6b6b!important;}
-
-
-.kpi-parc     {border-color:#FF8C00;} .kpi-parc     .value{color:#ff9f43!important;}
-
-
-.kpi-hom      {border-color:#FFD966;} .kpi-hom      .value{color:#ffd257!important;}
-
-
-.kpi-enc      {border-color:#70AD47;} .kpi-enc      .value{color:#7bed9f!important;}
-.kpi-recurso  {border-color:#9B59B6;} .kpi-recurso  .value{color:#d6a2e8!important;}
-.kpi-active-total  { background: #282828 !important; box-shadow: 0 0 15px rgba(155, 138, 92, 0.45) !important; border: 1.5px solid #9b8a5c !important; border-left: 5px solid #9b8a5c !important; }
-.kpi-active-ca     { background: #282828 !important; box-shadow: 0 0 15px rgba(155, 138, 92, 0.45) !important; border: 1.5px solid #9b8a5c !important; border-left: 5px solid #9b8a5c !important; }
-.kpi-active-np     { background: #282828 !important; box-shadow: 0 0 15px rgba(140, 110, 66, 0.45) !important; border: 1.5px solid #8c6e42 !important; border-left: 5px solid #8c6e42 !important; }
-.kpi-active-enc    { background: #282828 !important; box-shadow: 0 0 15px rgba(112, 173, 71, 0.45) !important; border: 1.5px solid #70AD47 !important; border-left: 5px solid #70AD47 !important; }
-.kpi-active-aberta { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 68, 68, 0.45) !important; border: 1.5px solid #FF4444 !important; border-left: 5px solid #FF4444 !important; }
-.kpi-active-parc   { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 140, 0, 0.45) !important; border: 1.5px solid #FF8C00 !important; border-left: 5px solid #FF8C00 !important; }
-.kpi-active-hom    { background: #282828 !important; box-shadow: 0 0 15px rgba(255, 217, 102, 0.45) !important; border: 1.5px solid #FFD966 !important; border-left: 5px solid #FFD966 !important; }
-.kpi-active-recurso { background: #282828 !important; box-shadow: 0 0 15px rgba(155, 89, 182, 0.45) !important; border: 1.5px solid #9B59B6 !important; border-left: 5px solid #9B59B6 !important; }
-
-/* Glassmorphic Crystal Style Button */
-button[aria-label="👁️ Mostrar Encerradas"],
-button[aria-label="🙈 Ocultar Encerradas"] {
-    background: rgba(155, 138, 92, 0.15) !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
-    border: 1px solid rgba(155, 138, 92, 0.4) !important;
-    border-radius: 30px !important;
-    color: var(--text-color) !important;
-    font-weight: 600 !important;
-    box-shadow: 0 4px 20px rgba(155, 138, 92, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.1) !important;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
-    transition: all 0.3s ease !important;
-}
-
-button[aria-label="👁️ Mostrar Encerradas"]:hover,
-button[aria-label="🙈 Ocultar Encerradas"]:hover {
-    background: rgba(155, 138, 92, 0.25) !important;
-    border-color: rgba(155, 138, 92, 0.6) !important;
-    box-shadow: 0 6px 25px rgba(155, 138, 92, 0.4), inset 0 1px 3px rgba(255, 255, 255, 0.2) !important;
-    transform: translateY(-1px) !important;
-}
-
-button[aria-label="👁️ Mostrar Encerradas"]:active,
-button[aria-label="🙈 Ocultar Encerradas"]:active {
-    background: rgba(128, 128, 128, 0.02) !important;
-    transform: translateY(0px) !important;
-}
-
-/* Crystal Liquid styles for interactive legend buttons */
-button[aria-label="🟢 Encerrada"],
-button[aria-label="🔴 Aberta"],
-button[aria-label="🟠 Parcialmente Encerrada"],
-button[aria-label="🟡 Homologação"],
+/* Botões de Legenda Interativa Crystal Liquid */
+button[aria-label="🟢 Encerrada"] {{ background: rgba(112, 173, 71, 0.20) !important; border: 1px solid #70AD47 !important; box-shadow: 0 0 12px rgba(112, 173, 71, 0.30) !important; }}
+button[aria-label="🔴 Aberta"] {{ background: rgba(255, 68, 68, 0.20) !important; border: 1px solid #FF4444 !important; box-shadow: 0 0 12px rgba(255, 68, 68, 0.30) !important; }}
+button[aria-label="🟠 Parcialmente Encerrada"] {{ background: rgba(255, 140, 0, 0.20) !important; border: 1px solid #FF8C00 !important; box-shadow: 0 0 12px rgba(255, 140, 0, 0.30) !important; }}
+button[aria-label="🟡 Homologação"] {{ background: rgba(255, 217, 102, 0.22) !important; border: 1px solid #FFD966 !important; box-shadow: 0 0 12px rgba(255, 217, 102, 0.30) !important; }}
 button[aria-label="⚪ Encerrada"],
 button[aria-label="⚪ Aberta"],
 button[aria-label="⚪ Parcialmente Encerrada"],
-button[aria-label="⚪ Homologação"] {
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
-    border-radius: 30px !important;
-    color: var(--text-color) !important;
-    font-weight: 600 !important;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
-    transition: all 0.3s ease !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-}
+button[aria-label="⚪ Homologação"] {{ opacity: 0.58 !important; }}
 
-/* Hover effects */
-button[aria-label="🟢 Encerrada"]:hover,
-button[aria-label="🔴 Aberta"]:hover,
-button[aria-label="🟠 Parcialmente Encerrada"]:hover,
-button[aria-label="🟡 Homologação"]:hover,
-button[aria-label="⚪ Encerrada"]:hover,
-button[aria-label="⚪ Aberta"]:hover,
-button[aria-label="⚪ Parcialmente Encerrada"]:hover,
-button[aria-label="⚪ Homologação"]:hover {
-    transform: translateY(-1px) !important;
-}
-
-/* Colored glowing styles for active buttons */
-button[aria-label="🟢 Encerrada"] {
-    background: rgba(112, 173, 71, 0.15) !important;
-    border: 1px solid #70AD47 !important;
-    box-shadow: 0 0 10px rgba(112, 173, 71, 0.3) !important;
-}
-button[aria-label="🔴 Aberta"] {
-    background: rgba(255, 68, 68, 0.15) !important;
-    border: 1px solid #FF4444 !important;
-    box-shadow: 0 0 10px rgba(255, 68, 68, 0.3) !important;
-}
-button[aria-label="🟠 Parcialmente Encerrada"] {
-    background: rgba(255, 140, 0, 0.15) !important;
-    border: 1px solid #FF8C00 !important;
-    box-shadow: 0 0 10px rgba(255, 140, 0, 0.3) !important;
-}
-button[aria-label="🟡 Homologação"] {
-    background: rgba(255, 217, 102, 0.15) !important;
-    border: 1px solid #FFD966 !important;
-    box-shadow: 0 0 10px rgba(255, 217, 102, 0.3) !important;
-}
-
-/* Muted look for inactive buttons */
-button[aria-label="⚪ Encerrada"],
-button[aria-label="⚪ Aberta"],
-button[aria-label="⚪ Parcialmente Encerrada"],
-button[aria-label="⚪ Homologação"] {
-    background: rgba(128, 128, 128, 0.03) !important;
-    border: 1px solid rgba(128, 128, 128, 0.15) !important;
-    opacity: 0.55 !important;
-}
-
-/* Glassmorphic Crystal Style for Page Navigation / Horizontal Tab Buttons */
+/* Botões da Barra Horizontal de Navegação Crystal Liquid */
 div.element-container:has(.main-nav-marker) + div[data-testid="stHorizontalBlock"] button,
 div.element-container:has(.main-nav-marker) + div.element-container button,
-div.element-container:has(.main-nav-marker) + div button {
-    background: rgba(128, 128, 128, 0.06) !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
-    border: 1px solid rgba(128, 128, 128, 0.2) !important;
-    border-radius: 8px !important;
-    color: var(--text-color) !important;
-    font-weight: 600 !important;
-    padding: 6px 4px !important;
-    transition: all 0.25s ease !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-    
-    /* Fixed unified dimensions and vertical centering */
-    min-height: 85px !important;
-    height: 85px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: center !important;
-    align-items: center !important;
-}
-
-/* Force inner text tags to wrap on pre-line and have uniform small font size */
+div.element-container:has(.main-nav-marker) + div button {{
+  background: var(--aadp-card-bg) !important;
+  backdrop-filter: blur(18px) saturate(165%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(165%) !important;
+  border: 1px solid var(--aadp-card-border) !important;
+  border-top: 1px solid var(--aadp-card-shine) !important;
+  border-radius: 14px !important;
+  color: var(--aadp-text) !important;
+  font-weight: 600 !important;
+  padding: 6px 4px !important;
+  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1) !important;
+  box-shadow: var(--aadp-card-shadow) !important;
+  min-height: 85px !important;
+  height: 85px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+}}
 div.element-container:has(.main-nav-marker) + div[data-testid="stHorizontalBlock"] button *,
 div.element-container:has(.main-nav-marker) + div.element-container button *,
-div.element-container:has(.main-nav-marker) + div button * {
-    color: var(--text-color) !important;
-    white-space: pre-line !important;
-    text-align: center !important;
-    font-size: 0.8rem !important;
-    line-height: 1.25 !important;
-}
-
-/* Highlight the icon (first line / emoji) by making it significantly larger */
+div.element-container:has(.main-nav-marker) + div button * {{
+  color: var(--aadp-text) !important;
+  white-space: pre-line !important;
+  text-align: center !important;
+  font-size: 0.8rem !important;
+  line-height: 1.25 !important;
+}}
 div.element-container:has(.main-nav-marker) + div[data-testid="stHorizontalBlock"] button p::first-line,
 div.element-container:has(.main-nav-marker) + div.element-container button p::first-line,
 div.element-container:has(.main-nav-marker) + div button p::first-line,
 div.element-container:has(.main-nav-marker) + div[data-testid="stHorizontalBlock"] button span::first-line,
 div.element-container:has(.main-nav-marker) + div.element-container button span::first-line,
-div.element-container:has(.main-nav-marker) + div button span::first-line {
-    font-size: 1.65rem !important;
-    line-height: 1.45 !important;
-    font-weight: normal !important;
-}
-
-div.element-container:has(.main-nav-marker) + div[data-testid="stHorizontalBlock"] button:hover,
-div.element-container:has(.main-nav-marker) + div.element-container button:hover,
-div.element-container:has(.main-nav-marker) + div button:hover {
-    background: rgba(128, 128, 128, 0.12) !important;
-    border-color: rgba(128, 128, 128, 0.3) !important;
-    transform: translateY(-1px) !important;
-}
-
-div.element-container:has(.main-nav-marker) + div[data-testid="stHorizontalBlock"] button:hover *,
-div.element-container:has(.main-nav-marker) + div.element-container button:hover *,
-div.element-container:has(.main-nav-marker) + div button:hover * {
-    color: var(--text-color) !important;
-}
-
-/* Make active page buttons glow gold */
+div.element-container:has(.main-nav-marker) + div button span::first-line {{
+  font-size: 1.65rem !important;
+  line-height: 1.45 !important;
+  font-weight: normal !important;
+}}
 div.element-container:has(.main-nav-marker) + div[data-testid="stHorizontalBlock"] button[kind="primary"],
 div.element-container:has(.main-nav-marker) + div.element-container button[kind="primary"],
-div.element-container:has(.main-nav-marker) + div button[kind="primary"] {
-    background: rgba(155, 138, 92, 0.2) !important;
-    border: 1.5px solid #9b8a5c !important;
-    box-shadow: 0 0 12px rgba(155, 138, 92, 0.35) !important;
-    color: var(--text-color) !important;
-    font-weight: 700 !important;
-}
-
-div.element-container:has(.main-nav-marker) + div[data-testid="stHorizontalBlock"] button[kind="primary"] *,
-div.element-container:has(.main-nav-marker) + div.element-container button[kind="primary"] *,
-div.element-container:has(.main-nav-marker) + div button[kind="primary"] * {
-    color: var(--text-color) !important;
-}
-
-
-
-
-
-
-
-
-.stTabs [data-baseweb="tab-list"]{background:#1c1c1c;border-radius:10px;padding:6px;
-
-
-  box-shadow:0 2px 8px rgba(0,0,0,.3);gap:4px;}
-
-
-.stTabs [data-baseweb="tab"]{border-radius:8px;font-weight:600;padding:8px 20px;font-size:.85rem;}
-
-
-.stTabs [aria-selected="true"]{background:#9b8a5c!important;color:#000!important;}
-
-
-
-
-
-.section-hdr{background:#9b8a5c;color:#000;padding:10px 16px;border-radius:8px;
-
-
-  font-weight:600;font-size:.9rem;margin:16px 0 8px 0;}
-
-
-.section-hdr-hom{background:#8c6e42;color:#fff;padding:10px 16px;border-radius:8px;
-
-
-  font-weight:600;font-size:.9rem;margin:24px 0 8px 0;}
-
-
-.info-box{background:#1a1a1a;border:1px solid #9b8a5c;border-radius:8px;
-
-
-  padding:12px 16px;font-size:.85rem;color:#e5dccb;margin-bottom:12px;}
-
-
-.warn-box{background:#2a1b00;border:1px solid #ffd257;border-radius:8px;
-
-
-  padding:12px 16px;font-size:.85rem;color:#ffd257;margin-bottom:12px;}
-
-
-div[data-testid="metric-container"]{background:#1c1c1c;border-radius:10px;
-
-
-  padding:12px;box-shadow:0 2px 8px rgba(0,0,0,.3);}
-
-
-/* Botões Gerais - Efeito Cristal Líquido (Glassmorphism Premium) */
-/* Botões Gerais - Efeito Cristal Líquido (Glassmorphism Premium) */
-.stButton button {
-  background: rgba(128, 128, 128, 0.06) !important;
-  color: var(--text-color) !important;
-  border: 1px solid rgba(128, 128, 128, 0.2) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
-  border-radius: 20px !important;
-  padding: 8px 24px !important;
-  font-weight: 600 !important;
-  font-size: 0.9rem !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  letter-spacing: 0.02em !important;
-}
-
-.stButton button * {
-  color: var(--text-color) !important;
-}
-
-.stButton button:hover {
-  background: rgba(128, 128, 128, 0.12) !important;
-  color: var(--text-color) !important;
-  border-color: rgba(128, 128, 128, 0.3) !important;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2), 0 0 15px rgba(155, 138, 92, 0.2) !important;
-  transform: translateY(-2px) !important;
-}
-
-.stButton button:hover * {
-  color: var(--text-color) !important;
-}
-
-.stButton button:active {
-  transform: translateY(1px) !important;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6) !important;
-}
-
-/* Botões Primários - Efeito Cristal Ouro (Ativo) */
-.stButton button[data-testid="baseButton-primary"] {
-  background: linear-gradient(135deg, rgba(155, 138, 92, 0.25) 0%, rgba(0, 0, 0, 0.6) 100%) !important;
-  color: var(--text-color) !important;
-  border: 1px solid rgba(155, 138, 92, 0.4) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.4) !important;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25), 0 4px 15px rgba(155, 138, 92, 0.25) !important;
-}
-
-.stButton button[data-testid="baseButton-primary"] * {
-  color: var(--text-color) !important;
-}
-
-.stButton button[data-testid="baseButton-primary"]:hover {
-  background: linear-gradient(135deg, rgba(155, 138, 92, 0.45) 0%, rgba(255, 255, 255, 0.1) 100%) !important;
-  border-color: rgba(155, 138, 92, 0.7) !important;
-  box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.4), 0 0 25px rgba(155, 138, 92, 0.6) !important;
-  color: var(--text-color) !important;
-}
-
-.stButton button[data-testid="baseButton-primary"]:hover * {
-  color: var(--text-color) !important;
-}
-
-/* Sidebar Botões Secundários */
-div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"] {
-  background: rgba(128, 128, 128, 0.05) !important;
-  color: var(--text-color) !important;
-  border: 1px solid rgba(128, 128, 128, 0.2) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.25) !important;
-  border-radius: 20px !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 10px rgba(0,0,0,0.2) !important;
-  font-weight: 500 !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
-}
-
-div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"] * {
-  color: var(--text-color) !important;
-}
-
-div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"]:hover {
-  background: rgba(155, 138, 92, 0.15) !important;
-  color: var(--text-color) !important;
-  border-color: rgba(155, 138, 92, 0.4) !important;
-  border-top-color: rgba(155, 138, 92, 0.6) !important;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.15), 0 0 15px rgba(155, 138, 92, 0.3) !important;
-  transform: translateY(-2px) !important;
-}
-
-div[data-testid="stSidebar"] button[data-testid="baseButton-secondary"]:hover * {
-  color: var(--text-color) !important;
-}
-
-/* Sidebar Botões Primários */
-div[data-testid="stSidebar"] button[data-testid="baseButton-primary"] {
-  background: linear-gradient(135deg, rgba(155, 138, 92, 0.3) 0%, rgba(0, 0, 0, 0.7) 100%) !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(155, 138, 92, 0.5) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.4) !important;
-  border-radius: 20px !important;
-  box-shadow: inset 0 1px 3px rgba(255,255,255,0.3), 0 4px 15px rgba(188,163,116,0.3) !important;
+div.element-container:has(.main-nav-marker) + div button[kind="primary"] {{
+  background: var(--aadp-btn-primary) !important;
+  border: 1.5px solid #9b8a5c !important;
+  box-shadow: 0 0 18px rgba(155, 138, 92, 0.35), inset 0 1px 0 var(--aadp-card-shine) !important;
   font-weight: 700 !important;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.8) !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-div[data-testid="stSidebar"] button[data-testid="baseButton-primary"]:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(155, 138, 92, 0.45) 100%) !important;
-  color: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.7) !important;
-  box-shadow: inset 0 1px 3px rgba(255,255,255,0.4), 0 0 25px rgba(188,163,116,0.5) !important;
-  transform: translateY(-2px) !important;
-}
-
-
-/* Glassmorphic Crystal Style for Report Scope Selection Buttons */
-div.element-container:has(.report-scope-marker) + div[data-testid="stHorizontalBlock"] button,
-div.element-container:has(.report-scope-marker) + div.element-container button,
-div.element-container:has(.report-scope-marker) + div button {
-    background: rgba(128, 128, 128, 0.05) !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
-    border: 1px solid rgba(128, 128, 128, 0.18) !important;
-    border-radius: 8px !important;
-    color: var(--text-color) !important;
-    font-weight: 600 !important;
-    padding: 6px 4px !important;
-    transition: all 0.25s ease !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-    
-    /* Fixed unified dimensions and vertical centering */
-    min-height: 95px !important;
-    height: 95px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: center !important;
-    align-items: center !important;
-}
-
-div.element-container:has(.report-scope-marker) + div[data-testid="stHorizontalBlock"] button *,
-div.element-container:has(.report-scope-marker) + div.element-container button *,
-div.element-container:has(.report-scope-marker) + div button * {
-    color: var(--text-color) !important;
-    white-space: pre-line !important;
-    text-align: center !important;
-    font-size: 0.85rem !important;
-    line-height: 1.3 !important;
-    font-weight: 600 !important;
-}
-
-/* Highlight the emoji icon as larger */
-div.element-container:has(.report-scope-marker) + div[data-testid="stHorizontalBlock"] button p::first-line,
-div.element-container:has(.report-scope-marker) + div.element-container button p::first-line,
-div.element-container:has(.report-scope-marker) + div button p::first-line,
-div.element-container:has(.report-scope-marker) + div[data-testid="stHorizontalBlock"] button span::first-line,
-div.element-container:has(.report-scope-marker) + div.element-container button span::first-line,
-div.element-container:has(.report-scope-marker) + div button span::first-line {
-    font-size: 1.75rem !important;
-    line-height: 1.45 !important;
-    font-weight: normal !important;
-}
-
-div.element-container:has(.report-scope-marker) + div[data-testid="stHorizontalBlock"] button:hover,
-div.element-container:has(.report-scope-marker) + div.element-container button:hover,
-div.element-container:has(.report-scope-marker) + div button:hover {
-    background: rgba(128, 128, 128, 0.12) !important;
-    border-color: rgba(128, 128, 128, 0.3) !important;
-    transform: translateY(-1px) !important;
-}
-
-div.element-container:has(.report-scope-marker) + div[data-testid="stHorizontalBlock"] button:hover *,
-div.element-container:has(.report-scope-marker) + div.element-container button:hover *,
-div.element-container:has(.report-scope-marker) + div button:hover * {
-    color: var(--text-color) !important;
-}
-
-/* Selected active button (primary) */
-div.element-container:has(.report-scope-marker) + div[data-testid="stHorizontalBlock"] button[kind="primary"],
-div.element-container:has(.report-scope-marker) + div.element-container button[kind="primary"],
-div.element-container:has(.report-scope-marker) + div button[kind="primary"] {
-    background: rgba(155, 138, 92, 0.22) !important;
-    border: 1.5px solid #9b8a5c !important;
-    box-shadow: 0 0 14px rgba(155, 138, 92, 0.45) !important;
-    color: var(--text-color) !important;
-}
-
-div.element-container:has(.report-scope-marker) + div[data-testid="stHorizontalBlock"] button[kind="primary"] *,
-div.element-container:has(.report-scope-marker) + div.element-container button[kind="primary"] *,
-div.element-container:has(.report-scope-marker) + div button[kind="primary"] * {
-    color: var(--text-color) !important;
-}
-
-/* Glassmorphic Crystal Style for Excel Scope Selection Buttons */
-div.element-container:has(.excel-scope-marker) + div[data-testid="stHorizontalBlock"] button,
-div.element-container:has(.excel-scope-marker) + div.element-container button,
-div.element-container:has(.excel-scope-marker) + div button {
-    background: rgba(128, 128, 128, 0.05) !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
-    border: 1px solid rgba(128, 128, 128, 0.18) !important;
-    border-radius: 8px !important;
-    color: var(--text-color) !important;
-    font-weight: 600 !important;
-    padding: 6px 4px !important;
-    transition: all 0.25s ease !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-    
-    /* Fixed unified dimensions and vertical centering */
-    min-height: 95px !important;
-    height: 95px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: center !important;
-    align-items: center !important;
-}
-
-div.element-container:has(.excel-scope-marker) + div[data-testid="stHorizontalBlock"] button *,
-div.element-container:has(.excel-scope-marker) + div.element-container button *,
-div.element-container:has(.excel-scope-marker) + div button * {
-    color: var(--text-color) !important;
-    white-space: pre-line !important;
-    text-align: center !important;
-    font-size: 0.85rem !important;
-    line-height: 1.3 !important;
-    font-weight: 600 !important;
-}
-
-/* Highlight the emoji icon as larger */
-div.element-container:has(.excel-scope-marker) + div[data-testid="stHorizontalBlock"] button p::first-line,
-div.element-container:has(.excel-scope-marker) + div.element-container button p::first-line,
-div.element-container:has(.excel-scope-marker) + div button p::first-line,
-div.element-container:has(.excel-scope-marker) + div[data-testid="stHorizontalBlock"] button span::first-line,
-div.element-container:has(.excel-scope-marker) + div.element-container button span::first-line,
-div.element-container:has(.excel-scope-marker) + div button span::first-line {
-    font-size: 1.75rem !important;
-    line-height: 1.45 !important;
-    font-weight: normal !important;
-}
-
-div.element-container:has(.excel-scope-marker) + div[data-testid="stHorizontalBlock"] button:hover,
-div.element-container:has(.excel-scope-marker) + div.element-container button:hover,
-div.element-container:has(.excel-scope-marker) + div button:hover {
-    background: rgba(128, 128, 128, 0.12) !important;
-    border-color: rgba(128, 128, 128, 0.3) !important;
-    transform: translateY(-1px) !important;
-}
-
-div.element-container:has(.excel-scope-marker) + div[data-testid="stHorizontalBlock"] button:hover *,
-div.element-container:has(.excel-scope-marker) + div.element-container button:hover *,
-div.element-container:has(.excel-scope-marker) + div button:hover * {
-    color: var(--text-color) !important;
-}
-
-/* Selected active button (primary) */
-div.element-container:has(.excel-scope-marker) + div[data-testid="stHorizontalBlock"] button[kind="primary"],
-div.element-container:has(.excel-scope-marker) + div.element-container button[kind="primary"],
-div.element-container:has(.excel-scope-marker) + div button[kind="primary"] {
-    background: rgba(155, 138, 92, 0.22) !important;
-    border: 1.5px solid #9b8a5c !important;
-    box-shadow: 0 0 14px rgba(155, 138, 92, 0.45) !important;
-    color: var(--text-color) !important;
-}
-
-div.element-container:has(.excel-scope-marker) + div[data-testid="stHorizontalBlock"] button[kind="primary"] *,
-div.element-container:has(.excel-scope-marker) + div.element-container button[kind="primary"] *,
-div.element-container:has(.excel-scope-marker) + div button[kind="primary"] * {
-    color: var(--text-color) !important;
-}
-
-/* Force caqui theme colors globally for primary elements (buttons, radios, inputs) */
-button[kind="primary"], 
-button[data-testid="stBaseButton-primary"],
-div[data-testid="stBaseButton-primary"] button,
-div.stButton > button[kind="primary"],
-div.stButton > button[data-testid="stBaseButton-primary"],
-.st-emotion-cache-12w0qpk,
-.st-emotion-cache-1f3w0dd,
-.st-emotion-cache-zt52cr {
-    background-color: #9b8a5c !important;
-    background: #9b8a5c !important;
-    color: #ffffff !important;
-    border: 1px solid #9b8a5c !important;
-    border-color: #9b8a5c !important;
-}
-
-button[kind="primary"]:hover, 
-button[data-testid="stBaseButton-primary"]:hover,
-div[data-testid="stBaseButton-primary"] button:hover,
-div.stButton > button[kind="primary"]:hover,
-div.stButton > button[data-testid="stBaseButton-primary"]:hover,
-.st-emotion-cache-12w0qpk:hover,
-.st-emotion-cache-1f3w0dd:hover,
-.st-emotion-cache-zt52cr:hover {
-    background-color: #83744c !important;
-    background: #83744c !important;
-    border-color: #83744c !important;
-    color: #ffffff !important;
-}
-
-button[kind="primary"] *, 
-button[data-testid="stBaseButton-primary"] *,
-div[data-testid="stBaseButton-primary"] button *,
-div.stButton > button[kind="primary"] *,
-div.stButton > button[data-testid="stBaseButton-primary"] * {
-    color: #ffffff !important;
-}
-
-div[data-checked="true"] > div,
-div[data-testid="stRadio"] label[data-baseweb="radio"] div[data-checked="true"] > div,
-.st-emotion-cache-16xl6g5[data-checked="true"] > div {
-    background-color: #9b8a5c !important;
-    border-color: #9b8a5c !important;
-}
-
-div[data-checked="true"],
-div[data-testid="stRadio"] label[data-baseweb="radio"] div[data-checked="true"],
-.st-emotion-cache-16xl6g5[data-checked="true"] {
-    border-color: #9b8a5c !important;
-}
-
-div[data-baseweb="input"] > div:focus-within {
-    border-color: #9b8a5c !important;
-}
-
+}}
 </style>
-
-
 """, unsafe_allow_html=True)
 
 
@@ -4993,6 +4826,7 @@ if not st.session_state.authenticated:
                                 refresh_db_cache()
                                 st.session_state["_audit_last_page"] = None
                                 log_action(spm, "LOGIN", "Acesso realizado com sucesso")
+                                st.session_state["user_theme"] = load_user_theme(spm)
                                 st.success(f"Bem-vindo, {name}!")
                                 st.rerun()
                             elif status == "Pendente":
@@ -5459,9 +5293,26 @@ with st.sidebar:
 
         st.markdown(f"<small>🔑 <b>Perfil:</b> <span style='color:#9b8a5c;'>{sidebar_active_role}</span></small>", unsafe_allow_html=True)
 
-
-        
-
+    # Botões de escolha de tema (Dark / Light), gravados por usuário
+    _col_thm_d, _col_thm_l = st.columns(2)
+    with _col_thm_d:
+        if st.button(
+            "🌙 Dark",
+            use_container_width=True,
+            type="primary" if get_active_theme() == "dark" else "secondary",
+            key="btn_theme_dark",
+        ):
+            set_user_theme(st.session_state.get("user_pm", ""), "dark")
+            st.rerun()
+    with _col_thm_l:
+        if st.button(
+            "☀️ Light",
+            use_container_width=True,
+            type="primary" if get_active_theme() == "light" else "secondary",
+            key="btn_theme_light",
+        ):
+            set_user_theme(st.session_state.get("user_pm", ""), "light")
+            st.rerun()
 
     st.markdown("---")
     # Funcionalidade suspensa temporariamente:
@@ -5706,6 +5557,7 @@ with st.sidebar:
 
         st.session_state.authenticated = False
         st.session_state.selected_year = None
+        st.session_state.pop("user_theme", None)
         st.session_state.user_pm = ""
 
 
