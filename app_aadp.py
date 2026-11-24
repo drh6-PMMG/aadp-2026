@@ -53,85 +53,45 @@ def now_br():
 
 
 @st.cache_data(ttl=600)
-
-
-def get_last_updated_time(av_f, drive_av_id=None):
-
-
+def get_last_updated_time(av_f, drive_av_id=None, cache_av_f=None):
     """Retorna a data e hora de consolidação dos dados em horário de Brasília."""
-
-
     import requests, email.utils, os
 
-
     dt_utc = None
-
-
     if drive_av_id:
+        urls_to_try = [
+            ("HEAD", f"https://drive.google.com/uc?id={drive_av_id}&export=download", {}),
+            ("GET", f"https://drive.usercontent.google.com/download?id={drive_av_id}&export=download&authuser=0", {"Range": "bytes=0-0"}),
+        ]
+        for method, url, hdrs in urls_to_try:
+            try:
+                if method == "HEAD":
+                    r = requests.head(url, allow_redirects=True, timeout=5)
+                else:
+                    r = requests.get(url, headers=hdrs, stream=True, allow_redirects=True, timeout=6)
+                last_mod = r.headers.get("Last-Modified")
+                if hasattr(r, "close"):
+                    r.close()
+                if last_mod:
+                    dt_utc = email.utils.parsedate_to_datetime(last_mod)
+                    break
+            except Exception:
+                pass
 
-
-        try:
-
-
-            url = f"https://drive.google.com/uc?id={drive_av_id}&export=download"
-
-
-            r = requests.head(url, allow_redirects=True, timeout=5)
-
-
-            last_mod = r.headers.get("Last-Modified")
-
-
-            if last_mod:
-
-
-                dt_utc = email.utils.parsedate_to_datetime(last_mod)
-
-
-        except Exception:
-
-
-            pass
-
-
-            
-
-
-    if not dt_utc and os.path.exists(av_f):
-
-
-        try:
-
-
-            mtime = os.path.getmtime(av_f)
-
-
-            dt_utc = datetime.fromtimestamp(mtime, timezone.utc)
-
-
-        except Exception:
-
-
-            pass
-
-
-            
-
+    if not dt_utc:
+        # Prefere o arquivo baixado do Drive (cache_av_f) se existir; senão usa o arquivo local (av_f)
+        candidatos = [p for p in (cache_av_f, av_f) if p and os.path.exists(p)]
+        if candidatos:
+            try:
+                newest = max(candidatos, key=lambda p: os.path.getmtime(p))
+                dt_utc = datetime.fromtimestamp(os.path.getmtime(newest), timezone.utc)
+            except Exception:
+                pass
 
     if dt_utc:
-
-
         tz_br = timezone(timedelta(hours=-3))
-
-
         dt_br = dt_utc.astimezone(tz_br)
-
-
         return dt_br.strftime("%d/%m/%Y, às %H:%M horas")
-
-
-        
-
 
     return "Data/Hora indisponível"
 
@@ -947,45 +907,98 @@ def append_sigef_to_audit(df):
         
     return _fmt_colunas_inteiras(df)
 
+@st.cache_data(ttl=600, show_spinner=False)
 def load_audit_excel(xlsx_path, drive_master_xlsx_id=None, ano="2026"):
     import pandas as pd
     import os
     import tempfile
-    from pathlib import Path
-    
+
     cfg_to_use = load_config()
     y_cfg = get_active_year_config(ano, cfg_to_use)
     drive_geral_id = y_cfg.get("drive_geral_id", "")
     drive_com_id = y_cfg.get("drive_com_id", "")
     drive_sirh_id = y_cfg.get("drive_sirh_id", "")
+    drive_si_id = y_cfg.get("drive_si_id", "")
     if not drive_master_xlsx_id:
         drive_master_xlsx_id = y_cfg.get("drive_master_xlsx_id", "")
-        
+
     cache_dir = os.path.join(tempfile.gettempdir(), f"aadp_drive_cache_{ano}")
     os.makedirs(cache_dir, exist_ok=True)
     base_dir = os.path.dirname(os.path.abspath(__file__))
 
-    # 1. Procura se a planilha consolidada já existe localmente
+    # 1. Prioriza o geral.csv atualizado (do Drive em cache ou local) para não exibir dados congelados de um .xlsx antigo
+    drive_geral_path = os.path.join(cache_dir, "geral.csv")
+    local_geral_paths = [
+        os.path.join(base_dir, f"DADOS AADP {ano}", "geral.csv"),
+        os.path.join(y_cfg.get("db_path", ""), "geral.csv"),
+        os.path.join(base_dir, "geral.csv"),
+    ]
+    local_geral_path = next((p for p in local_geral_paths if os.path.exists(p) and os.path.getsize(p) > 0), None)
+
+    if drive_com_id:
+        try:
+            com_path = os.path.join(cache_dir, "comissao.csv")
+            if not os.path.exists(com_path) or os.path.getsize(com_path) == 0:
+                _baixar_drive(drive_com_id, com_path)
+        except Exception:
+            pass
+
+    if drive_sirh_id:
+        try:
+            sirh_path = os.path.join(cache_dir, f"COM_AADP_{ano}.xlsx")
+            if not os.path.exists(sirh_path) or os.path.getsize(sirh_path) == 0:
+                _baixar_drive(drive_sirh_id, sirh_path)
+        except Exception:
+            pass
+
+    if drive_si_id:
+        try:
+            si_path = os.path.join(cache_dir, "SIGEF.csv")
+            if not os.path.exists(si_path) or os.path.getsize(si_path) == 0:
+                _baixar_drive(drive_si_id, si_path)
+        except Exception:
+            pass
+
+    csv_to_use = None
+    if drive_geral_id:
+        try:
+            if not os.path.exists(drive_geral_path) or os.path.getsize(drive_geral_path) == 0:
+                _baixar_drive(drive_geral_id, drive_geral_path)
+            if os.path.exists(drive_geral_path) and os.path.getsize(drive_geral_path) > 0:
+                csv_to_use = drive_geral_path
+        except Exception:
+            pass
+
+    if not csv_to_use and local_geral_path:
+        csv_to_use = local_geral_path
+
+    if csv_to_use:
+        try:
+            df = build_audit_data_from_geral(csv_to_use)
+            df = append_sigef_to_audit(df)
+            return df, None
+        except Exception:
+            pass
+
+    # 2. Fallback: se geral.csv não estiver disponível, tenta carregar a planilha consolidada .xlsx
     possible_master = [
         xlsx_path,
         os.path.join(base_dir, f"DADOS AADP {ano}", "Analise avaliacoes completa.xlsx"),
         os.path.join(y_cfg.get("db_path", ""), "Analise avaliacoes completa.xlsx"),
         os.path.join(cache_dir, "Analise avaliacoes completa.xlsx"),
-        os.path.join(base_dir, "Analise avaliacoes completa.xlsx")
+        os.path.join(base_dir, "Analise avaliacoes completa.xlsx"),
     ]
     resolved_xlsx = next((p for p in possible_master if p and os.path.exists(p) and os.path.getsize(p) > 0), None)
 
-    # 2. Se não encontrou localmente e possui ID no Drive, baixa a planilha consolidada
     if not resolved_xlsx and drive_master_xlsx_id:
         target_dest = os.path.join(cache_dir, "Analise avaliacoes completa.xlsx")
         try:
             _baixar_drive(drive_master_xlsx_id, target_dest)
             if os.path.exists(target_dest) and os.path.getsize(target_dest) > 0:
                 resolved_xlsx = target_dest
-        except Exception as e:
+        except Exception:
             pass
 
-    # 3. Se a planilha consolidada existe, carrega diretamente
     if resolved_xlsx and os.path.exists(resolved_xlsx):
         try:
             df = pd.read_excel(resolved_xlsx)
@@ -1004,53 +1017,7 @@ def load_audit_excel(xlsx_path, drive_master_xlsx_id=None, ano="2026"):
         except Exception:
             pass
 
-    # 4. Fallback: se não houver planilha consolidada, tenta gerar a partir de geral.csv
-    drive_geral_path = os.path.join(cache_dir, "geral.csv")
-    local_geral_paths = [
-        os.path.join(base_dir, f"DADOS AADP {ano}", "geral.csv"),
-        os.path.join(y_cfg.get("db_path", ""), "geral.csv"),
-        os.path.join(base_dir, "geral.csv")
-    ]
-    local_geral_path = next((p for p in local_geral_paths if os.path.exists(p) and os.path.getsize(p) > 0), None)
-    
-    if drive_com_id:
-        try:
-            com_path = os.path.join(cache_dir, "comissao.csv")
-            if not os.path.exists(com_path) or os.path.getsize(com_path) == 0:
-                _baixar_drive(drive_com_id, com_path)
-        except Exception:
-            pass
-
-    if drive_sirh_id:
-        try:
-            sirh_path = os.path.join(cache_dir, f"COM_AADP_{ano}.xlsx")
-            if not os.path.exists(sirh_path) or os.path.getsize(sirh_path) == 0:
-                _baixar_drive(drive_sirh_id, sirh_path)
-        except Exception:
-            pass
-    
-    csv_to_use = None
-    if drive_geral_id:
-        try:
-            if not os.path.exists(drive_geral_path) or os.path.getsize(drive_geral_path) == 0:
-                _baixar_drive(drive_geral_id, drive_geral_path)
-            if os.path.exists(drive_geral_path) and os.path.getsize(drive_geral_path) > 0:
-                csv_to_use = drive_geral_path
-        except Exception:
-            pass
-            
-    if not csv_to_use and local_geral_path:
-        csv_to_use = local_geral_path
-        
-    if csv_to_use:
-        try:
-            df = build_audit_data_from_geral(csv_to_use)
-            df = append_sigef_to_audit(df)
-            return df, None
-        except Exception:
-            pass
-
-    return None, f"Arquivo 'Analise avaliacoes completa.xlsx' ou 'geral.csv' não encontrado para AADP {ano}."
+    return None, f"Arquivo 'geral.csv' ou 'Analise avaliacoes completa.xlsx' não encontrado para AADP {ano}."
 
 # gdown: download do Google Drive (opcional — só necessário no modo Drive)
 
@@ -5721,13 +5688,7 @@ try:
 
 
     av_csv_path = os.path.join(db_path or cfg.get("db_path", str(DADOS_DIR)), "avaliacoes.csv")
-
-
-    last_mod_str = get_last_updated_time(av_csv_path, drive_av_id or cfg.get("drive_av_id", ""))
-
-
-    
-
+    av_cache_path = os.path.join(tempfile.gettempdir(), f"aadp_drive_cache_{active_year}", "avaliacoes.csv")
 
     df_full = load_data(
         db_path   = year_cfg["db_path"],
@@ -5737,6 +5698,8 @@ try:
         ano = active_year,
         dia = now_br().strftime("%Y-%m-%d")  # prazo de recurso depende da data: recalcula a cada dia
     )
+
+    last_mod_str = get_last_updated_time(av_csv_path, drive_av_id or cfg.get("drive_av_id", ""), cache_av_f=av_cache_path)
 
     # Grupo escolhido (ATIVA / RECONDUZIDO): filtra a base antes de qualquer escopo de perfil
     df_full = filtrar_grupo(df_full, "nrPM (Avaliado)")
