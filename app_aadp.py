@@ -60,6 +60,7 @@ def _get_drive_mtime_utc(file_id: str):
     fid = str(file_id).strip()
     hdrs = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     for method, url, extra in (
+        ("GET", f"https://drive.usercontent.google.com/download?id={fid}&export=download&confirm=t", {"Range": "bytes=0-0"}),
         ("HEAD", f"https://drive.google.com/uc?id={fid}&export=download", {}),
         ("GET", f"https://drive.usercontent.google.com/download?id={fid}&export=download&authuser=0", {"Range": "bytes=0-0"}),
     ):
@@ -72,7 +73,7 @@ def _get_drive_mtime_utc(file_id: str):
                 return email.utils.parsedate_to_datetime(last_mod)
         except Exception:
             pass
-    # Fallback: página de visualização pública do Drive (somente se vier explicitamente "modifiedTime" ou o registro do próprio file_id)
+    # Fallback: página de visualização pública do Drive (contém modifiedTime / timestamp em ms vinculado ao arquivo)
     try:
         r = requests.get(f"https://drive.google.com/file/d/{fid}/view", headers=hdrs, timeout=8)
         if r.status_code == 200 and r.text:
@@ -81,36 +82,42 @@ def _get_drive_mtime_utc(file_id: str):
                 dt = pd.to_datetime(m.group(1), utc=True, errors="coerce")
                 if pd.notna(dt):
                     return dt.to_pydatetime()
-            # Padrão interno vinculado diretamente ao ID do arquivo: ["<fid>", ... , 17..., ...]
-            m2 = re.search(re.escape(fid) + r'.{0,400}?\b(17\d{11}|18\d{11})\b', r.text, re.S)
-            if m2:
-                ts_ms = int(m2.group(1))
-                if 1704067200000 <= ts_ms <= 1893456000000:
-                    return datetime.fromtimestamp(ts_ms / 1000.0, timezone.utc)
+            for pat in (
+                re.escape(fid) + r'.{0,2500}?\b(17\d{11}|18\d{11})\b',
+                r'(?:geral\.csv|avaliacoes\.csv).{0,800}?\b(17\d{11}|18\d{11})\b',
+            ):
+                m2 = re.search(pat, r.text, re.S | re.I)
+                if m2:
+                    ts_ms = int(m2.group(1))
+                    if 1704067200000 <= ts_ms <= 1893456000000:
+                        return datetime.fromtimestamp(ts_ms / 1000.0, timezone.utc)
     except Exception:
         pass
     return None
 
 
-@st.cache_data(ttl=600)
-def get_last_updated_time(av_f, drive_av_id=None, cache_av_f=None):
-    """Retorna a data e hora de consolidação dos dados em horário de Brasília."""
+@st.cache_data(ttl=180)
+def get_last_updated_time(geral_f, drive_geral_id=None, cache_geral_f=None, av_f=None, drive_av_id=None, cache_av_f=None):
+    """Retorna a data e hora de consolidação dos dados com base na planilha geral.csv (Drive ou local) em horário de Brasília."""
     import os
 
-    dt_utc = _get_drive_mtime_utc(drive_av_id) if drive_av_id else None
+    dt_utc = None
+    # 1. Prioriza a planilha geral.csv do Google Drive (e depois avaliacoes.csv no Drive)
+    for fid in (drive_geral_id, drive_av_id):
+        if fid:
+            dt_utc = _get_drive_mtime_utc(fid)
+            if dt_utc:
+                break
 
+    # 2. Fallback: arquivo baixado do Drive em cache ou arquivo local (priorizando geral.csv)
     if not dt_utc:
-        # Se o Drive não respondeu, prefere o arquivo realmente baixado do Drive (cache_av_f) ao arquivo estático do repositório
-        if cache_av_f and os.path.exists(cache_av_f):
-            try:
-                dt_utc = datetime.fromtimestamp(os.path.getmtime(cache_av_f), timezone.utc)
-            except Exception:
-                pass
-        if not dt_utc and av_f and os.path.exists(av_f):
-            try:
-                dt_utc = datetime.fromtimestamp(os.path.getmtime(av_f), timezone.utc)
-            except Exception:
-                pass
+        for p in (cache_geral_f, geral_f, cache_av_f, av_f):
+            if p and os.path.exists(p):
+                try:
+                    dt_utc = datetime.fromtimestamp(os.path.getmtime(p), timezone.utc)
+                    break
+                except Exception:
+                    pass
 
     if dt_utc:
         tz_br = timezone(timedelta(hours=-3))
@@ -5723,8 +5730,12 @@ try:
     if reload: st.cache_data.clear()
 
 
-    av_csv_path = os.path.join(db_path or cfg.get("db_path", str(DADOS_DIR)), "avaliacoes.csv")
-    av_cache_path = os.path.join(tempfile.gettempdir(), f"aadp_drive_cache_{active_year}", "avaliacoes.csv")
+    base_local = db_path or cfg.get("db_path", str(DADOS_DIR))
+    cache_dir_y = os.path.join(tempfile.gettempdir(), f"aadp_drive_cache_{active_year}")
+    geral_csv_path = os.path.join(base_local, "geral.csv")
+    geral_cache_path = os.path.join(cache_dir_y, "geral.csv")
+    av_csv_path = os.path.join(base_local, "avaliacoes.csv")
+    av_cache_path = os.path.join(cache_dir_y, "avaliacoes.csv")
 
     df_full = load_data(
         db_path   = year_cfg["db_path"],
@@ -5735,7 +5746,14 @@ try:
         dia = now_br().strftime("%Y-%m-%d")  # prazo de recurso depende da data: recalcula a cada dia
     )
 
-    last_mod_str = get_last_updated_time(av_csv_path, drive_av_id or cfg.get("drive_av_id", ""), cache_av_f=av_cache_path)
+    last_mod_str = get_last_updated_time(
+        geral_csv_path,
+        drive_geral_id=drive_geral_id or cfg.get("drive_geral_id", ""),
+        cache_geral_f=geral_cache_path,
+        av_f=av_csv_path,
+        drive_av_id=drive_av_id or cfg.get("drive_av_id", ""),
+        cache_av_f=av_cache_path,
+    )
 
     # Grupo escolhido (ATIVA / RECONDUZIDO): filtra a base antes de qualquer escopo de perfil
     df_full = filtrar_grupo(df_full, "nrPM (Avaliado)")
