@@ -52,39 +52,61 @@ def now_br():
     return datetime.now(timezone(timedelta(hours=-3)))
 
 
+def _get_drive_mtime_utc(file_id: str):
+    """Obtém a data/hora real de modificação (UTC) de um arquivo público no Google Drive."""
+    if not file_id or not str(file_id).strip():
+        return None
+    import requests, email.utils, re
+    fid = str(file_id).strip()
+    hdrs = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    for method, url, extra in (
+        ("HEAD", f"https://drive.google.com/uc?id={fid}&export=download", {}),
+        ("GET", f"https://drive.usercontent.google.com/download?id={fid}&export=download&authuser=0", {"Range": "bytes=0-0"}),
+    ):
+        try:
+            r = requests.head(url, headers=hdrs, allow_redirects=True, timeout=5) if method == "HEAD" else requests.get(url, headers={**hdrs, **extra}, stream=True, allow_redirects=True, timeout=6)
+            last_mod = r.headers.get("Last-Modified")
+            if hasattr(r, "close"):
+                r.close()
+            if last_mod:
+                return email.utils.parsedate_to_datetime(last_mod)
+        except Exception:
+            pass
+    # Fallback: página de visualização pública do Drive (contém o timestamp em ms de modificação)
+    try:
+        r = requests.get(f"https://drive.google.com/file/d/{fid}/view", headers=hdrs, timeout=8)
+        if r.status_code == 200 and r.text:
+            # Padrão interno do Drive: [null, <modified_ms>, <created_ms>, ...] ou "modifiedTime"
+            m = re.search(r'"modifiedTime"\s*:\s*"([^"]+)"', r.text)
+            if m:
+                dt = pd.to_datetime(m.group(1), utc=True, errors="coerce")
+                if pd.notna(dt):
+                    return dt.to_pydatetime()
+            ms_vals = [int(x) for x in re.findall(r'\b(17\d{11}|18\d{11})\b', r.text) if 1704067200000 <= int(x) <= 1893456000000]
+            if ms_vals:
+                return datetime.fromtimestamp(max(ms_vals) / 1000.0, timezone.utc)
+    except Exception:
+        pass
+    return None
+
+
 @st.cache_data(ttl=600)
 def get_last_updated_time(av_f, drive_av_id=None, cache_av_f=None):
     """Retorna a data e hora de consolidação dos dados em horário de Brasília."""
-    import requests, email.utils, os
+    import os
 
-    dt_utc = None
-    if drive_av_id:
-        urls_to_try = [
-            ("HEAD", f"https://drive.google.com/uc?id={drive_av_id}&export=download", {}),
-            ("GET", f"https://drive.usercontent.google.com/download?id={drive_av_id}&export=download&authuser=0", {"Range": "bytes=0-0"}),
-        ]
-        for method, url, hdrs in urls_to_try:
-            try:
-                if method == "HEAD":
-                    r = requests.head(url, allow_redirects=True, timeout=5)
-                else:
-                    r = requests.get(url, headers=hdrs, stream=True, allow_redirects=True, timeout=6)
-                last_mod = r.headers.get("Last-Modified")
-                if hasattr(r, "close"):
-                    r.close()
-                if last_mod:
-                    dt_utc = email.utils.parsedate_to_datetime(last_mod)
-                    break
-            except Exception:
-                pass
+    dt_utc = _get_drive_mtime_utc(drive_av_id) if drive_av_id else None
 
     if not dt_utc:
-        # Prefere o arquivo baixado do Drive (cache_av_f) se existir; senão usa o arquivo local (av_f)
-        candidatos = [p for p in (cache_av_f, av_f) if p and os.path.exists(p)]
-        if candidatos:
+        # Se o Drive não respondeu, prefere o arquivo realmente baixado do Drive (cache_av_f) ao arquivo estático do repositório
+        if cache_av_f and os.path.exists(cache_av_f):
             try:
-                newest = max(candidatos, key=lambda p: os.path.getmtime(p))
-                dt_utc = datetime.fromtimestamp(os.path.getmtime(newest), timezone.utc)
+                dt_utc = datetime.fromtimestamp(os.path.getmtime(cache_av_f), timezone.utc)
+            except Exception:
+                pass
+        if not dt_utc and av_f and os.path.exists(av_f):
+            try:
+                dt_utc = datetime.fromtimestamp(os.path.getmtime(av_f), timezone.utc)
             except Exception:
                 pass
 
@@ -4339,23 +4361,35 @@ def filtrar_grupo(df, pm_col, tipo_col=None):
     return out
 
 
-@st.cache_resource(show_spinner="⏳ Carregando e processando dados...")
+@st.cache_resource(ttl=3600, show_spinner="⏳ Carregando e processando dados...")
 def load_data(db_path: str, drive_av_id: str = "", drive_si_id: str = "", drive_geral_id: str = "", ano: str = "2026", dia: str = ""):
     """Carrega dados de pasta local ou Google Drive e gera o Geral.xlsx automaticamente."""
     if drive_av_id and drive_si_id:
         # ── Modo Google Drive ──────────────────────────────────────────────
+        import time as _t_mod
         cache_dir = os.path.join(tempfile.gettempdir(), f"aadp_drive_cache_{ano}")
         os.makedirs(cache_dir, exist_ok=True)
         av_f = os.path.join(cache_dir, "avaliacoes.csv")
         si_f = os.path.join(cache_dir, "SIGEF.csv")
-        
-        if not os.path.exists(av_f) or os.path.getsize(av_f) == 0:
+
+        def _precisa_baixar(local_p, fid):
+            if not os.path.exists(local_p) or os.path.getsize(local_p) == 0:
+                return True
+            loc_mtime = os.path.getmtime(local_p)
+            if (_t_mod.time() - loc_mtime) > 6 * 3600:
+                return True
+            drv_dt = _get_drive_mtime_utc(fid)
+            if drv_dt and drv_dt.timestamp() > loc_mtime + 60:
+                return True
+            return False
+
+        if _precisa_baixar(av_f, drive_av_id):
             _baixar_drive(drive_av_id, av_f)
-        if not os.path.exists(si_f) or os.path.getsize(si_f) == 0:
+        if _precisa_baixar(si_f, drive_si_id):
             _baixar_drive(drive_si_id, si_f)
         if drive_geral_id:
             geral_f = os.path.join(cache_dir, "geral.csv")
-            if not os.path.exists(geral_f) or os.path.getsize(geral_f) == 0:
+            if _precisa_baixar(geral_f, drive_geral_id):
                 try:
                     _baixar_drive(drive_geral_id, geral_f)
                 except Exception:
