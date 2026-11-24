@@ -72,19 +72,21 @@ def _get_drive_mtime_utc(file_id: str):
                 return email.utils.parsedate_to_datetime(last_mod)
         except Exception:
             pass
-    # Fallback: página de visualização pública do Drive (contém o timestamp em ms de modificação)
+    # Fallback: página de visualização pública do Drive (somente se vier explicitamente "modifiedTime" ou o registro do próprio file_id)
     try:
         r = requests.get(f"https://drive.google.com/file/d/{fid}/view", headers=hdrs, timeout=8)
         if r.status_code == 200 and r.text:
-            # Padrão interno do Drive: [null, <modified_ms>, <created_ms>, ...] ou "modifiedTime"
             m = re.search(r'"modifiedTime"\s*:\s*"([^"]+)"', r.text)
             if m:
                 dt = pd.to_datetime(m.group(1), utc=True, errors="coerce")
                 if pd.notna(dt):
                     return dt.to_pydatetime()
-            ms_vals = [int(x) for x in re.findall(r'\b(17\d{11}|18\d{11})\b', r.text) if 1704067200000 <= int(x) <= 1893456000000]
-            if ms_vals:
-                return datetime.fromtimestamp(max(ms_vals) / 1000.0, timezone.utc)
+            # Padrão interno vinculado diretamente ao ID do arquivo: ["<fid>", ... , 17..., ...]
+            m2 = re.search(re.escape(fid) + r'.{0,400}?\b(17\d{11}|18\d{11})\b', r.text, re.S)
+            if m2:
+                ts_ms = int(m2.group(1))
+                if 1704067200000 <= ts_ms <= 1893456000000:
+                    return datetime.fromtimestamp(ts_ms / 1000.0, timezone.utc)
     except Exception:
         pass
     return None
