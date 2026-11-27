@@ -1866,7 +1866,7 @@ def load_config():
 
 
     base_drive_keys = [
-        "drive_av_id", "drive_si_id", "drive_geral_id", "drive_com_id",
+        "drive_av_id", "drive_si_id", "drive_si_civil_id", "drive_geral_id", "drive_com_id",
         "drive_sirh_id", "drive_master_xlsx_id", "drive_metas_id", "db_path"
     ]
     for b_key in base_drive_keys:
@@ -1946,6 +1946,7 @@ def get_active_year_config(selected_year: str, cfg: dict):
         "db_path": db_path_year,
         "drive_av_id": _get_id("drive_av_id"),
         "drive_si_id": _get_id("drive_si_id"),
+        "drive_si_civil_id": _get_id("drive_si_civil_id"),
         "drive_geral_id": _get_id("drive_geral_id"),
         "drive_com_id": _get_id("drive_com_id"),
         "drive_sirh_id": _get_id("drive_sirh_id"),
@@ -3468,121 +3469,127 @@ def matches_rpm(reg_rpm, csv_rpm):
 
 
 
-def find_sigef_user(pm_number: str) -> dict:
+def _resolve_sigef_csv(filename: str, drive_keys: tuple, fixed_drive_id: str = "", cache_name: str = ""):
+    """Localiza um CSV do SIGEF (militar ou civil) localmente ou baixa do Google Drive para pasta temporária."""
+    import tempfile, time
+    base_dir_ = os.path.dirname(os.path.abspath(__file__))
+    cad_dir = os.path.join(tempfile.gettempdir(), "aadp_sigef_cadastro")
+    cad_file = os.path.join(cad_dir, cache_name or filename)
+    candidatos = [filename, os.path.join("dados", filename)]
+    for y_ in ("2027", "2026"):
+        candidatos.append(os.path.join(base_dir_, f"DADOS AADP {y_}", filename))
+        candidatos.append(os.path.join(tempfile.gettempdir(), f"aadp_drive_cache_{y_}", filename))
+    found = next((p for p in candidatos if os.path.exists(p) and os.path.getsize(p) > 0), None)
+    if found:
+        return found, None
+
+    if os.path.exists(cad_file) and os.path.getsize(cad_file) > 0 and (time.time() - os.path.getmtime(cad_file)) < 6 * 3600:
+        return cad_file, None
+
+    ids_drive = []
+    for k_ in drive_keys:
+        v_ = str(cfg.get(k_) or "").strip()
+        if v_ and v_ not in ids_drive:
+            ids_drive.append(v_)
+    if fixed_drive_id and fixed_drive_id not in ids_drive:
+        ids_drive.append(fixed_drive_id)
+    if not ids_drive:
+        return None, None
+
+    os.makedirs(cad_dir, exist_ok=True)
+    ultimo_erro = None
+    for fid_ in ids_drive:
+        try:
+            _baixar_drive(fid_, cad_file)
+            return cad_file, None
+        except Exception as e:
+            ultimo_erro = e
+    if os.path.exists(cad_file) and os.path.getsize(cad_file) > 0:
+        return cad_file, None
+    return None, ultimo_erro
 
 
-    """Busca os dados do militar no SIGEF.csv pelo Nº PM (6 dígitos)."""
+def _search_sigef_file(si_path: str, pm_clean: str, is_civil: bool = False):
+    """Procura um Nº PM / Matrícula (sem zeros à esquerda) em um arquivo SIGEF (militar ou civil)."""
+    import csv
+    with open(si_path, encoding="cp1252", errors="replace") as f:
+        reader = csv.reader(f, delimiter=";")
+        header = next(reader)
+        hdr_norm = [str(c).strip().upper() for c in header]
 
+        def _hidx(names, default_idx):
+            for n in names:
+                if n in hdr_norm:
+                    return hdr_norm.index(n)
+            return default_idx
 
-    pm_clean = pm_number.strip().lstrip("0")
+        idx_birth = _hidx(("DATA NASCIMENTO",), 12 if is_civil else 17)
+        idx_cpf = _hidx(("CPF", "NUMERO CPF"), 23 if is_civil else 25)
 
-
-    if not pm_clean:
-
-
-        return None
-
-
-    try:
-
-
-        import os, csv
-
-
-        # 1) Procura o SIGEF.csv já disponível (pasta do app, bases dos anos, cache do Drive)
-        import tempfile, time
-        base_dir_ = os.path.dirname(os.path.abspath(__file__))
-        cad_dir = os.path.join(tempfile.gettempdir(), "aadp_sigef_cadastro")
-        cad_file = os.path.join(cad_dir, "SIGEF.csv")
-        candidatos = ["SIGEF.csv", os.path.join("dados", "SIGEF.csv")]
-        for y_ in ("2027", "2026"):
-            candidatos.append(os.path.join(base_dir_, f"DADOS AADP {y_}", "SIGEF.csv"))
-            candidatos.append(os.path.join(tempfile.gettempdir(), f"aadp_drive_cache_{y_}", "SIGEF.csv"))
-        si_path = next((p for p in candidatos if os.path.exists(p) and os.path.getsize(p) > 0), None)
-
-        # 2) Sem arquivo local: baixa do Drive usando os mesmos IDs configurados no app
-        #    (drive_si_id_2027 / drive_si_id_2026 / drive_si_id), gravando em pasta temporária gravável.
-        if not si_path:
-            if os.path.exists(cad_file) and os.path.getsize(cad_file) > 0 and (time.time() - os.path.getmtime(cad_file)) < 6 * 3600:
-                si_path = cad_file
-            else:
-                ids_drive = []
-                for k_ in ("drive_si_id_2027", "drive_si_id_2026", "drive_si_id"):
-                    v_ = str(cfg.get(k_) or "").strip()
-                    if v_ and v_ not in ids_drive:
-                        ids_drive.append(v_)
-                v_fixo = "10Ld_4XEz9b4kI_T6TC9W19tQdtBJCz5F"
-                if v_fixo not in ids_drive:
-                    ids_drive.append(v_fixo)
-                os.makedirs(cad_dir, exist_ok=True)
-                ultimo_erro = None
-                for fid_ in ids_drive:
-                    try:
-                        _baixar_drive(fid_, cad_file)
-                        si_path = cad_file
-                        break
-                    except Exception as e:
-                        ultimo_erro = e
-                if not si_path:
-                    if os.path.exists(cad_file) and os.path.getsize(cad_file) > 0:
-                        si_path = cad_file
-                    else:
-                        st.error(f"Erro ao baixar base SIGEF do Google Drive: {ultimo_erro}")
-                        return None
-
-        with open(si_path, encoding="cp1252", errors="replace") as f:
-
-
-            reader = csv.reader(f, delimiter=";")
-
-
-            header = next(reader)
-
-
-            try:
-                idx_birth = header.index("DATA NASCIMENTO")
-            except ValueError:
-                idx_birth = 17
-            try:
-                idx_cpf = header.index("NUMERO CPF")
-            except ValueError:
-                idx_cpf = 25
-
-            for row in reader:
-                if len(row) > max(idx_birth, idx_cpf):
-                    curr_pm = row[0].strip().lstrip("0")
-                    if curr_pm == pm_clean:
-                        
-                        idx_offset = 0
+        for row in reader:
+            if len(row) > max(idx_birth, idx_cpf):
+                curr_pm = row[0].strip().lstrip("0")
+                if curr_pm == pm_clean:
+                    idx_offset = 0
+                    if not is_civil:
                         if len(row) > 16 and row[15] in ["A", "I"]:
                             idx_offset = -1
                         elif len(row) > 17 and row[16] in ["A", "I"]:
                             idx_offset = 0
                         elif len(row) > 18 and row[17] in ["A", "I"]:
                             idx_offset = 1
-                            
-                        # Ajustar indices reais para este row
-                        real_birth = idx_birth + idx_offset
-                        real_cpf = idx_cpf + idx_offset
-                        
-                        return {
-                            "pm": row[0].strip(),
-                            "rank": row[2].strip().title(),
-                            "name": row[3].strip().title(),
-                            "rpm": row[5].strip(),      # UDI/UDG (NOME RPM)
-                            "unit": row[7].strip(),     # Unidade Principal (NOME UNIDADE PRINCIPAL)
-                            "sector": row[9].strip(),    # Setor (NOME UNIDADE)
-                            "birthdate": row[real_birth].strip() if len(row) > real_birth else "",
-                            "cpf": row[real_cpf].strip() if len(row) > real_cpf else ""
-                        }
+                    real_birth = idx_birth + idx_offset
+                    real_cpf = idx_cpf + idx_offset
+                    return {
+                        "pm": row[0].strip(),
+                        "rank": row[2].strip().title(),
+                        "name": row[3].strip().title(),
+                        "rpm": row[5].strip(),       # UDI/UDG (NOME RPM)
+                        "unit": row[7].strip(),      # Unidade Principal (NOME UNIDADE PRINCIPAL)
+                        "sector": row[9].strip(),    # Setor / Local de atuação (NOME UNIDADE)
+                        "birthdate": row[real_birth].strip() if len(row) > real_birth else "",
+                        "cpf": row[real_cpf].strip() if len(row) > real_cpf else "",
+                        "tipo_servidor": "Civil" if is_civil else "Militar",
+                    }
+    return None
 
 
+def find_sigef_user(pm_number: str) -> dict:
+    """Busca os dados do servidor (Militar no SIGEF.csv ou Civil no SIGEF - CIVIL.csv) pelo Nº PM / Matrícula (6 dígitos)."""
+    pm_clean = pm_number.strip().lstrip("0")
+    if not pm_clean:
+        return None
+    try:
+        # 1) Tenta primeiro na base militar (SIGEF.csv)
+        si_mil_path, err_mil = _resolve_sigef_csv(
+            "SIGEF.csv",
+            ("drive_si_id_2027", "drive_si_id_2026", "drive_si_id"),
+            fixed_drive_id="10Ld_4XEz9b4kI_T6TC9W19tQdtBJCz5F",
+            cache_name="SIGEF.csv",
+        )
+        if si_mil_path:
+            found = _search_sigef_file(si_mil_path, pm_clean, is_civil=False)
+            if found:
+                return found
+
+        # 2) Se não encontrou na base militar, consulta a base de servidores civis (SIGEF - CIVIL.csv)
+        si_civ_path, err_civ = _resolve_sigef_csv(
+            "SIGEF - CIVIL.csv",
+            ("drive_si_civil_id_2027", "drive_si_civil_id_2026", "drive_si_civil_id"),
+            fixed_drive_id="",
+            cache_name="SIGEF - CIVIL.csv",
+        )
+        if si_civ_path:
+            found = _search_sigef_file(si_civ_path, pm_clean, is_civil=True)
+            if found:
+                return found
+
+        if not si_mil_path and err_mil:
+            st.error(f"Erro ao baixar base SIGEF do Google Drive: {err_mil}")
+        elif not si_mil_path and not si_civ_path and err_civ:
+            st.error(f"Erro ao baixar base SIGEF - CIVIL do Google Drive: {err_civ}")
     except Exception as e:
-
-
         st.error(f"Erro ao ler banco SIGEF: {e}")
-
-
     return None
 
 
@@ -3590,87 +3597,33 @@ def find_sigef_user(pm_number: str) -> dict:
 
 
 def sync_users_with_sigef():
-
-
-    """Sincroniza os dados cadastrais de todos os usuários com o SIGEF.csv de forma otimizada."""
-
-
+    """Sincroniza os dados cadastrais de todos os usuários com o SIGEF.csv e SIGEF - CIVIL.csv."""
     try:
-
-
         import os, csv
 
-
-        si_path = "SIGEF.csv"
-
-
-        if not os.path.exists(si_path):
-
-
-            si_path = os.path.join("dados", "SIGEF.csv")
-
-
-            if not os.path.exists(si_path):
-
-
-                # Tenta baixar
-
-
-                sigef_drive_id = "10Ld_4XEz9b4kI_T6TC9W19tQdtBJCz5F"
-
-
-                try:
-
-
-                    _baixar_drive(sigef_drive_id, "SIGEF.csv")
-
-
-                    si_path = "SIGEF.csv"
-
-
-                except Exception:
-
-
-                    return
-
-
-
-
-
-        # Carrega todo o SIGEF para um dicionário em memória (uma única leitura de disco)
-
-
         sigef_dict = {}
-
-
-        with open(si_path, encoding="cp1252", errors="replace") as f:
-
-
-            reader = csv.reader(f, delimiter=";")
-
-
-            next(reader)  # pula cabeçalho
-
-
-            for row in reader:
-
-
-                if len(row) > 24:
-
-
-                    pm_clean = row[0].strip().lstrip("0")
-
-
-                    if pm_clean:
-
-
-                        sigef_dict[pm_clean] = {
-                            "name": row[3].strip(),
-                            "rank": row[2].strip(),
-                            "rpm": row[5].strip(),
-                            "unit": row[7].strip(),
-                            "sector": row[9].strip()
-                        }
+        # Carrega primeiro SIGEF - CIVIL.csv (se existir) e depois SIGEF.csv (militares têm precedência em caso de colisão)
+        fontes = [
+            _resolve_sigef_csv("SIGEF - CIVIL.csv", ("drive_si_civil_id_2027", "drive_si_civil_id_2026", "drive_si_civil_id"), "", "SIGEF - CIVIL.csv")[0],
+            _resolve_sigef_csv("SIGEF.csv", ("drive_si_id_2027", "drive_si_id_2026", "drive_si_id"), "10Ld_4XEz9b4kI_T6TC9W19tQdtBJCz5F", "SIGEF.csv")[0],
+        ]
+        for path_ in fontes:
+            if not path_ or not os.path.exists(path_):
+                continue
+            with open(path_, encoding="cp1252", errors="replace") as f:
+                reader = csv.reader(f, delimiter=";")
+                next(reader, None)
+                for row in reader:
+                    if len(row) > 10:
+                        pm_clean = row[0].strip().lstrip("0")
+                        if pm_clean:
+                            sigef_dict[pm_clean] = {
+                                "name": row[3].strip(),
+                                "rank": row[2].strip(),
+                                "rpm": row[5].strip(),
+                                "unit": row[7].strip(),
+                                "sector": row[9].strip()
+                            }
 
 
         
@@ -4958,7 +4911,7 @@ if not st.session_state.authenticated:
             st.markdown("##### 📝 Solicitação de acesso - Painel de Controle AADP")
 
 
-            st.info("⚠️ Informe apenas os **6 primeiros dígitos** do seu Nº PM (sem o dígito verificador).\n\n🔒 **Importante:** Somente Comandante e Subcomandante de unidade, militares da P1 e SADM poderão solicitar e ter autorizado o acesso a este Painel de controle AADP.")
+            st.info("⚠️ Informe apenas os **6 primeiros dígitos** do seu Nº PM / Matrícula (sem o dígito verificador).\n\n🔒 **Importante:** Somente Comandante e Subcomandante de unidade, servidores militares ou civis da P1 e SADM poderão solicitar e ter autorizado o acesso a este Painel de controle AADP.")
 
 
             
@@ -5030,13 +4983,13 @@ if not st.session_state.authenticated:
                                 st.session_state.sigef_verified = False # Reseta a verificação para nova busca
 
 
-                                st.success("✅ Militar encontrado no SIGEF! Prossiga com a verificação de segurança abaixo.")
+                                st.success(f"✅ Servidor ({res.get('tipo_servidor', 'Militar')}) encontrado no SIGEF! Prossiga com a verificação de segurança abaixo.")
 
 
                             else:
 
 
-                                st.error("❌ Nº PM não encontrado no banco SIGEF. Verifique se digitou os 6 primeiros dígitos corretamente.")
+                                st.error("❌ Nº PM / Matrícula não encontrado nas bases SIGEF (Militar ou Civil). Verifique se digitou os 6 primeiros dígitos corretamente.")
 
 
                                 st.session_state.sigef_data = None
